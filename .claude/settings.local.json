@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "WebFetch(domain:v0-design-brutalist-ai-saa-s.vercel.app)",
+      "WebSearch",
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(curl -s http://localhost:5173/src/main.tsx)",
+      "Bash(pkill -f \"vite\")",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(gh repo:*)",
+      "Bash(pkill -f \"npm run dev\")",
+      "Bash(git push:*)",
+      "Bash(grep -n \"{/div}$\" C:/Code/Ideas/SparkBin/sparkbin/src/components/ProjectDetail.tsx)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
