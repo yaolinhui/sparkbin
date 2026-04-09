@@ -179,7 +179,16 @@ export function AIChat({ stage, projectTitle, onGenerateContent }: AIChatProps) 
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError(`${t('ai.api_error')}: ${errorMessage}`);
+      // 识别配置错误并给出友好提示
+      const isConfigError = errorMessage.includes('not configured') ||
+                           errorMessage.includes('inactive') ||
+                           errorMessage.includes('未配置') ||
+                           errorMessage.includes('未激活');
+      if (isConfigError) {
+        setError(`${t('ai.error_prefix')} ${t('ai.config_required')}`);
+      } else {
+        setError(`${t('ai.error_prefix')} ${errorMessage}`);
+      }
       // 移除空的 AI 消息
       setMessages((prev) => prev.filter((msg) => msg.id !== aiMessage.id));
     } finally {

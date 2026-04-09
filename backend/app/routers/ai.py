@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List
+import json
+import logging
 
 from ..database import get_db
 from ..auth import get_current_user
@@ -15,6 +17,7 @@ from ..services.logger import OperationLogger
 from ..encryption import get_encryption_manager
 
 router = APIRouter(prefix="/ai", tags=["ai"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/ping")
@@ -134,12 +137,25 @@ async def chat_completion(
     ai_service = AIProxyService(db)
 
     async def event_generator():
-        async for chunk in ai_service.chat_completion(
-            provider=request.provider,
-            messages=request.messages,
-            stream=True
-        ):
-            yield chunk
+        chunk_count = 0
+        try:
+            # Get the generator
+            gen = ai_service.chat_completion(
+                provider=request.provider,
+                messages=request.messages,
+                stream=True
+            )
+            async for chunk in gen:
+                chunk_count += 1
+                yield chunk
+        except Exception as e:
+            import sys
+            error_type = type(e).__name__
+            error_msg = str(e) or f"({error_type})"
+            error_data = json.dumps({"error": f"{error_type}: {error_msg} (chunks={chunk_count})"})
+            sys.stderr.write(f"DEBUG: Caught {error_type}: {error_msg} (chunks={chunk_count})\\n")
+            yield f"data: {error_data}\n\n"
+            yield "data: [DONE]\n\n"
 
     return StreamingResponse(
         event_generator(),

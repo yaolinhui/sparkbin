@@ -52,22 +52,28 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     );
   }
 
-  const completedStages = Object.entries(project.stages)
-    .filter(([_, stage]) => stage.isLocked)
+  // 防御性：确保 stages 数据完整，currentStage 必须存在于 stages 中
+  const availableStages = Object.entries(project.stages || {});
+  const validCurrentStage = availableStages.some(([key]) => key === project.currentStage)
+    ? project.currentStage
+    : (availableStages[0]?.[0] as StageKey) || 'idea';
+
+  const completedStages = availableStages
+    .filter(([_, stage]) => stage?.isLocked)
     .map(([key]) => key as StageKey);
 
-  const currentStageData = project.stages[project.currentStage];
-  const isCurrentStageLocked = currentStageData.isLocked;
-  const currentStageLabel = useStageLabel(project.currentStage);
+  const currentStageData = project.stages?.[validCurrentStage];
+  const isCurrentStageLocked = currentStageData?.isLocked ?? false;
+  const currentStageLabel = useStageLabel(validCurrentStage);
 
   const handleContentChange = async (content: string) => {
-    await updateStageContent(project.id, project.currentStage, content);
+    await updateStageContent(project.id, validCurrentStage, content);
   };
 
   const handleCompleteStage = async () => {
-    if (isCurrentStageLocked) return;
+    if (isCurrentStageLocked || !currentStageData) return;
 
-    const currentContent = currentStageData.content;
+    const currentContent = currentStageData?.content || '';
     const isContentEmpty = !currentContent || currentContent.trim() === '' || currentContent === '<p></p>';
 
     if (isContentEmpty && !showConfirmModal) {
@@ -76,7 +82,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     }
 
     setIsCompleting(true);
-    await completeStage(project.id, project.currentStage);
+    await completeStage(project.id, validCurrentStage);
     setIsCompleting(false);
     setShowConfirmModal(false);
   };
@@ -95,11 +101,12 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   };
 
   const handleGenerateContent = async (content: string) => {
-    const currentContent = project.stages[project.currentStage].content;
+    const stageData = project.stages?.[validCurrentStage];
+    const currentContent = stageData?.content || '';
     const newContent = currentContent
       ? `${currentContent}\n\n${content}`
       : content;
-    await updateStageContent(project.id, project.currentStage, newContent);
+    await updateStageContent(project.id, validCurrentStage, newContent);
   };
 
   const toggleStageExpand = (stageKey: string) => {
@@ -204,7 +211,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
       {/* Stage Flow */}
       <StageFlow
-        currentStage={project.currentStage}
+        currentStage={validCurrentStage}
         completedStages={completedStages}
       />
 
@@ -241,12 +248,18 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
             )}
           </div>
           <div className="flex-1 p-6 overflow-y-auto">
-            <RichTextEditor
-              content={currentStageData.content}
-              onChange={handleContentChange}
-              placeholder={`// ${t('placeholder.enter_notes')}`}
-              readonly={isCurrentStageLocked}
-            />
+            {currentStageData ? (
+              <RichTextEditor
+                content={currentStageData.content || ''}
+                onChange={handleContentChange}
+                placeholder={`// ${t('placeholder.enter_notes')}`}
+                readonly={isCurrentStageLocked}
+              />
+            ) : (
+              <div className="text-brutal-muted text-sm">
+                {t('error.stage_not_found')}
+              </div>
+            )}
 
             {completedStages.length > 0 && (
               <div className="mt-8 pt-8 border-t border-brutal-border">
@@ -259,7 +272,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                     <CompletedStageView
                       key={stageKey}
                       stageKey={stageKey}
-                      content={project.stages[stageKey].content}
+                      content={project.stages?.[stageKey]?.content || ''}
                       isExpanded={expandedStage === stageKey}
                       onToggle={() => toggleStageExpand(stageKey)}
                     />
@@ -273,7 +286,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
         {/* Right: AI Chat */}
         <div className="w-[420px] bg-brutal-bg">
           <AIChat
-            stage={project.currentStage}
+            stage={validCurrentStage}
             projectTitle={project.title}
             onGenerateContent={handleGenerateContent}
           />

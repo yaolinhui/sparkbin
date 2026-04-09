@@ -4,9 +4,13 @@ import ssl
 from typing import AsyncGenerator, List, Dict, Any
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
+import logging
 
 from ..models import AIProvider, AIConfig, AICallLog
 from ..encryption import get_encryption_manager
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 
 # 默认配置
@@ -52,7 +56,7 @@ class AIProxyService:
 
     async def test_connection(self, provider: AIProvider) -> dict:
         """
-        测试 AI API 配置（本地验证，不实际连接远程 API）
+        测试 AI API 配置（实际调用 API 验证）
         返回: {"success": bool, "message": str}
         """
         try:
@@ -71,11 +75,52 @@ class AIProxyService:
             if not config.default_model:
                 return {"success": False, "message": "模型名称不能为空"}
 
-            return {"success": True, "message": f"配置验证通过 ({provider.value})"}
+            # 实际调用 API 进行验证
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+
+            payload = {
+                "model": config.default_model,
+                "messages": [{"role": "user", "content": "Hi"}],
+                "stream": False,
+                "max_tokens": 5  # 限制响应长度，仅用于测试
+            }
+
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{config.base_url}/chat/completions",
+                    headers=headers,
+                    json=payload
+                )
+
+                if response.status_code == 200:
+                    result = response.json()
+                    content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    if content:
+                        return {"success": True, "message": f"API 连接成功 ({provider.value})"}
+                    else:
+                        return {"success": False, "message": "API 返回空响应，请检查模型配置"}
+                elif response.status_code == 401:
+                    return {"success": False, "message": "API Key 无效或已过期"}
+                elif response.status_code == 404:
+                    return {"success": False, "message": "模型不存在，请检查模型名称"}
+                else:
+                    error_text = response.text[:200]
+                    return {"success": False, "message": f"API 错误 (HTTP {response.status_code}): {error_text}"}
 
         except HTTPException as e:
+            import traceback
+            traceback.print_exc()
             return {"success": False, "message": f"配置错误: {e.detail}"}
+        except httpx.TimeoutException:
+            return {"success": False, "message": "连接超时，请检查网络或 API 地址"}
         except Exception as e:
+            import sys
+            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
             return {"success": False, "message": f"验证失败: {str(e)}"}
 
     async def chat_completion(
@@ -88,8 +133,15 @@ class AIProxyService:
         统一的聊天接口，支持流式返回
         返回 SSE 格式的数据流
         """
+        # logger.info(f"Starting chat_completion for provider: {provider.value}")
+
         config = self.get_active_config(provider)
         api_key = self.decrypt_api_key(config)
+
+        # 验证 API Key 是否有效
+        if not api_key or len(api_key) < 10:
+            logger.error(f"Invalid API Key for provider {provider.value}: key length = {len(api_key) if api_key else 0}")
+            raise HTTPException(status_code=400, detail=f"API Key not configured or invalid for {provider.value}")
 
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -101,6 +153,8 @@ class AIProxyService:
             "messages": messages,
             "stream": stream
         }
+
+        # logger.info(f"Sending request to {config.base_url}/chat/completions with model {config.default_model}")
 
         prompt_tokens = sum(len(m.get("content", "")) // 4 for m in messages)
         completion_tokens = 0
@@ -124,30 +178,59 @@ class AIProxyService:
                             detail=f"AI API error: {error_text}"
                         )
 
-                    async for line in response.aiter_lines():
-                        if line.startswith("data: "):
-                            data = line[6:]
-                            if data == "[DONE]":
-                                yield "data: [DONE]\n\n"
-                                break
-
-                            try:
-                                chunk = json.loads(data)
-                                delta = chunk.get("choices", [{}])[0].get("delta", {})
-                                content = delta.get("content", "")
-
-                                if content:
-                                    completion_tokens += len(content) // 4
-
-                                # 转发原始数据
-                                yield f"data: {data}\n\n"
-                            except json.JSONDecodeError:
+                    # 使用 aiter_text 更可靠地处理 SSE 流
+                    chunk_count = 0
+                    data_count = 0
+                    async for chunk in response.aiter_text():
+                        chunk_count += 1
+                        for line in chunk.split('\n'):
+                            line = line.strip()
+                            if not line:
                                 continue
+                            if line.startswith("data: "):
+                                data_count += 1
+                                data = line[6:]
+                                if data == "[DONE]":
+                                    logger.info(f"Stream completed: received {chunk_count} chunks, {data_count} data lines, {completion_tokens} tokens")
+                                    yield "data: [DONE]\n\n"
+                                    break
 
+                                try:
+                                    parsed = json.loads(data)
+                                    # 处理流式响应格式 (delta)
+                                    delta = parsed.get("choices", [{}])[0].get("delta", {})
+                                    content = delta.get("content", "")
+
+                                    if content:
+                                        completion_tokens += len(content) // 4
+
+                                    # 转发原始数据
+                                    yield f"data: {data}\n\n"
+                                except json.JSONDecodeError as e:
+                                    logger.warning(f"Failed to parse JSON: {e}, data: {data[:100]}")
+                                    continue
+
+        except HTTPException as e:
+            import traceback
+            traceback.print_exc()
+            status = "error"
+            error_msg = e.detail if hasattr(e, 'detail') else str(e)
+            logger.error(f"HTTP Error in chat_completion: {error_msg}")
+            error_data = json.dumps({"error": error_msg})
+            yield f"data: {error_data}\n\n"
+            yield "data: [DONE]\n\n"
         except Exception as e:
+            import sys
+            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
             status = "error"
             error_msg = str(e)
-            raise
+            logger.error(f"Error in chat_completion: {error_msg}")
+            # 发送错误信息给前端，而不是抛出异常导致连接中断
+            error_data = json.dumps({"error": error_msg or "Unknown error occurred"})
+            yield f"data: {error_data}\n\n"
+            yield "data: [DONE]\n\n"
         finally:
             # 记录调用日志
             log = AICallLog(
@@ -245,6 +328,10 @@ class AIProxyService:
                     return {"channels": [], "templates": []}
 
         except Exception as e:
+            import sys
+            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
             status = "error"
             error_msg = str(e)
             raise

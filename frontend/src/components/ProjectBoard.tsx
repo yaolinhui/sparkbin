@@ -10,6 +10,7 @@ import { CreateProjectModal } from './CreateProjectModal';
 import { GitHubConfigModal } from './GitHubConfigModal';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
+import { ModelSelector } from './ModelSelector';
 
 interface ProjectBoardProps {
   onLogout: () => void;
@@ -170,6 +171,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                     <span className="text-xs font-mono">管理</span>
                   </button>
                 )}
+                <ModelSelector />
                 <button
                   onClick={() => setIsConfigModalOpen(true)}
                   className="btn-brutal flex items-center gap-2"

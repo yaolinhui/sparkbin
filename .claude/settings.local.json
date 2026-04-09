@@ -14,7 +14,9 @@
       "Bash(git push:*)",
       "Bash(grep -n \"{/div}$\" C:/Code/Ideas/SparkBin/sparkbin/src/components/ProjectDetail.tsx)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git remote:*)"
     ]
   }
 }

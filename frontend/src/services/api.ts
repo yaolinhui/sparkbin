@@ -112,6 +112,17 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
     }),
+
+  // 获取首选 AI 模型
+  getPreferredModel: () =>
+    request<{ provider: AIProvider | null }>('/auth/preferred-model'),
+
+  // 设置首选 AI 模型
+  setPreferredModel: (provider: AIProvider) =>
+    request<{ message: string }>('/auth/preferred-model', {
+      method: 'PUT',
+      body: JSON.stringify({ provider }),
+    }),
 };
 
 // ===== 项目 API =====
@@ -210,7 +221,7 @@ export const projectsApi = {
 };
 
 // ===== AI API =====
-export type AIProvider = 'deepseek' | 'kimi' | 'doubao';
+export type AIProvider = 'deepseek' | 'kimi' | 'doubao' | 'openai';
 
 export interface AIProviderInfo {
   provider: AIProvider;

@@ -1,9 +1,9 @@
+/* Import JetBrains Mono - must be before @tailwind */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import JetBrains Mono */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 /* ============================================
    THEME VARIABLES - Dark (Default)
@@ -26,7 +26,7 @@
 
   /* Background texture */
   --bg-texture: none;
-  --bg-grid-color: rgba(255, 255, 255, 0.03);
+  --bg-grid-color: rgba(255, 255, 255, 0.08);
 }
 
 /* ============================================
@@ -64,10 +64,20 @@ html, body, #root {
   font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
 }
 
-/* Apply paper texture in light mode */
+/* Apply grid dots background */
 body {
-  background-image: var(--bg-texture);
+  background-color: var(--brutal-bg);
+  background-image: radial-gradient(circle at center, var(--bg-grid-color) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
   background-attachment: fixed;
+}
+
+/* Light mode: add paper texture on top */
+[data-theme="light"] body {
+  background-image:
+    var(--bg-texture),
+    radial-gradient(circle at center, var(--bg-grid-color) 1.5px, transparent 1.5px);
+  background-size: auto, 24px 24px;
 }
 
 /* Dot grid background - adapts to theme */

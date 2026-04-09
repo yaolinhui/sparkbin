@@ -11,3 +11,5 @@ export { ThemeSwitcher } from './ThemeSwitcher';
 export { AIConfigModal } from './AIConfigModal';
 export { LoginModal } from './LoginModal';
 export { AdminPage } from './AdminPage';
+export { ModelSelector } from './ModelSelector';
+export { ModelSelectorModal } from './ModelSelectorModal';

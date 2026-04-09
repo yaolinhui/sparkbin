@@ -5,7 +5,8 @@ from pydantic import BaseModel
 from ..database import get_db
 from ..auth import verify_password, create_access_token, get_current_user, hash_password
 from ..models import User
-from ..schemas import LoginRequest, LoginResponse, ChangePasswordRequest, BaseResponse
+from ..schemas import LoginRequest, LoginResponse, ChangePasswordRequest, BaseResponse, PreferredModelUpdate
+from ..models import AIProvider
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -57,6 +58,29 @@ def get_me(current_user: User = Depends(get_current_user)):
         "id": current_user.id,
         "username": current_user.username,
         "role": current_user.role.value,
+        "preferred_model": current_user.preferred_model.value if current_user.preferred_model else None,
         "created_at": current_user.created_at
     }
+
+
+@router.get("/preferred-model")
+def get_preferred_model(current_user: User = Depends(get_current_user)):
+    """获取用户首选 AI 模型"""
+    return {
+        "provider": current_user.preferred_model.value if current_user.preferred_model else None
+    }
+
+
+@router.put("/preferred-model", response_model=BaseResponse)
+def update_preferred_model(
+    request: PreferredModelUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """更新用户首选 AI 模型"""
+    current_user.preferred_model = request.provider
+    db.commit()
+
+    provider_name = request.provider.value if request.provider else "None"
+    return BaseResponse(message=f"首选模型已更新为: {provider_name}")
 

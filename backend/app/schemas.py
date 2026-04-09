@@ -32,10 +32,15 @@ class ChangePasswordRequest(BaseModel):
 class UserInfo(BaseModel):
     id: UUID
     username: str
+    preferred_model: Optional[AIProvider] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class PreferredModelUpdate(BaseModel):
+    provider: Optional[AIProvider] = None
 
 
 # ========== 阶段 ==========

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, ArrowRight } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
@@ -20,6 +20,14 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
   const createProject = useProjectStore((state) => state.createProject);
   const isAIConfigured = useAIStore((state) => state.isConfigured);
+  const checkConfiguration = useAIStore((state) => state.checkConfiguration);
+
+  // 模态框打开时检查 AI 配置
+  useEffect(() => {
+    if (isOpen) {
+      checkConfiguration();
+    }
+  }, [isOpen, checkConfiguration]);
 
   if (!isOpen) return null;
 
@@ -44,7 +52,11 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
         setTitle(titleMatch[1].trim());
       } else {
         const lines = result.split('\n').filter(line => line.trim());
-        setTitle(lines[0].slice(0, 30));
+        if (lines.length > 0) {
+          setTitle(lines[0].slice(0, 30));
+        } else {
+          setTitle(painPoint.slice(0, 30));
+        }
       }
 
       if (painPointMatch) {
@@ -147,7 +159,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
                 <button
                   onClick={() => {
-                    setTitle(painPoint.slice(0, 30));
+                    setTitle(painPoint?.slice(0, 30) || '');
                     setStep(2);
                   }}
                   disabled={!painPoint.trim()}

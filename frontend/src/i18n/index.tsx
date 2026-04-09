@@ -93,6 +93,7 @@ const translations = {
       error_prefix: '[错误]',
       ok_prefix: '[成功]',
       api_error: 'API 调用失败',
+      config_required: '请先配置 AI 服务（管理 > AI 配置）',
       no_response: '无响应',
       quick_actions: '快捷操作',
       target_user: '目标用户',
@@ -103,6 +104,8 @@ const translations = {
       tech_stack: '技术选型',
       social_copy: '宣传文案',
       channels: '推广渠道',
+      no_models_available: '暂无可用模型，请联系管理员配置',
+      providers_count: '个可用模型',
     },
     // Modal
     modal: {
@@ -110,6 +113,7 @@ const translations = {
       confirm_params: '确认参数',
       input_description: '输入描述',
       project_title: '项目名称',
+      select_model: '选择模型',
     },
     // Section Headers
     section: {
@@ -132,6 +136,7 @@ const translations = {
     // Errors
     error: {
       project_not_found: '项目不存在',
+      stage_not_found: '阶段数据缺失',
       connection_failed: '连接失败',
       optimize_failed: '优化失败',
     },
@@ -226,6 +231,7 @@ const translations = {
       error_prefix: '[ERROR]',
       ok_prefix: '[OK]',
       api_error: 'API_ERROR',
+      config_required: 'Please configure AI service first (Admin > AI Config)',
       no_response: 'NO_RESPONSE',
       quick_actions: 'QUICK_ACTIONS',
       target_user: 'target_user',
@@ -236,6 +242,8 @@ const translations = {
       tech_stack: 'tech_stack',
       social_copy: 'social_copy',
       channels: 'channels',
+      no_models_available: 'No models available. Please contact admin to configure.',
+      providers_count: 'available models',
     },
     // Modal
     modal: {
@@ -243,6 +251,7 @@ const translations = {
       confirm_params: 'CONFIRM_PARAMS',
       input_description: 'Input_Description',
       project_title: 'Project_Title',
+      select_model: 'SELECT_MODEL',
     },
     // Section Headers
     section: {
@@ -265,6 +274,7 @@ const translations = {
     // Errors
     error: {
       project_not_found: 'PROJECT_NOT_FOUND',
+      stage_not_found: 'STAGE_DATA_MISSING',
       connection_failed: 'CONNECTION_FAILED',
       optimize_failed: 'OPTIMIZE_FAILED',
     },
