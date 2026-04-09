@@ -17,11 +17,11 @@ interface StageFlowProps {
 
 const STAGE_NUMBERS: Record<StageKey, string> = {
   idea: '01',
-  research: '02',
-  dev: '03',
-  complete: '04',
-  launch: '05',
-  promote: '06',
+  validate: '02',
+  prototype: '03',
+  ship: '04',
+  grow: '05',
+  monetize: '06',
 };
 
 // Custom node component
