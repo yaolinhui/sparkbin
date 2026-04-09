@@ -15,12 +15,13 @@ class ProjectStatus(str, enum.Enum):
 
 
 class StageKey(str, enum.Enum):
-    IDEA = "idea"
-    RESEARCH = "research"
-    DEV = "dev"
-    COMPLETE = "complete"
-    LAUNCH = "launch"
-    PROMOTE = "promote"
+    # Vibe/独立开发专用阶段流程
+    IDEA = "idea"           # 想法
+    VALIDATE = "validate"   # 验证（快速确认需求）
+    PROTOTYPE = "prototype" # 原型（MVP，不完美但可用）
+    SHIP = "ship"           # 发布（尽快上线）
+    GROW = "grow"           # 增长（获取用户）
+    MONETIZE = "monetize"   # 变现（独立开发要赚钱）
 
 
 class AIProvider(str, enum.Enum):

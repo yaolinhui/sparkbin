@@ -38,7 +38,7 @@ function convertProjectDetailToProject(detail: ProjectDetail): Project {
       isLocked: stage.is_locked,
     };
 
-    if (stage.stage_key === 'promote') {
+    if (stage.stage_key === 'monetize') {
       stages[stage.stage_key] = {
         ...baseStage,
         tasks: detail.promote_tasks.map((t) => ({
@@ -209,9 +209,9 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
                 ...p,
                 stages: {
                   ...p.stages,
-                  promote: {
-                    ...p.stages.promote,
-                    tasks: [...(p.stages.promote.tasks || []), { text, done: false }],
+                  monetize: {
+                    ...p.stages.monetize,
+                    tasks: [...(p.stages.monetize.tasks || []), { text, done: false }],
                   },
                 },
                 updatedAt: new Date().toISOString(),
@@ -228,7 +228,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
     const project = get().projects.find((p) => p.id === id);
     if (!project) return;
 
-    const tasks = project.stages.promote.tasks || [];
+    const tasks = project.stages.monetize.tasks || [];
     const task = tasks[taskIndex];
     if (!task) return;
 
@@ -246,9 +246,9 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
                 ...p,
                 stages: {
                   ...p.stages,
-                  promote: {
-                    ...p.stages.promote,
-                    tasks: (p.stages.promote.tasks || []).map((t, i) =>
+                  monetize: {
+                    ...p.stages.monetize,
+                    tasks: (p.stages.monetize.tasks || []).map((t, i) =>
                       i.toString() === taskId ? { ...t, done } : t
                     ),
                   },
@@ -272,9 +272,9 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
                 ...p,
                 stages: {
                   ...p.stages,
-                  promote: {
-                    ...p.stages.promote,
-                    tasks: (p.stages.promote.tasks || []).filter((_, i) => i.toString() !== taskId),
+                  monetize: {
+                    ...p.stages.monetize,
+                    tasks: (p.stages.monetize.tasks || []).filter((_, i) => i.toString() !== taskId),
                   },
                 },
               }

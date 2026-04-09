@@ -234,12 +234,12 @@ class AIService {
   // 生成阶段建议
   async generateStageAdvice(stage: string, context: string): Promise<string> {
     const stagePrompts: Record<string, string> = {
-      idea: '请帮助完善这个想法，提供深入思考的角度和可能的方向。',
-      research: '请提供调研框架和建议，包括市场分析、竞品对比等方面。',
-      dev: '请提供技术实现建议、任务分解方案或代码建议。',
-      complete: '请提供项目收尾检查清单和测试建议。',
-      launch: '请提供上线部署检查清单和注意事项。',
-      promote: '请提供宣传渠道建议和文案模板。',
+      idea: '请帮助完善这个想法，深入思考核心痛点和可能的产品方向。',
+      validate: '请提供快速验证需求的方法，比如问卷设计、落地页测试、用户访谈等。',
+      prototype: '请提供MVP开发建议，如何用最快速度做出可用版本，不要追求完美。',
+      ship: '请提供发布前的最后检查清单和快速上线策略，克服完美主义。',
+      grow: '请提供获取首批用户的方法，包括社区运营、内容营销、SEO等策略。',
+      monetize: '请提供定价策略、付费墙设计和变现模式建议，独立开发要赚钱。',
     };
 
     const messages: KimiMessage[] = [

@@ -65,14 +65,14 @@ const translations = {
       awaiting_input: '等待输入...',
       ready_to_commit: '准备提交...',
     },
-    // Stages
+    // Stages - Vibe/独立开发专用流程
     stage: {
-      idea: '想法',
-      research: '调研',
-      dev: '开发',
-      complete: '完成',
-      launch: '上线',
-      promote: '宣传',
+      idea: '想法',        // 想法
+      validate: '验证',    // 验证（快速确认需求）
+      prototype: '原型',   // 原型（MVP，不完美但可用）
+      ship: '发布',        // 发布（尽快上线）
+      grow: '增长',        // 增长（获取用户）
+      monetize: '变现',    // 变现（独立开发要赚钱）
       stages_completed: '已完成阶段',
     },
     // GitHub
@@ -203,14 +203,14 @@ const translations = {
       awaiting_input: 'AWAITING_INPUT...',
       ready_to_commit: 'READY_TO_COMMIT...',
     },
-    // Stages
+    // Stages - Vibe/Indie Hacker flow
     stage: {
-      idea: 'IDEA',
-      research: 'RESEARCH',
-      dev: 'DEVELOP',
-      complete: 'COMPLETE',
-      launch: 'LAUNCH',
-      promote: 'PROMOTE',
+      idea: 'IDEA',        // Idea
+      validate: 'VALIDATE', // Validate (quick demand check)
+      prototype: 'PROTOTYPE', // Prototype (MVP, imperfect but works)
+      ship: 'SHIP',        // Ship (release fast)
+      grow: 'GROW',        // Grow (acquire users)
+      monetize: 'MONETIZE', // Monetize (indie hackers need revenue)
       stages_completed: 'STAGES_COMPLETED',
     },
     // GitHub
