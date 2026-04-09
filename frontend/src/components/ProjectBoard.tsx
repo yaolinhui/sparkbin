@@ -93,22 +93,29 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
     };
   }, [projects]);
 
+  // 按创建时间排序（最早的在前，用于序号001,002...）
+  const sortedProjects = useMemo(() => {
+    return [...projects].sort((a, b) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [projects]);
+
   // Filtered projects based on selected filter
   const { filteredProjects, filteredArchived } = useMemo(() => {
     switch (filter) {
       case 'active':
-        return { filteredProjects: projects.filter((p) => p.status === 'active'), filteredArchived: [] };
+        return { filteredProjects: sortedProjects.filter((p) => p.status === 'active'), filteredArchived: [] };
       case 'paused':
-        return { filteredProjects: projects.filter((p) => p.status === 'paused'), filteredArchived: [] };
+        return { filteredProjects: sortedProjects.filter((p) => p.status === 'paused'), filteredArchived: [] };
       case 'archived':
-        return { filteredProjects: [], filteredArchived: projects.filter((p) => p.status === 'archived') };
+        return { filteredProjects: [], filteredArchived: sortedProjects.filter((p) => p.status === 'archived') };
       default: // 'all' - show all non-archived + archived separately
         return {
-          filteredProjects: projects.filter((p) => p.status !== 'archived'),
-          filteredArchived: projects.filter((p) => p.status === 'archived')
+          filteredProjects: sortedProjects.filter((p) => p.status !== 'archived'),
+          filteredArchived: sortedProjects.filter((p) => p.status === 'archived')
         };
     }
-  }, [projects, filter]);
+  }, [sortedProjects, filter]);
 
   const formatLastSync = () => {
     if (!lastSyncAt) return t('status.never_synced');

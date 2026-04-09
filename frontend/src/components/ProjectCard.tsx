@@ -1,8 +1,23 @@
 import { useNavigate } from 'react-router-dom';
-import { Pause, Archive, ArrowRight } from 'lucide-react';
+import { Pause, Archive, ArrowRight, Calendar } from 'lucide-react';
 import { useI18n, useStageLabel, useStatusLabel } from '../i18n';
 import type { Project } from '../types';
 import { type StageKey } from '../types';
+
+// 格式化日期
+function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return '今天';
+  if (diffDays === 1) return '昨天';
+  if (diffDays < 7) return `${diffDays}天前`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)}个月前`;
+
+  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
+}
 
 interface ProjectCardProps {
   project: Project;
@@ -71,6 +86,10 @@ export function ProjectCard({ project, index, compact }: ProjectCardProps) {
           <span className="text-sm font-mono">{project.title}</span>
         </div>
         <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1 text-xs text-brutal-muted">
+            <Calendar className="w-3 h-3" />
+            {formatDate(project.createdAt)}
+          </span>
           {getStatusIndicator()}
           <ArrowRight className="w-4 h-4 text-brutal-muted" />
         </div>
@@ -131,6 +150,12 @@ export function ProjectCard({ project, index, compact }: ProjectCardProps) {
         <span className="text-xs font-mono text-brutal-muted">
           {completedStagesCount}/6 {t('stage.stages_completed')}
         </span>
+      </div>
+
+      {/* Created Date */}
+      <div className="flex items-center gap-1 mt-2 text-xs text-brutal-muted">
+        <Calendar className="w-3 h-3" />
+        <span>创建于 {formatDate(project.createdAt)}</span>
       </div>
     </div>
   );
