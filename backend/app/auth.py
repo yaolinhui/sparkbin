@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -10,9 +10,6 @@ from .config import get_settings
 from .database import get_db
 from .models import User, UserRole
 
-# 密码加密上下文
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 # HTTP Bearer 认证
 security = HTTPBearer()
 
@@ -20,18 +17,19 @@ security = HTTPBearer()
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """验证密码"""
     try:
-        return pwd_context.verify(plain_password, hashed_password)
-    except Exception:
-        # 尝试用字节验证
         password_bytes = plain_password.encode('utf-8')[:72]
-        return pwd_context.verify(password_bytes, hashed_password)
+        hashed_bytes = hashed_password.encode('utf-8')
+        return bcrypt.checkpw(password_bytes, hashed_bytes)
+    except Exception:
+        return False
 
 
 def hash_password(password: str) -> str:
     """哈希密码"""
-    # bcrypt 限制密码长度最多 72 字节
     password_bytes = password.encode('utf-8')[:72]
-    return pwd_context.hash(password_bytes)
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode('utf-8')
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
