@@ -35,7 +35,7 @@ def _project_to_detail(project: Project) -> ProjectDetail:
                 "is_locked": s.is_locked
             }
             for s in sorted(project.stages, key=lambda x: [
-                "idea", "research", "dev", "complete", "launch", "promote"
+                "idea", "validate", "prototype", "ship", "grow", "monetize"
             ].index(x.stage_key.value))
         ],
         promote_tasks=[
@@ -94,8 +94,8 @@ def create_project(
     db.add(project)
     db.flush()  # 获取 project.id
 
-    # 创建6个默认阶段
-    stage_keys = [StageKey.IDEA, StageKey.RESEARCH, StageKey.DEV, StageKey.COMPLETE, StageKey.LAUNCH, StageKey.PROMOTE]
+    # 创建6个默认阶段 (Vibe/独立开发工作流)
+    stage_keys = [StageKey.IDEA, StageKey.VALIDATE, StageKey.PROTOTYPE, StageKey.SHIP, StageKey.GROW, StageKey.MONETIZE]
     for key in stage_keys:
         stage = Stage(
             project_id=project.id,
@@ -319,7 +319,7 @@ def complete_stage(
     stage.completed_at = datetime.utcnow()
 
     # 解锁下一个阶段
-    stage_order = ["idea", "research", "dev", "complete", "launch", "promote"]
+    stage_order = ["idea", "validate", "prototype", "ship", "grow", "monetize"]
     current_index = stage_order.index(stage_key.value)
 
     if current_index < len(stage_order) - 1:
