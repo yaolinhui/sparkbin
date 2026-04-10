@@ -249,23 +249,21 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
             )}
           </div>
           <div className="flex-1 overflow-hidden">
-            {currentStageData ? (
-              validCurrentStage === 'idea' ? (
-                <IdeaStage
-                  project={project}
-                  onUpdateContent={handleContentChange}
-                  isLocked={isCurrentStageLocked}
+            {validCurrentStage === 'idea' ? (
+              <IdeaStage
+                project={project}
+                onUpdateContent={handleContentChange}
+                isLocked={isCurrentStageLocked}
+              />
+            ) : currentStageData ? (
+              <div className="h-full p-6 overflow-y-auto">
+                <RichTextEditor
+                  content={currentStageData.content || ''}
+                  onChange={handleContentChange}
+                  placeholder={`// ${t('placeholder.enter_notes')}`}
+                  readonly={isCurrentStageLocked}
                 />
-              ) : (
-                <div className="h-full p-6 overflow-y-auto">
-                  <RichTextEditor
-                    content={currentStageData.content || ''}
-                    onChange={handleContentChange}
-                    placeholder={`// ${t('placeholder.enter_notes')}`}
-                    readonly={isCurrentStageLocked}
-                  />
-                </div>
-              )
+              </div>
             ) : (
               <div className="p-6 text-brutal-muted text-sm">
                 {t('error.stage_not_found')}
