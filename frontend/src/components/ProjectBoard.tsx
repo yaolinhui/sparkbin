@@ -276,7 +276,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
               title={filter === 'all' ? t('section.active_projects') : `FILTERED: ${filter}`}
               index={1}
             />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px border border-brutal-border" style={{ backgroundColor: 'var(--brutal-border)' }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredProjects.map((project, index) => (
                 <ProjectCard
                   key={project.id}
