@@ -7,6 +7,7 @@ import { useI18n, useStatusLabel, useStageLabel } from '../i18n';
 import { StageFlow } from './StageFlow';
 import { RichTextEditor } from './RichTextEditor';
 import { AIChat } from './AIChat';
+import { IdeaStage } from './IdeaStage';
 import { type StageKey, type ProjectStatus } from '../types';
 
 interface ProjectDetailProps {
@@ -247,16 +248,26 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
               </button>
             )}
           </div>
-          <div className="flex-1 p-6 overflow-y-auto">
+          <div className="flex-1 overflow-hidden">
             {currentStageData ? (
-              <RichTextEditor
-                content={currentStageData.content || ''}
-                onChange={handleContentChange}
-                placeholder={`// ${t('placeholder.enter_notes')}`}
-                readonly={isCurrentStageLocked}
-              />
+              validCurrentStage === 'idea' ? (
+                <IdeaStage
+                  project={project}
+                  onUpdateContent={handleContentChange}
+                  isLocked={isCurrentStageLocked}
+                />
+              ) : (
+                <div className="h-full p-6 overflow-y-auto">
+                  <RichTextEditor
+                    content={currentStageData.content || ''}
+                    onChange={handleContentChange}
+                    placeholder={`// ${t('placeholder.enter_notes')}`}
+                    readonly={isCurrentStageLocked}
+                  />
+                </div>
+              )
             ) : (
-              <div className="text-brutal-muted text-sm">
+              <div className="p-6 text-brutal-muted text-sm">
                 {t('error.stage_not_found')}
               </div>
             )}

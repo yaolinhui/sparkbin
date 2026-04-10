@@ -309,6 +309,37 @@ class AIService {
 
     return this.chatCompletion(messages);
   }
+
+  // 为想法阶段生成建议
+  async generateIdeaSuggestion(
+    title: string,
+    painPoint: string,
+    notes: { id: string; title: string; content: string }[]
+  ): Promise<string> {
+    const notesText = notes
+      .map((n) => `- ${n.title}: ${n.content}`)
+      .join('\n');
+
+    const messages: KimiMessage[] = [
+      {
+        role: 'system',
+        content: `你是一个资深的产品顾问，擅长帮助创业者完善产品想法。
+请根据用户当前的便利贴内容，给出简短、 actionable 的建议。
+
+建议应该：
+1. 简短有力（2-3句话）
+2. 具体可操作
+3. 鼓励性但诚实
+4. 符合 Vibe/独立开发的理念（快速验证、不完美也发）`,
+      },
+      {
+        role: 'user',
+        content: `产品标题：${title}\n痛点描述：${painPoint}\n\n当前便利贴内容：\n${notesText}\n\n请给我一个建议。`,
+      },
+    ];
+
+    return this.chatCompletion(messages);
+  }
 }
 
 export const aiService = new AIService();
