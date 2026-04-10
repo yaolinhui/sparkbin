@@ -85,25 +85,34 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const parseDimensions = (result: string): UnderstandingDimension[] => {
     const dimensions: UnderstandingDimension[] = [];
 
-    // 尝试匹配 "① 标题: 内容" 或 "1. 标题: 内容" 格式
-    const regex = /[①②③④⑤]|\d+[.．]\s*([^:：]+)[：:]\s*([^\n]+)/g;
-    let match;
+    // 尝试匹配多种格式：
+    // ① 标题: 内容
+    // 1. 标题: 内容
+    // 1．标题：内容
+    // - 标题: 内容
+    const lines = result.split('\n');
     let id = 1;
 
-    while ((match = regex.exec(result)) !== null && id <= 5) {
-      dimensions.push({
-        id,
-        title: match[1].trim(),
-        content: match[2].trim(),
-        isCorrect: true,
-      });
-      id++;
+    for (const line of lines) {
+      if (id > 5) break;
+
+      // 匹配格式：序号 + 标题 + 分隔符 + 内容
+      const match = line.match(/^\s*(?:[①②③④⑤]|\d+[.．]|[-•])\s*([^:：]+)[:：]\s*(.+)$/);
+      if (match) {
+        dimensions.push({
+          id,
+          title: match[1].trim(),
+          content: match[2].trim(),
+          isCorrect: true,
+        });
+        id++;
+      }
     }
 
     // 如果没解析到，使用默认维度
     if (dimensions.length === 0) {
       return [
-        { id: 1, title: '核心痛点', content: '用户遇到的主要问题', isCorrect: true },
+        { id: 1, title: '核心痛点', content: result.slice(0, 50) || '用户遇到的主要问题', isCorrect: true },
         { id: 2, title: '目标用户', content: '主要服务对象', isCorrect: true },
         { id: 3, title: '使用场景', content: '什么时候会使用', isCorrect: true },
       ];
