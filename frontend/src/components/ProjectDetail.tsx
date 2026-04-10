@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Pause, Play, Archive, Lock, ChevronRight, ChevronDown, LogOut } from 'lucide-react';
+import { ArrowLeft, Check, Pause, Play, Archive, Lock, ChevronRight, ChevronDown, LogOut, ChevronUp, Menu } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useProjectStore } from '../stores/projectStore';
 import { useI18n, useStatusLabel, useStageLabel } from '../i18n';
@@ -13,6 +13,15 @@ import { type StageKey, type ProjectStatus } from '../types';
 interface ProjectDetailProps {
   onLogout: () => void;
 }
+
+const STAGE_NUMBERS: Record<StageKey, string> = {
+  idea: '01',
+  validate: '02',
+  prototype: '03',
+  ship: '04',
+  grow: '05',
+  monetize: '06',
+};
 
 export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +38,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const [isCompleting, setIsCompleting] = useState(false);
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isHeaderExpanded, setIsHeaderExpanded] = useState(false); // 头部折叠状态
 
   // 如果没有项目数据，尝试重新加载
   useEffect(() => {
@@ -153,61 +163,119 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
   return (
     <div className="min-h-screen bg-brutal-bg text-brutal-text font-mono">
-      {/* Header */}
+      {/* Header - 可折叠 */}
       <div className="border-b border-brutal-border bg-brutal-surface">
-        <div className="px-6 py-4">
-          {/* Top row: Back button + Title + Actions */}
-          <div className="flex items-center justify-between gap-4 mb-2">
-            <div className="flex items-center gap-4 flex-1 min-w-0">
-              <button
-                onClick={() => navigate('/')}
-                className="flex items-center gap-2 text-brutal-muted hover:text-brutal-text transition-colors flex-shrink-0"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span className="text-sm">{t('nav.back')}</span>
-              </button>
-              <h1 className="text-xl font-mono font-bold truncate">
-                {project.title}
-              </h1>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {renderStatusButton()}
-              {project.status !== 'archived' && (
+        {isHeaderExpanded ? (
+          // 展开状态 - 显示完整信息
+          <div className="px-6 py-4">
+            {/* Top row: Back button + Title + Actions */}
+            <div className="flex items-center justify-between gap-4 mb-2">
+              <div className="flex items-center gap-4 flex-1 min-w-0">
                 <button
-                  onClick={() => handleStatusChange('archived')}
-                  className="btn-brutal"
+                  onClick={() => navigate('/')}
+                  className="flex items-center gap-2 text-brutal-muted hover:text-brutal-text transition-colors flex-shrink-0"
                 >
-                  <Archive className="w-4 h-4" />
+                  <ArrowLeft className="w-4 h-4" />
+                  <span className="text-sm">{t('nav.back')}</span>
                 </button>
-              )}
-              <button
-                onClick={onLogout}
-                className="btn-brutal flex items-center gap-2 border-brutal-warning text-brutal-warning"
-                title="Logout"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
+                <h1 className="text-xl font-mono font-bold truncate">
+                  {project.title}
+                </h1>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setIsHeaderExpanded(false)}
+                  className="btn-brutal p-2"
+                  title="折叠头部"
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+                {renderStatusButton()}
+                {project.status !== 'archived' && (
+                  <button
+                    onClick={() => handleStatusChange('archived')}
+                    className="btn-brutal"
+                  >
+                    <Archive className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  onClick={onLogout}
+                  className="btn-brutal flex items-center gap-2 border-brutal-warning text-brutal-warning"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Second row: Project ID + Status + Description */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-brutal-muted">// {t('project.id')}</span>
+                <span className="text-xs text-brutal-accent font-mono">{project.id.slice(0, 8).toUpperCase()}</span>
+                <span className={`text-xs px-2 py-0.5 border ml-2 ${
+                  project.status === 'active' ? 'border-brutal-success text-brutal-success' :
+                  project.status === 'paused' ? 'border-brutal-warning text-brutal-warning' :
+                  'border-brutal-muted text-brutal-muted'
+                }`}>
+                  {statusLabel}
+                </span>
+              </div>
+            </div>
+
+            {/* Description */}
+            <p className="text-sm text-brutal-muted font-mono mt-2">{project.painPoint}</p>
+          </div>
+        ) : (
+          // 折叠状态 - 单行显示
+          <div className="px-6 py-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <button
+                  onClick={() => navigate('/')}
+                  className="flex items-center gap-1 text-brutal-muted hover:text-brutal-text transition-colors flex-shrink-0"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                {/* 当前阶段高亮显示 */}
+                <div className="flex items-center gap-2 border border-brutal-accent px-2 py-1">
+                  <span className="text-xs font-mono text-brutal-accent">
+                    {STAGE_NUMBERS[validCurrentStage]}
+                  </span>
+                  <span className="text-xs font-mono text-brutal-accent">
+                    {currentStageLabel}
+                  </span>
+                </div>
+                <h1 className="text-base font-mono font-bold truncate">
+                  {project.title}
+                </h1>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setIsHeaderExpanded(true)}
+                  className="btn-brutal p-2"
+                  title="展开头部"
+                >
+                  <Menu className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleStatusChange(project.status === 'active' ? 'paused' : 'active')}
+                  className="btn-brutal p-2"
+                >
+                  {project.status === 'active' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="btn-brutal p-2 border-brutal-warning text-brutal-warning"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
-
-          {/* Second row: Project ID + Status + Description */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-brutal-muted">// {t('project.id')}</span>
-              <span className="text-xs text-brutal-accent font-mono">{project.id.slice(0, 8).toUpperCase()}</span>
-              <span className={`text-xs px-2 py-0.5 border ml-2 ${
-                project.status === 'active' ? 'border-brutal-success text-brutal-success' :
-                project.status === 'paused' ? 'border-brutal-warning text-brutal-warning' :
-                'border-brutal-muted text-brutal-muted'
-              }`}>
-                {statusLabel}
-              </span>
-            </div>
-          </div>
-
-          {/* Description */}
-          <p className="text-sm text-brutal-muted font-mono mt-2">{project.painPoint}</p>
-        </div>
+        )}
       </div>
 
       {/* Stage Flow */}
