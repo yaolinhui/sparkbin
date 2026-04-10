@@ -255,6 +255,60 @@ class AIService {
 
     return this.chatCompletion(messages);
   }
+
+  // 分析用户想法，生成理解维度
+  async analyzeIdea(idea: string): Promise<string> {
+    const messages: KimiMessage[] = [
+      {
+        role: 'system',
+        content: `你是一个专业的产品分析师，擅长从模糊的想法中提取核心要素。
+请分析用户的想法，生成 2-5 个理解维度，每个维度包含标题和简要描述。
+
+输出格式要求：
+① 核心痛点: [一句话描述用户遇到的主要问题]
+② 目标用户: [描述主要服务的人群]
+③ 使用场景: [描述用户在什么情况下会使用这个产品]
+④ 解决方案: [描述产品如何解决问题]
+⑤ 差异化价值: [与现有方案相比的优势]
+
+根据想法的复杂度，生成 2-5 个维度即可，不需要全部填满。`,
+      },
+      {
+        role: 'user',
+        content: `请分析这个想法：\n${idea}`,
+      },
+    ];
+
+    return this.chatCompletion(messages);
+  }
+
+  // 根据确认的维度生成优化后的标题和描述
+  async generateFromDimensions(
+    originalIdea: string,
+    dimensions: { title: string; content: string }[]
+  ): Promise<string> {
+    const dimensionsText = dimensions
+      .map((d, i) => `${i + 1}. ${d.title}: ${d.content}`)
+      .join('\n');
+
+    const messages: KimiMessage[] = [
+      {
+        role: 'system',
+        content: `你是一个专业的产品命名和描述优化专家。
+请根据用户确认的理解维度，生成一个简洁有力的产品标题和精炼的痛点描述。
+
+输出格式：
+标题：[15字以内的产品名称]
+痛点：[2-3句话描述核心痛点和解决方案]`,
+      },
+      {
+        role: 'user',
+        content: `原始想法：${originalIdea}\n\n确认的维度：\n${dimensionsText}\n\n请生成优化的标题和描述。`,
+      },
+    ];
+
+    return this.chatCompletion(messages);
+  }
 }
 
 export const aiService = new AIService();
