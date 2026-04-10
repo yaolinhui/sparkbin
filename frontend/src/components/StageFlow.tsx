@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import ReactFlow, {
   Background,
   type Node,
@@ -41,7 +42,7 @@ function StageNode({ data }: { data: { stage: StageKey; isCurrent: boolean; isCo
       </div>
       <span
         className={`text-xs uppercase tracking-wider
-          ${data.isCurrent ? 'text-brutal-accent' : ''}
+          ${data.isCurrent ? 'text-brutal-accent font-bold' : ''}
           ${data.isCompleted ? 'text-brutal-success' : ''}
           ${data.isLocked ? 'text-brutal-muted' : ''}
         `}
@@ -52,7 +53,66 @@ function StageNode({ data }: { data: { stage: StageKey; isCurrent: boolean; isCo
   );
 }
 
+// 极简折叠视图组件
+function CompactStageView({
+  currentStage,
+  completedStages,
+  onExpand,
+}: {
+  currentStage: StageKey;
+  completedStages: StageKey[];
+  onExpand: () => void;
+}) {
+  const stageLabel = useStageLabel(currentStage);
+  const currentIndex = STAGE_ORDER.indexOf(currentStage);
+  const totalStages = STAGE_ORDER.length;
+  const progress = Math.round((completedStages.length / totalStages) * 100);
+
+  return (
+    <div className="flex items-center justify-between px-6 py-3">
+      <div className="flex items-center gap-4">
+        {/* 阶段进度 */}
+        <span className="text-xs font-mono text-brutal-muted">
+          阶段 {STAGE_NUMBERS[currentStage]}/{STAGE_NUMBERS[STAGE_ORDER[totalStages - 1]]}
+        </span>
+
+        {/* 当前阶段高亮 */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-mono font-bold text-brutal-text">
+            {stageLabel}
+          </span>
+          <span className="text-xs px-2 py-0.5 bg-brutal-accent text-brutal-bg font-mono">
+            当前
+          </span>
+        </div>
+
+        {/* 进度条 */}
+        <div className="flex items-center gap-2">
+          <div className="w-24 h-1 bg-brutal-border">
+            <div
+              className="h-full bg-brutal-accent transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="text-xs font-mono text-brutal-muted">{progress}%</span>
+        </div>
+      </div>
+
+      {/* 展开按钮 */}
+      <button
+        onClick={onExpand}
+        className="flex items-center gap-1 text-xs text-brutal-muted hover:text-brutal-text font-mono"
+      >
+        展开流程
+        <ChevronDown className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
 export function StageFlow({ currentStage, completedStages }: StageFlowProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const { nodes, edges } = useMemo(() => {
     const nodeList: Node[] = [];
     const edgeList: Edge[] = [];
@@ -97,27 +157,52 @@ export function StageFlow({ currentStage, completedStages }: StageFlowProps) {
     return { nodes: nodeList, edges: edgeList };
   }, [currentStage, completedStages]);
 
+  if (!isExpanded) {
+    return (
+      <div className="bg-brutal-surface border-b border-brutal-border">
+        <CompactStageView
+          currentStage={currentStage}
+          completedStages={completedStages}
+          onExpand={() => setIsExpanded(true)}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="h-28 bg-brutal-surface border-b border-brutal-border"
-    >
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        panOnDrag={false}
-        zoomOnScroll={false}
-        zoomOnPinch={false}
-        zoomOnDoubleClick={false}
-        nodeTypes={{
-          stageNode: StageNode,
-        }}
-        attributionPosition="bottom-left"
-      >
-        <Background gap={40} size={1} color="var(--brutal-border)" />
-      </ReactFlow>
+    <div className="bg-brutal-surface border-b border-brutal-border">
+      {/* 折叠按钮 */}
+      <div className="flex items-center justify-end px-4 pt-2">
+        <button
+          onClick={() => setIsExpanded(false)}
+          className="flex items-center gap-1 text-xs text-brutal-muted hover:text-brutal-text font-mono"
+        >
+          折叠流程
+          <ChevronUp className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* 完整流程图 */}
+      <div className="h-28">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          fitView
+          fitViewOptions={{ padding: 0.2 }}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          panOnDrag={false}
+          zoomOnScroll={false}
+          zoomOnPinch={false}
+          zoomOnDoubleClick={false}
+          nodeTypes={{
+            stageNode: StageNode,
+          }}
+          attributionPosition="bottom-left"
+        >
+          <Background gap={40} size={1} color="var(--brutal-border)" />
+        </ReactFlow>
+      </div>
     </div>
   );
 }
