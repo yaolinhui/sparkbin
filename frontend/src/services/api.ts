@@ -128,7 +128,7 @@ export const authApi = {
 // ===== 项目 API =====
 export interface Stage {
   id: string;
-  stage_key: 'idea' | 'research' | 'dev' | 'complete' | 'launch' | 'promote';
+  stage_key: 'idea' | 'validate' | 'prototype' | 'ship' | 'grow' | 'monetize';
   content: string;
   completed_at: string | null;
   is_locked: boolean;

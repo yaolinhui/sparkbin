@@ -166,13 +166,6 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     }
   };
 
-  // 标记维度为不正确（将重新生成）
-  const markDimensionIncorrect = (id: number) => {
-    setDimensions(prev => prev.map(d =>
-      d.id === id ? { ...d, isCorrect: false } : d
-    ));
-  };
-
   // 标记维度为正确
   const markDimensionCorrect = (id: number) => {
     setDimensions(prev => prev.map(d =>

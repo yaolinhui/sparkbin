@@ -27,6 +27,12 @@ const PROVIDER_INFO: Record<AIProvider, { name: string; desc: string; defaultUrl
     defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3',
     defaultModel: 'doubao-lite-4k',
   },
+  openai: {
+    name: 'OpenAI',
+    desc: 'OpenAI API',
+    defaultUrl: 'https://api.openai.com/v1',
+    defaultModel: 'gpt-4',
+  },
 };
 
 export function AIConfigModal({ isOpen, onClose }: AIConfigModalProps) {
@@ -38,6 +44,7 @@ export function AIConfigModal({ isOpen, onClose }: AIConfigModalProps) {
     deepseek: { base_url: '', api_key: '', default_model: '', is_active: false },
     kimi: { base_url: '', api_key: '', default_model: '', is_active: false },
     doubao: { base_url: '', api_key: '', default_model: '', is_active: false },
+    openai: { base_url: '', api_key: '', default_model: '', is_active: false },
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -59,6 +66,7 @@ export function AIConfigModal({ isOpen, onClose }: AIConfigModalProps) {
         deepseek: { base_url: '', api_key: '', default_model: '', is_active: false },
         kimi: { base_url: '', api_key: '', default_model: '', is_active: false },
         doubao: { base_url: '', api_key: '', default_model: '', is_active: false },
+        openai: { base_url: '', api_key: '', default_model: '', is_active: false },
       };
 
       configs.forEach((c) => {
