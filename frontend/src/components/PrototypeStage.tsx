@@ -397,8 +397,9 @@ export function PrototypeStage({ project, onUpdateContent, isLocked }: Prototype
       )}
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-6 min-h-0">
-        {currentStep === 'platform' && (
+      <div className="flex-1 overflow-hidden min-h-0">
+        <div className="h-full overflow-y-auto p-6">
+          {currentStep === 'platform' && (
           <PlatformSelector
             selected={data.selectedPlatform}
             onSelect={selectPlatform}
@@ -557,6 +558,7 @@ export function PrototypeStage({ project, onUpdateContent, isLocked }: Prototype
             </div>
           </div>
         )}
+      </div>
       </div>
 
       {/* Add Feature Modal */}

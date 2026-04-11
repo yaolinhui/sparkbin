@@ -192,8 +192,9 @@ export function ShipStage({ project, onUpdateContent, isLocked }: ShipStageProps
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0">
-        {/* Progress Bar */}
+      <div className="flex-1 overflow-hidden min-h-0">
+        <div className="h-full overflow-y-auto p-6 space-y-6">
+          {/* Progress Bar */}
         <div className="border border-brutal-border bg-brutal-surface p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-mono text-brutal-muted">发布准备度</span>
@@ -433,6 +434,7 @@ export function ShipStage({ project, onUpdateContent, isLocked }: ShipStageProps
               )}
             </div>
           </div>
+        </div>
         </div>
       </div>
 

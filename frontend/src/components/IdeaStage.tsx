@@ -243,8 +243,9 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
       )}
 
       {/* Sticky Notes Grid */}
-      <div className="flex-1 p-6 overflow-y-auto min-h-0">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
+      <div className="flex-1 overflow-hidden min-h-0">
+        <div className="h-full overflow-y-auto p-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
           {notes.map((note) => (
             <div
               key={note.id}
@@ -358,6 +359,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
           <p className="text-xs text-brutal-muted font-mono">
             💡 提示：点击便利贴上的编辑图标修改内容，或点击颜色块更改颜色
           </p>
+        </div>
         </div>
       </div>
     </div>
