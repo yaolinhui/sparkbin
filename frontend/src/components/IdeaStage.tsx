@@ -245,7 +245,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
       {/* Sticky Notes Grid */}
       <div className="flex-1 overflow-hidden min-h-0">
         <div className="h-full overflow-y-auto p-6">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {notes.map((note) => (
             <div
               key={note.id}
@@ -345,21 +345,21 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
           ))}
         </div>
 
-        {/* Empty State */}
-        {notes.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-brutal-muted font-mono text-sm">
-              还没有便利贴，点击"添加"创建第一个
+          {/* Empty State */}
+          {notes.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-brutal-muted font-mono text-sm">
+                还没有便利贴，点击"添加"创建第一个
+              </p>
+            </div>
+          )}
+
+          {/* Hint */}
+          <div className="mt-4 pt-4 border-t border-brutal-border">
+            <p className="text-xs text-brutal-muted font-mono">
+              💡 提示：点击便利贴上的编辑图标修改内容，或点击颜色块更改颜色
             </p>
           </div>
-        )}
-
-        {/* Hint */}
-        <div className="col-span-full mt-4 pt-4 border-t border-brutal-border">
-          <p className="text-xs text-brutal-muted font-mono">
-            💡 提示：点击便利贴上的编辑图标修改内容，或点击颜色块更改颜色
-          </p>
-        </div>
         </div>
       </div>
     </div>
