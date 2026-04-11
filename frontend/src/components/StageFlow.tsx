@@ -27,6 +27,11 @@ const STAGE_NUMBERS: Record<StageKey, string> = {
   monetize: '06',
 };
 
+// Node types - defined outside component to prevent recreation
+const nodeTypes = {
+  stageNode: StageNode,
+};
+
 // Custom node component
 function StageNode({ data }: { data: { stage: StageKey; isCurrent: boolean; isCompleted: boolean; isLocked: boolean; onClick?: () => void } }) {
   const stageLabel = useStageLabel(data.stage);
@@ -232,9 +237,7 @@ export function StageFlow({ currentStage, completedStages, onStageClick }: Stage
           zoomOnScroll={false}
           zoomOnPinch={false}
           zoomOnDoubleClick={false}
-          nodeTypes={{
-            stageNode: StageNode,
-          }}
+          nodeTypes={nodeTypes}
           attributionPosition="bottom-left"
         >
           <Background gap={40} size={1} color="var(--brutal-border)" />
