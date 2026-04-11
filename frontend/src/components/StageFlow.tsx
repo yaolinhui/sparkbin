@@ -36,10 +36,40 @@ const nodeTypes = {
 function StageNode({ data }: { data: { stage: StageKey; isCurrent: boolean; isCompleted: boolean; isLocked: boolean; onClick?: () => void } }) {
   const stageLabel = useStageLabel(data.stage);
 
+  // 样式优先级：当前 > 已完成 > 锁定
+  const getNodeClasses = () => {
+    if (data.isCurrent) {
+      return 'bg-brutal-accent border-brutal-accent text-brutal-bg';
+    }
+    if (data.isCompleted) {
+      return 'border-brutal-success text-brutal-success bg-brutal-bg';
+    }
+    if (data.isLocked) {
+      return 'border-brutal-border text-brutal-muted bg-brutal-bg';
+    }
+    return 'border-brutal-border text-brutal-text bg-brutal-bg';
+  };
+
+  const getLabelClasses = () => {
+    if (data.isCurrent) {
+      return 'text-brutal-accent font-bold';
+    }
+    if (data.isCompleted) {
+      return 'text-brutal-success';
+    }
+    if (data.isLocked) {
+      return 'text-brutal-muted';
+    }
+    return 'text-brutal-text';
+  };
+
   return (
     <div
       className="flex flex-col items-center gap-1 font-mono cursor-pointer hover:opacity-80 transition-opacity"
-      onClick={data.onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        data.onClick?.();
+      }}
     >
       {/* 左侧目标连接点 - 接收来自上一个阶段的边 */}
       <Handle
@@ -48,21 +78,11 @@ function StageNode({ data }: { data: { stage: StageKey; isCurrent: boolean; isCo
         style={{ background: 'transparent', border: 'none', width: 1, height: 1 }}
       />
       <div
-        className={`w-10 h-10 flex items-center justify-center text-sm border
-          ${data.isCurrent ? 'bg-brutal-accent border-brutal-accent text-brutal-bg' : ''}
-          ${data.isCompleted ? 'border-brutal-success text-brutal-success' : ''}
-          ${data.isLocked ? 'border-brutal-border text-brutal-muted' : ''}
-        `}
+        className={`w-10 h-10 flex items-center justify-center text-sm border ${getNodeClasses()}`}
       >
         {STAGE_NUMBERS[data.stage]}
       </div>
-      <span
-        className={`text-xs uppercase tracking-wider
-          ${data.isCurrent ? 'text-brutal-accent font-bold' : ''}
-          ${data.isCompleted ? 'text-brutal-success' : ''}
-          ${data.isLocked ? 'text-brutal-muted' : ''}
-        `}
-      >
+      <span className={`text-xs uppercase tracking-wider ${getLabelClasses()}`}>
         {stageLabel}
       </span>
       {/* 右侧源连接点 - 发出连接到下一个阶段 */}
@@ -178,18 +198,20 @@ export function StageFlow({ currentStage, completedStages, onStageClick }: Stage
       });
 
       if (index < STAGE_ORDER.length - 1) {
+        // 边颜色基于源阶段是否完成
+        const isEdgeCompleted = completedStages.includes(stage);
         edgeList.push({
           id: `${stage}-${STAGE_ORDER[index + 1]}`,
           source: stage,
           target: STAGE_ORDER[index + 1],
           type: 'smoothstep',
           style: {
-            stroke: isCompleted ? 'var(--brutal-success)' : 'var(--brutal-border)',
+            stroke: isEdgeCompleted ? 'var(--brutal-success)' : 'var(--brutal-border)',
             strokeWidth: 1,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: isCompleted ? 'var(--brutal-success)' : 'var(--brutal-border)',
+            color: isEdgeCompleted ? 'var(--brutal-success)' : 'var(--brutal-border)',
           },
         });
       }
