@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Pause, Play, Archive, Lock, ChevronRight, ChevronDown, LogOut, ChevronUp, Menu } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { ArrowLeft, Check, Pause, Play, Archive, Lock, LogOut, ChevronUp, Menu } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useI18n, useStatusLabel, useStageLabel } from '../i18n';
 import type { Project, Stage } from "../types";
@@ -41,7 +40,6 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const updateProjectStatus = useProjectStore((state) => state.updateProjectStatus);
 
   const [isCompleting, setIsCompleting] = useState(false);
-  const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isHeaderExpanded, setIsHeaderExpanded] = useState(false); // 头部折叠状态
   const [isLoading, setIsLoading] = useState(false);
@@ -224,10 +222,6 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       ? `${currentContent}\n\n${content}`
       : content;
     await updateStageContent(project.id, validCurrentStage, newContent);
-  };
-
-  const toggleStageExpand = (stageKey: string) => {
-    setExpandedStage(expandedStage === stageKey ? null : stageKey);
   };
 
   const renderStatusButton = () => {
@@ -473,25 +467,6 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
               </div>
             )}
 
-            {completedStages.length > 0 && (
-              <div className="mt-8 pt-8 border-t border-brutal-border">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-xs text-brutal-muted">//</span>
-                  <span className="text-xs font-mono text-brutal-muted">{t('project.previous_stages')}</span>
-                </div>
-                <div className="space-y-2">
-                  {completedStages.map((stageKey) => (
-                    <CompletedStageView
-                      key={stageKey}
-                      stageKey={stageKey}
-                      content={project.stages?.[stageKey]?.content || ''}
-                      isExpanded={expandedStage === stageKey}
-                      onToggle={() => toggleStageExpand(stageKey)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -569,47 +544,6 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 <span className="animate-blink">_</span>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Helper component for completed stages
-function CompletedStageView({
-  stageKey,
-  content,
-  isExpanded,
-  onToggle
-}: {
-  stageKey: StageKey;
-  content: string;
-  isExpanded: boolean;
-  onToggle: () => void;
-}) {
-  const stageLabel = useStageLabel(stageKey);
-
-  return (
-    <div className="border border-brutal-border bg-brutal-bg">
-      <div
-        className="flex items-center gap-2 p-3 cursor-pointer hover:bg-brutal-surface transition-colors"
-        onClick={onToggle}
-      >
-        {isExpanded ? (
-          <ChevronDown className="w-4 h-4 text-brutal-accent" />
-        ) : (
-          <ChevronRight className="w-4 h-4 text-brutal-accent" />
-        )}
-        <span className="text-xs font-mono">
-          {stageLabel}
-        </span>
-        <Lock className="w-3 h-3 text-brutal-muted ml-auto" />
-      </div>
-      {isExpanded && (
-        <div className="px-3 pb-3 border-t border-brutal-border">
-          <div className="prose prose-sm max-w-none text-brutal-muted pt-3 prose-headings:text-brutal-text prose-headings:font-mono prose-strong:text-brutal-accent prose-code:text-brutal-accent prose-code:bg-brutal-surface prose-code:px-1 prose-pre:bg-brutal-surface prose-pre:border prose-pre:border-brutal-border">
-            <ReactMarkdown>{content}</ReactMarkdown>
           </div>
         </div>
       )}

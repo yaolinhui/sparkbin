@@ -273,8 +273,8 @@ export function AIChat({
         </div>
       </div>
 
-      {/* Messages - 限制最大高度确保输入框可见 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 font-mono text-sm min-h-0 max-h-[calc(100vh-280px)]">
+      {/* Messages - 自动填充剩余空间，内容过多时滚动 */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 font-mono text-sm min-h-0">
         {messages.map((message) => (
           <div
             key={message.id}
