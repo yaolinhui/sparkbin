@@ -325,7 +325,26 @@ def complete_stage(
 
     # 解锁下一个阶段
     stage_order = ["idea", "validate", "prototype", "ship", "grow", "monetize"]
-    current_index = stage_order.index(stage_key.value)
+    # 旧阶段映射到新阶段
+    legacy_to_new = {
+        "research": "validate",
+        "dev": "prototype",
+        "design": "prototype",
+        "test": "ship",
+        "complete": "ship",
+        "launch": "ship",
+        "promote": "grow",
+        "maintain": "monetize"
+    }
+
+    # 获取当前阶段对应的新流程阶段
+    current_stage_in_order = legacy_to_new.get(stage_key.value, stage_key.value)
+
+    try:
+        current_index = stage_order.index(current_stage_in_order)
+    except ValueError:
+        # 如果阶段不在列表中，默认为第一个
+        current_index = 0
 
     if current_index < len(stage_order) - 1:
         next_stage_key = StageKey(stage_order[current_index + 1])
@@ -336,6 +355,19 @@ def complete_stage(
         if next_stage:
             next_stage.is_locked = False
             project.current_stage = next_stage_key
+        else:
+            # 如果下一阶段不存在，创建它
+            new_stage = Stage(
+                project_id=project_id,
+                stage_key=next_stage_key,
+                content='',
+                is_locked=False
+            )
+            db.add(new_stage)
+            project.current_stage = next_stage_key
+    else:
+        # 已经是最后一个阶段，保持在当前阶段
+        pass
 
     db.commit()
     db.refresh(project)
