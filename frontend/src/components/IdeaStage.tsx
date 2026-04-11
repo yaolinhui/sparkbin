@@ -211,9 +211,9 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
             </button>
             <button
               onClick={addNote}
-              className="btn-brutal flex items-center gap-2 text-xs"
+              className="btn-brutal flex items-center gap-2 text-xs group"
             >
-              <Plus className="w-3 h-3" />
+              <Plus className="w-3 h-3 text-brutal-text group-active:text-brutal-bg" />
               添加
             </button>
           </div>

@@ -46,6 +46,11 @@ const translations = {
       return_to_dashboard: '返回面板',
       commit_stage: '提交阶段',
       generate_with_ai: 'AI 优化',
+      manual_input: '手动输入',
+    },
+    // Common
+    common: {
+      or: '或',
     },
     // Project
     project: {
@@ -114,6 +119,7 @@ const translations = {
       input_description: '输入描述',
       project_title: '项目名称',
       select_model: '选择模型',
+      manual_input: '手动输入项目信息',
     },
     // Section Headers
     section: {
@@ -184,6 +190,11 @@ const translations = {
       return_to_dashboard: 'RETURN_TO_DASHBOARD',
       commit_stage: 'COMMIT_STAGE',
       generate_with_ai: 'OPTIMIZE_WITH_AI',
+      manual_input: 'MANUAL_INPUT',
+    },
+    // Common
+    common: {
+      or: 'OR',
     },
     // Project
     project: {
@@ -252,6 +263,7 @@ const translations = {
       input_description: 'Input_Description',
       project_title: 'Project_Title',
       select_model: 'SELECT_MODEL',
+      manual_input: 'MANUAL_INPUT',
     },
     // Section Headers
     section: {

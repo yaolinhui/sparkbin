@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Pause, Play, Archive, Lock, ChevronRight, ChevronDown
 import ReactMarkdown from 'react-markdown';
 import { useProjectStore } from '../stores/projectStore';
 import { useI18n, useStatusLabel, useStageLabel } from '../i18n';
+import type { Project, Stage } from "../types";
 import { StageFlow } from './StageFlow';
 import { RichTextEditor } from './RichTextEditor';
 import { AIChat } from './AIChat';
@@ -78,7 +79,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                       isLocked: s.is_locked,
                     };
                     return acc;
-                  }, {} as Record<string, { content: string; completedAt: string | null; isLocked: boolean }>),
+                  }, {} as Record<string, Stage> as unknown as Project["stages"]),
                   createdAt: detail.created_at,
                   updatedAt: detail.updated_at,
                 },

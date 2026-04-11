@@ -217,8 +217,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   };
 
   return (
-    <div className="fixed inset-0 bg-brutal-bg/95 flex items-start justify-center z-50 p-4 overflow-y-auto">
-      <div className="border border-brutal-border bg-brutal-surface w-full max-w-2xl my-8">
+    <div className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="border border-brutal-border bg-brutal-surface w-full max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-brutal-border">
           <div>
@@ -258,11 +258,11 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                 />
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-3">
                 <button
                   onClick={handleOptimize}
                   disabled={!painPoint.trim() || isOptimizing}
-                  className="btn-brutal-primary flex items-center gap-2 flex-1"
+                  className="btn-brutal-primary flex items-center justify-center gap-2 w-full py-3"
                 >
                   {isOptimizing ? (
                     <>
@@ -277,15 +277,20 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                   )}
                 </button>
 
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-brutal-border" />
+                  <span className="text-xs font-mono text-brutal-muted">或</span>
+                  <div className="flex-1 h-px bg-brutal-border" />
+                </div>
+
                 <button
                   onClick={() => {
-                    setTitle(painPoint?.slice(0, 30) || '');
+                    // 跳过 AI，直接进入第 3 步手动输入
                     setStep(3);
                   }}
-                  disabled={!painPoint.trim()}
-                  className="btn-brutal"
+                  className="btn-brutal w-full py-3 text-brutal-muted hover:text-brutal-text"
                 >
-                  {t('action.skip')}
+                  跳过 — 手动输入
                 </button>
               </div>
             </div>
