@@ -389,7 +389,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       />
 
       {/* Main Content */}
-      <div className="flex h-[calc(100vh-220px)]">
+      <div className="flex flex-1 min-h-0">
         {/* Left: Editor */}
         <div className="flex-1 flex flex-col border-r border-brutal-border bg-brutal-surface">
           <div className="flex items-center justify-between px-6 py-3 border-b border-brutal-border">
