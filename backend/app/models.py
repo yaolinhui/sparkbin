@@ -12,6 +12,7 @@ class ProjectStatus(str, enum.Enum):
     ACTIVE = "active"
     PAUSED = "paused"
     ARCHIVED = "archived"
+    RESEARCH = "research"  # 兼容旧数据
 
 
 class StageKey(str, enum.Enum):
@@ -22,6 +23,15 @@ class StageKey(str, enum.Enum):
     SHIP = "ship"           # 发布（尽快上线）
     GROW = "grow"           # 增长（获取用户）
     MONETIZE = "monetize"   # 变现（独立开发要赚钱）
+    # 兼容旧数据（已废弃）
+    RESEARCH = "research"
+    DEV = "dev"
+    DESIGN = "design"
+    TEST = "test"
+    COMPLETE = "complete"
+    LAUNCH = "launch"
+    PROMOTE = "promote"
+    MAINTAIN = "maintain"
 
 
 class AIProvider(str, enum.Enum):

@@ -352,13 +352,13 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
             </p>
           </div>
         )}
-      </div>
 
-      {/* Hint */}
-      <div className="px-6 py-2 border-t border-brutal-border bg-brutal-surface">
-        <p className="text-xs text-brutal-muted font-mono">
-          💡 提示：点击便利贴上的编辑图标修改内容，或点击颜色块更改颜色
-        </p>
+        {/* Hint */}
+        <div className="col-span-full mt-4 pt-4 border-t border-brutal-border">
+          <p className="text-xs text-brutal-muted font-mono">
+            💡 提示：点击便利贴上的编辑图标修改内容，或点击颜色块更改颜色
+          </p>
+        </div>
       </div>
     </div>
   );

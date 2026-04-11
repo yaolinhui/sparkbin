@@ -52,7 +52,16 @@ export function AdminPage({ onLogout }: AdminPageProps) {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Logs State
-  const [logs, setLogs] = useState<any[]>([]);
+  interface LogEntry {
+    id: string;
+    action: string;
+    entity_type: string;
+    entity_id: string;
+    old_values?: string;
+    new_values?: string;
+    created_at: string;
+  }
+  const [logs, setLogs] = useState<LogEntry[]>([]);
 
   useEffect(() => {
     loadConfigs();
@@ -69,7 +78,7 @@ export function AdminPage({ onLogout }: AdminPageProps) {
         openai: { base_url: '', api_key: '', default_model: '', is_active: false },
       };
 
-      configs.forEach((c: any) => {
+      configs.forEach((c) => {
         if (c.provider in configMap) {
           configMap[c.provider as AIProvider] = {
             base_url: c.base_url,

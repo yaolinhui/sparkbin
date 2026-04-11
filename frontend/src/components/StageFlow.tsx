@@ -6,6 +6,7 @@ import ReactFlow, {
   type Edge,
   Position,
   MarkerType,
+  Handle,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { STAGE_ORDER, type StageKey } from '../types';
@@ -31,6 +32,12 @@ function StageNode({ data }: { data: { stage: StageKey; isCurrent: boolean; isCo
 
   return (
     <div className="flex flex-col items-center gap-1 font-mono">
+      {/* 左侧目标连接点 - 接收来自上一个阶段的边 */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        style={{ background: 'transparent', border: 'none', width: 1, height: 1 }}
+      />
       <div
         className={`w-10 h-10 flex items-center justify-center text-sm border
           ${data.isCurrent ? 'bg-brutal-accent border-brutal-accent text-brutal-bg' : ''}
@@ -49,6 +56,12 @@ function StageNode({ data }: { data: { stage: StageKey; isCurrent: boolean; isCo
       >
         {stageLabel}
       </span>
+      {/* 右侧源连接点 - 发出连接到下一个阶段 */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        style={{ background: 'transparent', border: 'none', width: 1, height: 1 }}
+      />
     </div>
   );
 }
@@ -64,7 +77,6 @@ function CompactStageView({
   onExpand: () => void;
 }) {
   const stageLabel = useStageLabel(currentStage);
-  const currentIndex = STAGE_ORDER.indexOf(currentStage);
   const totalStages = STAGE_ORDER.length;
   const progress = Math.round((completedStages.length / totalStages) * 100);
 

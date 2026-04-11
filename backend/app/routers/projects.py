@@ -34,9 +34,14 @@ def _project_to_detail(project: Project) -> ProjectDetail:
                 "completed_at": s.completed_at,
                 "is_locked": s.is_locked
             }
-            for s in sorted(project.stages, key=lambda x: [
-                "idea", "validate", "prototype", "ship", "grow", "monetize"
-            ].index(x.stage_key.value))
+            for s in sorted(project.stages, key=lambda x: ([
+                "idea", "validate", "prototype", "ship", "grow", "monetize",
+                # 兼容旧数据
+                "research", "dev", "design", "test", "complete", "launch", "promote", "maintain"
+            ]).index(x.stage_key.value) if x.stage_key.value in [
+                "idea", "validate", "prototype", "ship", "grow", "monetize",
+                "research", "dev", "design", "test", "complete", "launch", "promote", "maintain"
+            ] else 99)
         ],
         promote_tasks=[
             {

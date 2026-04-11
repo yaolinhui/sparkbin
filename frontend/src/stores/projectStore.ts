@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Project, ProjectStatus, StageKey, GitHubConfig } from '../types';
+import type { Project, ProjectStatus, StageKey, GitHubConfig, Stage, PromoteStage } from '../types';
 import { projectsApi, type ProjectDetail } from '../services/api';
 
 interface ProjectState {
@@ -29,7 +29,7 @@ interface ProjectActions {
 
 // 转换后端项目数据为前端格式
 function convertProjectDetailToProject(detail: ProjectDetail): Project {
-  const stages: Record<string, any> = {};
+  const stages: Record<string, Stage | PromoteStage> = {};
 
   detail.stages.forEach((stage) => {
     const baseStage = {
@@ -58,7 +58,7 @@ function convertProjectDetailToProject(detail: ProjectDetail): Project {
     painPoint: detail.pain_point,
     status: detail.status,
     currentStage: detail.current_stage,
-    stages: stages as Project['stages'],
+    stages: stages as unknown as Project['stages'],
     createdAt: detail.created_at,
     updatedAt: detail.updated_at,
   };
@@ -80,7 +80,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
     try {
       const projects = await projectsApi.list();
       // 将后端返回的数据转换为前端 Project 类型
-      const convertedProjects = projects.map((p: any) => ({
+      const convertedProjects = projects.map((p: { id: string; title: string; pain_point: string; status: string; current_stage: string; created_at: string; updated_at: string }) => ({
         id: p.id,
         title: p.title,
         painPoint: p.pain_point,
@@ -131,7 +131,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
 
   updateProject: async (id: string, updates: Partial<Project>) => {
     try {
-      const backendUpdates: any = {};
+      const backendUpdates: Record<string, string | number | boolean | object> = {};
       if (updates.title !== undefined) backendUpdates.title = updates.title;
       if (updates.painPoint !== undefined) backendUpdates.pain_point = updates.painPoint;
       if (updates.status !== undefined) backendUpdates.status = updates.status;

@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     # API 配置
     api_port: int = 8000
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174"
 
     # GitHub 备份（可选）
     github_token: str = ""

@@ -8,6 +8,11 @@ import { StageFlow } from './StageFlow';
 import { RichTextEditor } from './RichTextEditor';
 import { AIChat } from './AIChat';
 import { IdeaStage } from './IdeaStage';
+import { ValidateStage } from './ValidateStage';
+import { PrototypeStage } from './PrototypeStage';
+import { ShipStage } from './ShipStage';
+import { GrowStage } from './GrowStage';
+import { MonetizeStage } from './MonetizeStage';
 import { type StageKey, type ProjectStatus } from '../types';
 
 interface ProjectDetailProps {
@@ -33,19 +38,119 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const updateStageContent = useProjectStore((state) => state.updateStageContent);
   const completeStage = useProjectStore((state) => state.completeStage);
   const updateProjectStatus = useProjectStore((state) => state.updateProjectStatus);
-  const fetchProjects = useProjectStore((state) => state.fetchProjects);
 
   const [isCompleting, setIsCompleting] = useState(false);
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isHeaderExpanded, setIsHeaderExpanded] = useState(false); // 头部折叠状态
+  const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // 如果没有项目数据，尝试重新加载
+  // 如果没有项目数据或 stages 为空，获取完整项目详情
   useEffect(() => {
-    if (!project && id) {
-      fetchProjects();
+    if (!id) return;
+
+    // 如果没有项目数据，或 stages 为空对象（从列表页导航过来），需要获取完整详情
+    const needsFetch = !project || !project.stages || Object.keys(project.stages).length === 0;
+
+    if (needsFetch) {
+      setIsLoading(true);
+      setFetchError(null);
+
+      // 使用 projectsApi.get 获取完整详情（包含所有 stages）
+      import('../services/api').then(({ projectsApi }) => {
+        projectsApi.get(id)
+          .then((detail) => {
+            // 更新 store 中的项目数据
+            useProjectStore.setState((state) => ({
+              projects: [
+                ...state.projects.filter((p) => p.id !== id),
+                {
+                  id: detail.id,
+                  title: detail.title,
+                  painPoint: detail.pain_point,
+                  status: detail.status,
+                  currentStage: detail.current_stage,
+                  stages: detail.stages.reduce((acc, s) => {
+                    acc[s.stage_key] = {
+                      content: s.content,
+                      completedAt: s.completed_at,
+                      isLocked: s.is_locked,
+                    };
+                    return acc;
+                  }, {} as Record<string, { content: string; completedAt: string | null; isLocked: boolean }>),
+                  createdAt: detail.created_at,
+                  updatedAt: detail.updated_at,
+                },
+              ],
+            }));
+            setIsLoading(false);
+          })
+          .catch((err) => {
+            console.error('Failed to fetch project:', err);
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+            if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+              setFetchError('无法连接到服务器，请检查后端是否已启动');
+            } else if (errorMessage.includes('404')) {
+              setFetchError('项目不存在');
+            } else if (errorMessage.includes('401')) {
+              setFetchError('登录已过期，请重新登录');
+            } else {
+              setFetchError(`加载失败: ${errorMessage}`);
+            }
+            setIsLoading(false);
+          });
+      });
     }
   }, [id, project]);
+
+  // 计算当前阶段和标签 - 必须在条件返回之前
+  const availableStages = project ? Object.entries(project.stages || {}) : [];
+  const validCurrentStage: StageKey = project && availableStages.some(([key]) => key === project.currentStage)
+    ? project.currentStage
+    : (availableStages[0]?.[0] as StageKey) || 'idea';
+  const currentStageLabel = useStageLabel(validCurrentStage);
+  // 注意：useStatusLabel 必须在所有条件分支之前调用
+  const statusLabelValue = useStatusLabel(project?.status ?? 'active');
+  const statusLabel = project ? statusLabelValue : 'ACTIVE';
+
+  // 加载中状态
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-brutal-bg flex items-center justify-center font-mono">
+        <div className="text-center border border-brutal-border bg-brutal-surface p-8">
+          <div className="w-8 h-8 border-2 border-brutal-accent border-t-transparent animate-spin mx-auto mb-4" />
+          <p className="text-brutal-muted text-sm">{'>'} LOADING_PROJECT_DATA...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 获取失败状态
+  if (fetchError) {
+    return (
+      <div className="min-h-screen bg-brutal-bg flex items-center justify-center font-mono">
+        <div className="text-center border-2 border-brutal-warning bg-brutal-surface p-8 max-w-md">
+          <p className="text-brutal-warning font-mono text-sm mb-2">{'>'} ERROR</p>
+          <p className="text-brutal-text mb-6">{fetchError}</p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="btn-brutal"
+            >
+              重试
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="btn-brutal-primary"
+            >
+              返回首页
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!project) {
     return (
@@ -63,19 +168,13 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     );
   }
 
-  // 防御性：确保 stages 数据完整，currentStage 必须存在于 stages 中
-  const availableStages = Object.entries(project.stages || {});
-  const validCurrentStage = availableStages.some(([key]) => key === project.currentStage)
-    ? project.currentStage
-    : (availableStages[0]?.[0] as StageKey) || 'idea';
-
+  // 计算完成的阶段
   const completedStages = availableStages
-    .filter(([_, stage]) => stage?.isLocked)
+    .filter(([, stage]) => stage?.isLocked)
     .map(([key]) => key as StageKey);
 
   const currentStageData = project.stages?.[validCurrentStage];
   const isCurrentStageLocked = currentStageData?.isLocked ?? false;
-  const currentStageLabel = useStageLabel(validCurrentStage);
 
   const handleContentChange = async (content: string) => {
     await updateStageContent(project.id, validCurrentStage, content);
@@ -158,8 +257,6 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
         );
     }
   };
-
-  const statusLabel = useStatusLabel(project.status);
 
   return (
     <div className="min-h-screen bg-brutal-bg text-brutal-text font-mono">
@@ -319,6 +416,36 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
           <div className="flex-1 overflow-hidden">
             {validCurrentStage === 'idea' ? (
               <IdeaStage
+                project={project}
+                onUpdateContent={handleContentChange}
+                isLocked={isCurrentStageLocked}
+              />
+            ) : validCurrentStage === 'validate' ? (
+              <ValidateStage
+                project={project}
+                onUpdateContent={handleContentChange}
+                isLocked={isCurrentStageLocked}
+              />
+            ) : validCurrentStage === 'prototype' ? (
+              <PrototypeStage
+                project={project}
+                onUpdateContent={handleContentChange}
+                isLocked={isCurrentStageLocked}
+              />
+            ) : validCurrentStage === 'ship' ? (
+              <ShipStage
+                project={project}
+                onUpdateContent={handleContentChange}
+                isLocked={isCurrentStageLocked}
+              />
+            ) : validCurrentStage === 'grow' ? (
+              <GrowStage
+                project={project}
+                onUpdateContent={handleContentChange}
+                isLocked={isCurrentStageLocked}
+              />
+            ) : validCurrentStage === 'monetize' ? (
+              <MonetizeStage
                 project={project}
                 onUpdateContent={handleContentChange}
                 isLocked={isCurrentStageLocked}
