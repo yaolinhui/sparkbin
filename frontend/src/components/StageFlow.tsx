@@ -15,6 +15,7 @@ import { useStageLabel } from '../i18n';
 interface StageFlowProps {
   currentStage: StageKey;
   completedStages: StageKey[];
+  onStageClick?: (stage: StageKey) => void;
 }
 
 const STAGE_NUMBERS: Record<StageKey, string> = {
@@ -27,11 +28,14 @@ const STAGE_NUMBERS: Record<StageKey, string> = {
 };
 
 // Custom node component
-function StageNode({ data }: { data: { stage: StageKey; isCurrent: boolean; isCompleted: boolean; isLocked: boolean } }) {
+function StageNode({ data }: { data: { stage: StageKey; isCurrent: boolean; isCompleted: boolean; isLocked: boolean; onClick?: () => void } }) {
   const stageLabel = useStageLabel(data.stage);
 
   return (
-    <div className="flex flex-col items-center gap-1 font-mono">
+    <div
+      className="flex flex-col items-center gap-1 font-mono cursor-pointer hover:opacity-80 transition-opacity"
+      onClick={data.onClick}
+    >
       {/* 左侧目标连接点 - 接收来自上一个阶段的边 */}
       <Handle
         type="target"
@@ -71,10 +75,12 @@ function CompactStageView({
   currentStage,
   completedStages,
   onExpand,
+  onStageClick,
 }: {
   currentStage: StageKey;
   completedStages: StageKey[];
   onExpand: () => void;
+  onStageClick?: (stage: StageKey) => void;
 }) {
   const stageLabel = useStageLabel(currentStage);
   const totalStages = STAGE_ORDER.length;
@@ -110,6 +116,24 @@ function CompactStageView({
         </div>
       </div>
 
+      {/* 阶段快速跳转 */}
+      <div className="flex items-center gap-2">
+        {STAGE_ORDER.map((stage) => (
+          <button
+            key={stage}
+            onClick={() => onStageClick?.(stage)}
+            className={`w-6 h-6 text-xs font-mono border flex items-center justify-center transition-colors
+              ${stage === currentStage ? 'bg-brutal-accent text-brutal-bg border-brutal-accent' : ''}
+              ${completedStages.includes(stage) && stage !== currentStage ? 'border-brutal-success text-brutal-success hover:bg-brutal-success/10' : ''}
+              ${!completedStages.includes(stage) && stage !== currentStage ? 'border-brutal-border text-brutal-muted hover:border-brutal-text' : ''}
+            `}
+            title={`查看 ${useStageLabel(stage)}`}
+          >
+            {STAGE_NUMBERS[stage]}
+          </button>
+        ))}
+      </div>
+
       {/* 展开按钮 */}
       <button
         onClick={onExpand}
@@ -122,7 +146,7 @@ function CompactStageView({
   );
 }
 
-export function StageFlow({ currentStage, completedStages }: StageFlowProps) {
+export function StageFlow({ currentStage, completedStages, onStageClick }: StageFlowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const { nodes, edges } = useMemo(() => {
@@ -136,7 +160,7 @@ export function StageFlow({ currentStage, completedStages }: StageFlowProps) {
       nodeList.push({
         id: stage,
         type: 'stageNode',
-        data: { stage, isCurrent, isCompleted, isLocked: !isCurrent && !isCompleted },
+        data: { stage, isCurrent, isCompleted, isLocked: !isCurrent && !isCompleted, onClick: () => onStageClick?.(stage) },
         position: { x: index * 140, y: 0 },
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
@@ -167,7 +191,7 @@ export function StageFlow({ currentStage, completedStages }: StageFlowProps) {
     });
 
     return { nodes: nodeList, edges: edgeList };
-  }, [currentStage, completedStages]);
+  }, [currentStage, completedStages, onStageClick]);
 
   if (!isExpanded) {
     return (
@@ -176,6 +200,7 @@ export function StageFlow({ currentStage, completedStages }: StageFlowProps) {
           currentStage={currentStage}
           completedStages={completedStages}
           onExpand={() => setIsExpanded(true)}
+          onStageClick={onStageClick}
         />
       </div>
     );

@@ -46,6 +46,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const [isHeaderExpanded, setIsHeaderExpanded] = useState(false); // 头部折叠状态
   const [isLoading, setIsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [viewingStage, setViewingStage] = useState<StageKey | null>(null); // 正在查看的阶段（可切换）
 
   // 如果没有项目数据或 stages 为空，获取完整项目详情
   useEffect(() => {
@@ -177,6 +178,10 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const currentStageData = project.stages?.[validCurrentStage];
   const isCurrentStageLocked = currentStageData?.isLocked ?? false;
 
+  // 计算显示的阶段：如果用户点击了其他阶段查看，则显示该阶段，否则显示当前阶段
+  const displayStage = viewingStage ?? validCurrentStage;
+  const displayStageData = project.stages?.[displayStage];
+  const isDisplayStageLocked = displayStageData?.isLocked ?? false;
   const handleContentChange = async (content: string) => {
     await updateStageContent(project.id, validCurrentStage, content);
   };
@@ -380,6 +385,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       <StageFlow
         currentStage={validCurrentStage}
         completedStages={completedStages}
+        onStageClick={(stage) => setViewingStage(stage)}
       />
 
       {/* Main Content */}
@@ -415,41 +421,41 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
             )}
           </div>
           <div className="flex-1 overflow-hidden">
-            {validCurrentStage === 'idea' ? (
+            {displayStage === 'idea' ? (
               <IdeaStage
                 project={project}
                 onUpdateContent={handleContentChange}
-                isLocked={isCurrentStageLocked}
+                isLocked={isDisplayStageLocked}
               />
-            ) : validCurrentStage === 'validate' ? (
+            ) : displayStage === 'validate' ? (
               <ValidateStage
                 project={project}
                 onUpdateContent={handleContentChange}
-                isLocked={isCurrentStageLocked}
+                isLocked={isDisplayStageLocked}
               />
-            ) : validCurrentStage === 'prototype' ? (
+            ) : displayStage === 'prototype' ? (
               <PrototypeStage
                 project={project}
                 onUpdateContent={handleContentChange}
-                isLocked={isCurrentStageLocked}
+                isLocked={isDisplayStageLocked}
               />
-            ) : validCurrentStage === 'ship' ? (
+            ) : displayStage === 'ship' ? (
               <ShipStage
                 project={project}
                 onUpdateContent={handleContentChange}
-                isLocked={isCurrentStageLocked}
+                isLocked={isDisplayStageLocked}
               />
-            ) : validCurrentStage === 'grow' ? (
+            ) : displayStage === 'grow' ? (
               <GrowStage
                 project={project}
                 onUpdateContent={handleContentChange}
-                isLocked={isCurrentStageLocked}
+                isLocked={isDisplayStageLocked}
               />
-            ) : validCurrentStage === 'monetize' ? (
+            ) : displayStage === 'monetize' ? (
               <MonetizeStage
                 project={project}
                 onUpdateContent={handleContentChange}
-                isLocked={isCurrentStageLocked}
+                isLocked={isDisplayStageLocked}
               />
             ) : currentStageData ? (
               <div className="h-full p-6 overflow-y-auto">
