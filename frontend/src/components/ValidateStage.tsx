@@ -422,7 +422,7 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Kanban Board */}
         <div className="flex-1 flex gap-4 p-6 overflow-x-auto">
           {/* Pending Column */}

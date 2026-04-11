@@ -397,7 +397,7 @@ export function PrototypeStage({ project, onUpdateContent, isLocked }: Prototype
       )}
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 min-h-0">
         {currentStep === 'platform' && (
           <PlatformSelector
             selected={data.selectedPlatform}
