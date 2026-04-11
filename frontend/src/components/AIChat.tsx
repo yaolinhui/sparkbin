@@ -14,6 +14,8 @@ interface AIChatProps {
   stage: string;
   projectTitle?: string;
   onGenerateContent?: (content: string) => void;
+  isCollapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 const WELCOME_MESSAGES: Record<string, { zh: string; en: string }> = {
@@ -84,15 +86,24 @@ const markdownStyles = `
   prose-blockquote:border-l-2 prose-blockquote:border-brutal-accent prose-blockquote:text-brutal-muted
 `;
 
-export function AIChat({ stage, projectTitle, onGenerateContent }: AIChatProps) {
+export function AIChat({
+  stage,
+  projectTitle,
+  onGenerateContent,
+  isCollapsed = false,
+  onCollapsedChange,
+}: AIChatProps) {
   const { t, language } = useI18n();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleToggleCollapse = () => {
+    onCollapsedChange?.(!isCollapsed);
+  };
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -219,20 +230,20 @@ export function AIChat({ stage, projectTitle, onGenerateContent }: AIChatProps) 
 
   const actions = QUICK_ACTIONS[stage] || [];
 
-  // 折叠状态 - 吸附右边
+  // 折叠状态 - 垂直按钮
   if (isCollapsed) {
     return (
-      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-40">
+      <div className="h-full flex items-center justify-center">
         <button
-          onClick={() => setIsCollapsed(false)}
-          className="flex items-center gap-2 px-3 py-4 bg-brutal-surface border border-r-0 border-brutal-border
-                     hover:bg-brutal-accent hover:text-brutal-bg transition-colors shadow-lg"
+          onClick={handleToggleCollapse}
+          className="flex flex-col items-center gap-2 px-2 py-4 bg-brutal-surface border border-brutal-border
+                     hover:bg-brutal-accent hover:text-brutal-bg transition-all duration-300 h-32"
           title={t('ai.expand_assistant')}
         >
           <ChevronLeft className="w-4 h-4" />
           <div className="flex flex-col items-center gap-1">
             <Bot className="w-5 h-5" />
-            <span className="text-xs font-mono writing-mode-vertical">AI</span>
+            <span className="text-xs font-mono [writing-mode:vertical-lr]">AI</span>
           </div>
         </button>
       </div>
@@ -243,7 +254,7 @@ export function AIChat({ stage, projectTitle, onGenerateContent }: AIChatProps) 
     <div className="flex flex-col h-full bg-brutal-surface border-l border-brutal-border relative">
       {/* Collapse Button */}
       <button
-        onClick={() => setIsCollapsed(true)}
+        onClick={handleToggleCollapse}
         className="absolute -left-6 top-4 w-6 h-10 bg-brutal-surface border border-r-0 border-brutal-border
                    flex items-center justify-center hover:bg-brutal-accent hover:text-brutal-bg transition-colors z-10"
         title={t('ai.collapse_assistant')}

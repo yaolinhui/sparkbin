@@ -47,6 +47,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [viewingStage, setViewingStage] = useState<StageKey | null>(null); // 正在查看的阶段（可切换）
+  const [isAIChatCollapsed, setIsAIChatCollapsed] = useState(false); // AI 聊天折叠状态
 
   // 如果没有项目数据或 stages 为空，获取完整项目详情
   useEffect(() => {
@@ -389,9 +390,9 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       />
 
       {/* Main Content */}
-      <div className="flex flex-1 min-h-0">
-        {/* Left: Editor */}
-        <div className="flex-1 flex flex-col border-r border-brutal-border bg-brutal-surface">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Left: Editor - 根据 AI 聊天状态自适应宽度 */}
+        <div className="flex-1 flex flex-col min-w-0 border-r border-brutal-border bg-brutal-surface transition-all duration-300">
           <div className="flex items-center justify-between px-6 py-3 border-b border-brutal-border">
             <div className="flex items-center gap-3">
               <span className="text-xs text-brutal-muted">//</span>
@@ -420,7 +421,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
               </button>
             )}
           </div>
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {displayStage === 'idea' ? (
               <IdeaStage
                 project={project}
@@ -494,12 +495,18 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
           </div>
         </div>
 
-        {/* Right: AI Chat */}
-        <div className="w-[420px] bg-brutal-bg">
+        {/* Right: AI Chat - 根据折叠状态动态调整宽度 */}
+        <div
+          className={`bg-brutal-bg transition-all duration-300 ease-in-out flex-shrink-0 ${
+            isAIChatCollapsed ? 'w-12' : 'w-[420px]'
+          }`}
+        >
           <AIChat
             stage={validCurrentStage}
             projectTitle={project.title}
             onGenerateContent={handleGenerateContent}
+            isCollapsed={isAIChatCollapsed}
+            onCollapsedChange={setIsAIChatCollapsed}
           />
         </div>
       </div>
