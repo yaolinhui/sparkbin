@@ -243,7 +243,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
       )}
 
       {/* Sticky Notes Grid */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 p-6 overflow-y-auto min-h-0">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
           {notes.map((note) => (
             <div

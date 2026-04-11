@@ -192,7 +192,7 @@ export function ShipStage({ project, onUpdateContent, isLocked }: ShipStageProps
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0">
         {/* Progress Bar */}
         <div className="border border-brutal-border bg-brutal-surface p-4">
           <div className="flex items-center justify-between mb-2">

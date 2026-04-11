@@ -224,7 +224,7 @@ export function GrowStage({ project, onUpdateContent, isLocked }: GrowStageProps
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Left: Content Calendar */}
         <div className="flex-1 flex flex-col border-r border-brutal-border">
           {/* Calendar Header */}

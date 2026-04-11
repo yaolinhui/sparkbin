@@ -199,7 +199,7 @@ export function MonetizeStage({ project, onUpdateContent, isLocked }: MonetizeSt
       )}
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0">
         {/* Revenue Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="border border-brutal-border bg-brutal-surface p-4">
