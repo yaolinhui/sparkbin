@@ -415,7 +415,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
               </button>
             )}
           </div>
-          <div className="flex-1 overflow-hidden min-h-0">
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
             {displayStage === 'idea' ? (
               <IdeaStage
                 project={project}
