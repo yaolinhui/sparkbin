@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User } from 'lucide-react';
+import { Send, Bot, User, ChevronRight, ChevronLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useI18n } from '../i18n';
 import { aiService } from '../services/ai';
@@ -21,25 +21,25 @@ const WELCOME_MESSAGES: Record<string, { zh: string; en: string }> = {
     zh: '> 初始化创意模块...\n\n准备帮助您完善这个想法。\n\n可以尝试询问：\n• 目标用户是谁？\n• 解决什么问题？\n• 生成价值主张',
     en: '> INITIALIZING_CREATIVE_MODULE...\n\nReady to help you refine this idea.\n\nTry asking:\n• Who is the target user?\n• What problem does this solve?\n• Generate a value proposition',
   },
-  research: {
-    zh: '> 初始化调研模块...\n\n准备帮助您进行调研。\n\n可以尝试询问：\n• 生成调研框架\n• 竞品分析模板\n• 市场规模评估',
-    en: '> INITIALIZING_RESEARCH_MODULE...\n\nReady to help with your research.\n\nTry asking:\n• Generate a research framework\n• Competitor analysis template\n• Market sizing approach',
+  validate: {
+    zh: '> 初始化验证模块...\n\n准备帮助您验证想法。\n\n可以尝试询问：\n• 生成调研问卷\n• 用户访谈提纲\n• 竞品对比分析',
+    en: '> INITIALIZING_VALIDATION_MODULE...\n\nReady to help validate your idea.\n\nTry asking:\n• Generate survey questions\n• Interview outline\n• Competitor analysis',
   },
-  dev: {
-    zh: '> 初始化开发模块...\n\n准备帮助您进行开发。\n\n可以尝试询问：\n• 分解任务清单\n• 技术选型建议\n• 代码审查',
-    en: '> INITIALIZING_DEV_MODULE...\n\nReady to help with development.\n\nTry asking:\n• Break down tasks\n• Tech stack recommendations\n• Code review this approach',
+  prototype: {
+    zh: '> 初始化原型模块...\n\n准备帮助您构建原型。\n\n可以尝试询问：\n• 功能清单拆分\n• 技术选型建议\n• MVP优先级',
+    en: '> INITIALIZING_PROTOTYPE_MODULE...\n\nReady to help build your prototype.\n\nTry asking:\n• Feature breakdown\n• Tech stack recommendations\n• MVP priorities',
   },
-  complete: {
-    zh: '> 初始化完成模块...\n\n准备帮助您收尾项目。\n\n可以尝试询问：\n• 生成上线清单\n• 需要测试什么？\n• 文档模板',
-    en: '> INITIALIZING_COMPLETION_MODULE...\n\nReady to help wrap up the project.\n\nTry asking:\n• Generate a launch checklist\n• What should I test?\n• Documentation template',
+  ship: {
+    zh: '> 初始化发布模块...\n\n准备帮助您发布产品。\n\n可以尝试询问：\n• 发布检查清单\n• 多平台文案生成\n• 用户反馈收集',
+    en: '> INITIALIZING_SHIP_MODULE...\n\nReady to help launch your product.\n\nTry asking:\n• Launch checklist\n• Multi-platform copy\n• User feedback collection',
   },
-  launch: {
-    zh: '> 初始化上线模块...\n\n准备帮助您部署上线。\n\n可以尝试询问：\n• 上线前检查清单\n• 监控设置指南\n• 回滚策略',
-    en: '> INITIALIZING_LAUNCH_MODULE...\n\nReady to help with deployment.\n\nTry asking:\n• Pre-launch checklist\n• Monitoring setup guide\n• Rollback strategy',
+  grow: {
+    zh: '> 初始化增长模块...\n\n准备帮助您获取用户。\n\n可以尝试询问：\n• 内容日历规划\n• 渠道策略建议\n• 增长实验设计',
+    en: '> INITIALIZING_GROWTH_MODULE...\n\nReady to help you acquire users.\n\nTry asking:\n• Content calendar\n• Channel strategy\n• Growth experiments',
   },
-  promote: {
-    zh: '> 初始化宣传模块...\n\n准备帮助您推广宣传。\n\n可以尝试询问：\n• 生成社交媒体文案\n• 推荐推广渠道\n• 创建发布时间线',
-    en: '> INITIALIZING_PROMOTION_MODULE...\n\nReady to help with marketing.\n\nTry asking:\n• Generate social copy\n• Recommend channels\n• Create launch timeline',
+  monetize: {
+    zh: '> 初始化变现模块...\n\n准备帮助您实现收入。\n\n可以尝试询问：\n• 定价策略建议\n• 转化漏斗分析\n• 收入优化方案',
+    en: '> INITIALIZING_MONETIZE_MODULE...\n\nReady to help you generate revenue.\n\nTry asking:\n• Pricing strategy\n• Conversion funnel analysis\n• Revenue optimization',
   },
 };
 
@@ -48,17 +48,25 @@ const QUICK_ACTIONS: Record<string, { zh: string; en: string }[]> = {
     { zh: '目标用户', en: 'target_user' },
     { zh: '价值主张', en: 'value_prop' },
   ],
-  research: [
-    { zh: '调研框架', en: 'framework' },
+  validate: [
+    { zh: '调研问卷', en: 'survey' },
     { zh: '竞品分析', en: 'competitors' },
   ],
-  dev: [
-    { zh: '任务分解', en: 'tasks' },
+  prototype: [
+    { zh: '功能拆分', en: 'features' },
     { zh: '技术选型', en: 'tech_stack' },
   ],
-  promote: [
-    { zh: '宣传文案', en: 'social_copy' },
-    { zh: '推广渠道', en: 'channels' },
+  ship: [
+    { zh: '发布清单', en: 'checklist' },
+    { zh: '推广文案', en: 'copy' },
+  ],
+  grow: [
+    { zh: '内容日历', en: 'calendar' },
+    { zh: '渠道策略', en: 'channels' },
+  ],
+  monetize: [
+    { zh: '定价建议', en: 'pricing' },
+    { zh: '转化分析', en: 'funnel' },
   ],
 };
 
@@ -82,6 +90,7 @@ export function AIChat({ stage, projectTitle, onGenerateContent }: AIChatProps) 
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -210,21 +219,51 @@ export function AIChat({ stage, projectTitle, onGenerateContent }: AIChatProps) 
 
   const actions = QUICK_ACTIONS[stage] || [];
 
+  // 折叠状态 - 吸附右边
+  if (isCollapsed) {
+    return (
+      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-40">
+        <button
+          onClick={() => setIsCollapsed(false)}
+          className="flex items-center gap-2 px-3 py-4 bg-brutal-surface border border-r-0 border-brutal-border
+                     hover:bg-brutal-accent hover:text-brutal-bg transition-colors shadow-lg"
+          title={t('ai.expand_assistant')}
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <div className="flex flex-col items-center gap-1">
+            <Bot className="w-5 h-5" />
+            <span className="text-xs font-mono writing-mode-vertical">AI</span>
+          </div>
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-full bg-brutal-surface border-l border-brutal-border">
+    <div className="flex flex-col h-full bg-brutal-surface border-l border-brutal-border relative">
+      {/* Collapse Button */}
+      <button
+        onClick={() => setIsCollapsed(true)}
+        className="absolute -left-6 top-4 w-6 h-10 bg-brutal-surface border border-r-0 border-brutal-border
+                   flex items-center justify-center hover:bg-brutal-accent hover:text-brutal-bg transition-colors z-10"
+        title={t('ai.collapse_assistant')}
+      >
+        <ChevronRight className="w-4 h-4" />
+      </button>
+
       {/* Header */}
-      <div className="flex items-center gap-2 p-4 border-b border-brutal-border bg-brutal-bg">
+      <div className="flex items-center gap-2 p-4 border-b border-brutal-border bg-brutal-bg flex-shrink-0">
         <div className="w-8 h-8 border border-brutal-accent flex items-center justify-center bg-brutal-accent">
           <Bot className="w-4 h-4 text-brutal-bg" />
         </div>
-        <div>
-          <div className="font-mono text-sm">{t('ai.assistant')}</div>
+        <div className="flex-1 min-w-0">
+          <div className="font-mono text-sm truncate">{t('ai.assistant')}</div>
           <div className="text-xs text-brutal-muted font-mono">backend-proxy-mode</div>
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 font-mono text-sm">
+      {/* Messages - 限制最大高度确保输入框可见 */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 font-mono text-sm min-h-0 max-h-[calc(100vh-280px)]">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -281,14 +320,14 @@ export function AIChat({ stage, projectTitle, onGenerateContent }: AIChatProps) 
 
       {/* Error */}
       {error && (
-        <div className="mx-4 mb-2 p-2 border border-brutal-warning text-brutal-warning text-xs font-mono">
+        <div className="mx-4 mb-2 p-2 border border-brutal-warning text-brutal-warning text-xs font-mono flex-shrink-0">
           {error}
         </div>
       )}
 
       {/* Quick Actions */}
       {actions.length > 0 && (
-        <div className="px-4 py-2 border-t border-brutal-border bg-brutal-bg">
+        <div className="px-4 py-2 border-t border-brutal-border bg-brutal-bg flex-shrink-0">
           <div className="flex flex-wrap gap-2">
             {actions.map((action) => (
               <button
@@ -303,8 +342,8 @@ export function AIChat({ stage, projectTitle, onGenerateContent }: AIChatProps) 
         </div>
       )}
 
-      {/* Input */}
-      <div className="p-3 border-t border-brutal-border">
+      {/* Input - 固定在底部 */}
+      <div className="p-3 border-t border-brutal-border flex-shrink-0 bg-brutal-surface">
         <div className="flex gap-2">
           <textarea
             value={input}
@@ -312,7 +351,7 @@ export function AIChat({ stage, projectTitle, onGenerateContent }: AIChatProps) 
             onKeyDown={handleKeyDown}
             placeholder={`>>> ${t('placeholder.type_message')}`}
             className="flex-1 p-2 bg-brutal-bg border border-brutal-border resize-none
-                       focus:border-brutal-accent transition-colors min-h-[60px] text-sm font-mono"
+                       focus:border-brutal-accent transition-colors h-[60px] text-sm font-mono"
           />
           <button
             onClick={handleSend}
