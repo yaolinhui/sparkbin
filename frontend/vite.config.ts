@@ -6,5 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // 支持前端路由 history 模式，刷新页面不返回 404
+    historyApiFallback: true,
   },
 })

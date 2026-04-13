@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { X, ZoomIn, ZoomOut, Maximize2, GitGraph } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { Project, StageKey } from '../types';
@@ -29,18 +29,10 @@ interface BlueprintLink {
   dashed?: boolean;
 }
 
-const STAGE_COLORS: Record<string, string> = {
-  idea: '#10b981',
-  validate: '#f59e0b',
-  prototype: '#3b82f6',
-  ship: '#8b5cf6',
-  grow: '#ec4899',
-  monetize: '#10b981',
-};
 
 export function ProjectBlueprint({ project, onClose, onStageClick }: ProjectBlueprintProps) {
   const { t } = useI18n();
-  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [selectedNode] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
 
   const { nodes, links } = useMemo(() => {

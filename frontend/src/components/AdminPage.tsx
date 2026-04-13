@@ -421,6 +421,7 @@ export function AdminPage({ onLogout }: AdminPageProps) {
           )}
         </main>
       </div>
+
     </div>
   );
 }

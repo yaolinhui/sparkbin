@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Github, Terminal, LogOut, Server, Settings } from 'lucide-react';
+import { Plus, Github, Terminal, LogOut, Server, Settings, Cat } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
 import { isAdmin } from '../services/api';
@@ -11,6 +11,8 @@ import { GitHubConfigModal } from './GitHubConfigModal';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { ModelSelector } from './ModelSelector';
+import { AIPetConfig } from './AIPetConfig';
+import type { AIPetConfig as AIPetConfigType } from '../types';
 
 interface ProjectBoardProps {
   onLogout: () => void;
@@ -72,6 +74,11 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [isPetConfigOpen, setIsPetConfigOpen] = useState(false);
+  const [petConfig, setPetConfig] = useState<AIPetConfigType | null>(() => {
+    const saved = localStorage.getItem('sparkbin_pet_config');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [filter, setFilter] = useState<'all' | 'active' | 'paused' | 'archived'>('all');
 
   // 初始加载
@@ -168,6 +175,14 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
               <div className="flex items-center gap-2">
                 <ThemeSwitcher />
                 <LanguageSwitcher />
+                <button
+                  onClick={() => setIsPetConfigOpen(true)}
+                  className="btn-brutal flex items-center gap-2"
+                  title="AI 宠物配置"
+                >
+                  <Cat className="w-4 h-4" />
+                  <span className="text-xs font-mono">宠物</span>
+                </button>
                 {isAdmin() && (
                   <button
                     onClick={() => navigate('/admin')}
@@ -366,6 +381,16 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         isOpen={isConfigModalOpen}
         onClose={() => setIsConfigModalOpen(false)}
       />
+      {isPetConfigOpen && (
+        <AIPetConfig
+          config={petConfig}
+          onSave={(config: AIPetConfigType) => {
+            setPetConfig(config);
+            localStorage.setItem('sparkbin_pet_config', JSON.stringify(config));
+          }}
+          onClose={() => setIsPetConfigOpen(false)}
+        />
+      )}
     </div>
   );
 }

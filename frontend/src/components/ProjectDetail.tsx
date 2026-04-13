@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Pause, Play, Archive, Lock, LogOut, ChevronUp, Menu } from 'lucide-react';
+import { ArrowLeft, Check, Pause, Play, Archive, Lock, LogOut, ChevronUp, Menu, GitGraph } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useI18n, useStatusLabel, useStageLabel } from '../i18n';
 import type { Project, Stage } from "../types";
@@ -284,6 +284,14 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
+                  onClick={() => setShowBlueprint(true)}
+                  className="btn-brutal flex items-center gap-2 text-brutal-accent border-brutal-accent"
+                  title="项目蓝图"
+                >
+                  <GitGraph className="w-4 h-4" />
+                  <span className="hidden sm:inline text-xs">蓝图</span>
+                </button>
+                <button
                   onClick={() => setIsHeaderExpanded(false)}
                   className="btn-brutal p-2"
                   title="折叠头部"
@@ -352,6 +360,13 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 </h1>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setShowBlueprint(true)}
+                  className="btn-brutal p-2 text-brutal-accent border-brutal-accent"
+                  title="项目蓝图"
+                >
+                  <GitGraph className="w-4 h-4" />
+                </button>
                 <button
                   onClick={() => setIsHeaderExpanded(true)}
                   className="btn-brutal p-2"
@@ -548,6 +563,18 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Project Blueprint Modal */}
+      {showBlueprint && (
+        <ProjectBlueprint
+          project={project}
+          onClose={() => setShowBlueprint(false)}
+          onStageClick={(stage) => {
+            setViewingStage(stage);
+            setShowBlueprint(false);
+          }}
+        />
       )}
     </div>
   );

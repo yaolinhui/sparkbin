@@ -42,17 +42,44 @@ const AI_PET_CAT = `
   (_|   |_)
 `;
 
-const COLORS = {
+// 颜色配置
+const NOTE_COLORS: Record<string, string> = {
   default: 'border-brutal-border bg-brutal-surface',
   accent: 'border-brutal-accent bg-brutal-accent/10',
   warning: 'border-brutal-warning bg-brutal-warning/10',
   success: 'border-brutal-success bg-brutal-success/10',
 };
 
-function SortableNote({ note, isEditing, isLocked, editTitle, editContent, onEditTitleChange, onEditContentChange, onSave, onCancel, onStartEdit, onDelete, onChangeColor }: any) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
-    id: note.id, 
-    disabled: isLocked || isEditing 
+function SortableNote({
+  note,
+  isEditing,
+  isLocked,
+  editTitle,
+  editContent,
+  onEditTitleChange,
+  onEditContentChange,
+  onSave,
+  onCancel,
+  onStartEdit,
+  onDelete,
+  onChangeColor,
+}: {
+  note: StickyNote;
+  isEditing: boolean;
+  isLocked: boolean;
+  editTitle: string;
+  editContent: string;
+  onEditTitleChange: (value: string) => void;
+  onEditContentChange: (value: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onStartEdit: () => void;
+  onDelete: () => void;
+  onChangeColor: (color: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: note.id,
+    disabled: isLocked || isEditing,
   });
 
   const style = {
@@ -61,19 +88,51 @@ function SortableNote({ note, isEditing, isLocked, editTitle, editContent, onEdi
     zIndex: isDragging ? 50 : 1,
   };
 
+  const colorClass = NOTE_COLORS[note.color] || NOTE_COLORS.default;
+
   if (isEditing) {
     return (
-      <div ref={setNodeRef} style={style} className={`relative border-2 \${COLORS[note.color]} p-4 min-h-[160px] flex flex-col`}>
+      <div ref={setNodeRef} style={style} className={`relative border-2 ${colorClass} p-4 min-h-[160px] flex flex-col`}>
         <div className="flex-1 flex flex-col gap-2">
-          <input type="text" value={editTitle} onChange={(e) => onEditTitleChange(e.target.value)} className="w-full p-2 border border-brutal-accent bg-brutal-bg text-sm font-mono font-bold" placeholder="标题" autoFocus />
-          <textarea value={editContent} onChange={(e) => onEditContentChange(e.target.value)} className="flex-1 w-full p-2 border border-brutal-accent bg-brutal-bg text-sm font-mono resize-none" placeholder="内容" rows={4} />
+          <input
+            type="text"
+            value={editTitle}
+            onChange={(e) => onEditTitleChange(e.target.value)}
+            className="w-full p-2 border border-brutal-accent bg-brutal-bg text-sm font-mono font-bold"
+            placeholder="标题"
+            autoFocus
+          />
+          <textarea
+            value={editContent}
+            onChange={(e) => onEditContentChange(e.target.value)}
+            className="flex-1 w-full p-2 border border-brutal-accent bg-brutal-bg text-sm font-mono resize-none"
+            placeholder="内容"
+            rows={4}
+          />
           <div className="flex gap-2">
-            <button onClick={onSave} className="flex-1 py-1 text-xs bg-brutal-accent text-brutal-bg font-mono"><Check className="w-3 h-3 inline mr-1" />保存</button>
-            <button onClick={onCancel} className="flex-1 py-1 text-xs border border-brutal-border font-mono">取消</button>
+            <button onClick={onSave} className="flex-1 py-1 text-xs bg-brutal-accent text-brutal-bg font-mono">
+              <Check className="w-3 h-3 inline mr-1" />保存
+            </button>
+            <button onClick={onCancel} className="flex-1 py-1 text-xs border border-brutal-border font-mono">
+              取消
+            </button>
           </div>
           <div className="flex gap-1 mt-1">
             {(['default', 'accent', 'warning', 'success'] as const).map((color) => (
-              <button key={color} onClick={() => onChangeColor(color)} className={`w-4 h-4 border \${color === 'default' ? 'border-brutal-border bg-brutal-surface' : color === 'accent' ? 'border-brutal-accent bg-brutal-accent' : color === 'warning' ? 'border-brutal-warning bg-brutal-warning' : 'border-brutal-success bg-brutal-success'}`} title={color} />
+              <button
+                key={color}
+                onClick={() => onChangeColor(color)}
+                className={`w-4 h-4 border ${
+                  color === 'default'
+                    ? 'border-brutal-border bg-brutal-surface'
+                    : color === 'accent'
+                    ? 'border-brutal-accent bg-brutal-accent'
+                    : color === 'warning'
+                    ? 'border-brutal-warning bg-brutal-warning'
+                    : 'border-brutal-success bg-brutal-success'
+                }`}
+                title={color}
+              />
             ))}
           </div>
         </div>
@@ -82,11 +141,16 @@ function SortableNote({ note, isEditing, isLocked, editTitle, editContent, onEdi
   }
 
   return (
-    <div ref={setNodeRef} style={style} className={`relative border-2 \${COLORS[note.color]} p-4 min-h-[160px] flex flex-col group cursor-move`}>
+    <div ref={setNodeRef} style={style} className={`relative border-2 ${colorClass} p-4 min-h-[160px] flex flex-col group cursor-move`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {!isLocked && (
-            <button {...attributes} {...listeners} className="p-1 text-brutal-muted hover:text-brutal-text cursor-grab active:cursor-grabbing" title="拖拽排序">
+            <button
+              {...attributes}
+              {...listeners}
+              className="p-1 text-brutal-muted hover:text-brutal-text cursor-grab active:cursor-grabbing"
+              title="拖拽排序"
+            >
               <GripVertical className="w-3 h-3" />
             </button>
           )}
@@ -94,8 +158,12 @@ function SortableNote({ note, isEditing, isLocked, editTitle, editContent, onEdi
         </div>
         {!isLocked && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={onStartEdit} className="p-1 text-brutal-muted hover:text-brutal-text" title="编辑"><Edit2 className="w-3 h-3" /></button>
-            <button onClick={onDelete} className="p-1 text-brutal-muted hover:text-brutal-warning" title="删除"><X className="w-3 h-3" /></button>
+            <button onClick={onStartEdit} className="p-1 text-brutal-muted hover:text-brutal-text" title="编辑">
+              <Edit2 className="w-3 h-3" />
+            </button>
+            <button onClick={onDelete} className="p-1 text-brutal-muted hover:text-brutal-warning" title="删除">
+              <X className="w-3 h-3" />
+            </button>
           </div>
         )}
       </div>
@@ -104,7 +172,6 @@ function SortableNote({ note, isEditing, isLocked, editTitle, editContent, onEdi
     </div>
   );
 }
-
 
 export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps) {
   const { t } = useI18n();
@@ -150,13 +217,11 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      setNotes((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        const newItems = arrayMove(items, oldIndex, newIndex);
-        saveNotes(newItems);
-        return newItems;
-      });
+      const oldIndex = notes.findIndex((item) => item.id === active.id);
+      const newIndex = notes.findIndex((item) => item.id === over.id);
+      const newItems = arrayMove(notes, oldIndex, newIndex);
+      setNotes(newItems);
+      await saveNotes(newItems);
     }
   };
 
@@ -169,7 +234,9 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
 
   const saveEdit = async () => {
     if (!editingNote) return;
-    const newNotes = notes.map((note) => note.id === editingNote ? { ...note, title: editTitle, content: editContent } : note);
+    const newNotes = notes.map((note) =>
+      note.id === editingNote ? { ...note, title: editTitle, content: editContent } : note
+    );
     setNotes(newNotes);
     await saveNotes(newNotes);
     setEditingNote(null);
@@ -201,7 +268,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
 
   const changeColor = async (id: string, color: StickyNote['color']) => {
     if (isLocked) return;
-    const newNotes = notes.map((note) => note.id === id ? { ...note, color } : note);
+    const newNotes = notes.map((note) => (note.id === id ? { ...note, color } : note));
     setNotes(newNotes);
     await saveNotes(newNotes);
   };
@@ -229,11 +296,16 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
         {!isLocked && (
           <div className="flex items-center gap-2">
             <button onClick={getAiSuggestion} disabled={isGenerating} className="btn-brutal flex items-center gap-2 text-xs">
-              {isGenerating ? <div className="w-3 h-3 border border-brutal-text border-t-transparent animate-spin" /> : <span className="text-brutal-accent">✨</span>}
+              {isGenerating ? (
+                <div className="w-3 h-3 border border-brutal-text border-t-transparent animate-spin" />
+              ) : (
+                <span className="text-brutal-accent">✨</span>
+              )}
               AI 建议
             </button>
             <button onClick={addNote} className="btn-brutal flex items-center gap-2 text-xs group">
-              <Plus className="w-3 h-3 text-brutal-text group-active:text-brutal-bg" />添加
+              <Plus className="w-3 h-3 text-brutal-text group-active:text-brutal-bg" />
+              添加
             </button>
           </div>
         )}
@@ -245,7 +317,9 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
             <pre className="text-xs text-brutal-accent font-mono leading-none flex-shrink-0">{AI_PET_CAT}</pre>
             <div className="flex-1">
               <p className="text-sm font-mono text-brutal-text whitespace-pre-line">{aiSuggestion}</p>
-              <button onClick={() => setAiSuggestion(null)} className="text-xs text-brutal-muted hover:text-brutal-text mt-2">[关闭]</button>
+              <button onClick={() => setAiSuggestion(null)} className="text-xs text-brutal-muted hover:text-brutal-text mt-2">
+                [关闭]
+              </button>
             </div>
           </div>
         </div>
@@ -254,7 +328,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
       <div className="flex-1 overflow-hidden min-h-0">
         <div className="h-full overflow-y-auto p-6">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={notes.map(n => n.id)} strategy={rectSortingStrategy}>
+            <SortableContext items={notes.map((n) => n.id)} strategy={rectSortingStrategy}>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {notes.map((note) => (
                   <SortableNote
@@ -270,7 +344,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
                     onCancel={cancelEdit}
                     onStartEdit={() => startEdit(note)}
                     onDelete={() => deleteNote(note.id)}
-                    onChangeColor={(color: any) => changeColor(note.id, color)}
+                    onChangeColor={(color: string) => changeColor(note.id, color as StickyNote['color'])}
                   />
                 ))}
               </div>
@@ -283,7 +357,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
             </div>
           )}
 
-          <div className="mt-4 pt-4 border-t border-brutal-border">
+          <div className="mt-6 pt-4 border-t border-brutal-border pb-20">
             <p className="text-xs text-brutal-muted font-mono">💡 提示：拖拽便利贴可排序，点击编辑图标修改内容</p>
           </div>
         </div>

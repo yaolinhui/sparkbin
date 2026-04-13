@@ -62,7 +62,7 @@ export function MonthView({ currentDate, onDateChange, contents, onSelectDate }:
 
       {/* Calendar Grid */}
       <div className="flex-1 grid grid-cols-7 auto-rows-fr">
-        {days.map((day, index) => {
+        {days.map((day) => {
           const dayContents = getContentsForDay(day);
           const isCurrentMonth = isSameMonth(day, currentDate);
           const isToday = isSameDay(day, new Date());
