@@ -326,11 +326,11 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="p-6 min-h-full">
+      <div className="flex-1 overflow-y-auto flex flex-col">
+        <div className="p-6 flex-1 flex flex-col">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={notes.map((n) => n.id)} strategy={rectSortingStrategy}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 content-start flex-1">
                 {notes.map((note) => (
                   <SortableNote
                     key={note.id}
@@ -353,14 +353,14 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
           </DndContext>
 
           {notes.length === 0 && (
-            <div className="text-center py-12">
+            <div className="text-center py-12 flex-1 flex items-center justify-center">
               <p className="text-brutal-muted font-mono text-sm">还没有便利贴，点击"添加"创建第一个</p>
             </div>
           )}
+        </div>
 
-          <div className="mt-6 pt-4 border-t border-brutal-border">
-            <p className="text-xs text-brutal-muted font-mono">💡 提示：拖拽便利贴可排序，点击编辑图标修改内容</p>
-          </div>
+        <div className="px-6 py-4 border-t border-brutal-border bg-brutal-surface/50">
+          <p className="text-xs text-brutal-muted font-mono">💡 提示：拖拽便利贴可排序，点击编辑图标修改内容</p>
         </div>
       </div>
     </div>
