@@ -1,15 +1,4 @@
-import { useMemo } from 'react';
-import ReactFlow, {
-  Background,
-  type Node,
-  type Edge,
-  Position,
-  MarkerType,
-  Handle,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
 import { STAGE_ORDER, type StageKey } from '../types';
-import { useStageLabel } from '../i18n';
 
 interface StageFlowProps {
   currentStage: StageKey;
@@ -35,124 +24,12 @@ const STAGE_LABELS: Record<StageKey, string> = {
   monetize: '变现',
 };
 
-// Node types - defined outside component to prevent recreation
-const nodeTypes = {
-  stageNode: StageNode,
-};
-
-// Custom node component
-function StageNode({ data }: { data: { stage: StageKey; isCurrent: boolean; isCompleted: boolean; isLocked: boolean; onClick?: () => void } }) {
-  const stageLabel = useStageLabel(data.stage);
-
-  // 样式优先级：当前 > 已完成 > 锁定
-  const getNodeClasses = () => {
-    if (data.isCurrent) {
-      return 'bg-brutal-accent border-brutal-accent text-brutal-bg';
-    }
-    if (data.isCompleted) {
-      return 'border-brutal-success text-brutal-success bg-brutal-bg';
-    }
-    if (data.isLocked) {
-      return 'border-brutal-border text-brutal-muted bg-brutal-bg';
-    }
-    return 'border-brutal-border text-brutal-text bg-brutal-bg';
-  };
-
-  const getLabelClasses = () => {
-    if (data.isCurrent) {
-      return 'text-brutal-accent font-bold';
-    }
-    if (data.isCompleted) {
-      return 'text-brutal-success';
-    }
-    if (data.isLocked) {
-      return 'text-brutal-muted';
-    }
-    return 'text-brutal-text';
-  };
-
-  return (
-    <div
-      className="flex flex-col items-center gap-1 font-mono cursor-pointer hover:opacity-80 transition-opacity"
-      onClick={(e) => {
-        e.stopPropagation();
-        data.onClick?.();
-      }}
-    >
-      {/* 左侧目标连接点 - 接收来自上一个阶段的边 */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        style={{ background: 'transparent', border: 'none', width: 1, height: 1 }}
-      />
-      <div
-        className={`w-10 h-10 flex items-center justify-center text-sm border ${getNodeClasses()}`}
-      >
-        {STAGE_NUMBERS[data.stage]}
-      </div>
-      <span className={`text-xs uppercase tracking-wider ${getLabelClasses()}`}>
-        {stageLabel}
-      </span>
-      {/* 右侧源连接点 - 发出连接到下一个阶段 */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        style={{ background: 'transparent', border: 'none', width: 1, height: 1 }}
-      />
-    </div>
-  );
-}
-
 export function StageFlow({ currentStage, completedStages, onStageClick }: StageFlowProps) {
-  const { nodes, edges } = useMemo(() => {
-    const nodeList: Node[] = [];
-    const edgeList: Edge[] = [];
-
-    STAGE_ORDER.forEach((stage, index) => {
-      const isCurrent = stage === currentStage;
-      const isCompleted = completedStages.includes(stage);
-
-      nodeList.push({
-        id: stage,
-        type: 'stageNode',
-        data: { stage, isCurrent, isCompleted, isLocked: !isCurrent && !isCompleted, onClick: () => onStageClick?.(stage) },
-        position: { x: index * 140, y: 0 },
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left,
-        style: {
-          background: 'transparent',
-          border: 'none',
-          boxShadow: 'none',
-          width: 100,
-        },
-      });
-
-      if (index < STAGE_ORDER.length - 1) {
-        // 边颜色基于源阶段是否完成
-        const isEdgeCompleted = completedStages.includes(stage);
-        edgeList.push({
-          id: `${stage}-${STAGE_ORDER[index + 1]}`,
-          source: stage,
-          target: STAGE_ORDER[index + 1],
-          type: 'smoothstep',
-          style: {
-            stroke: isEdgeCompleted ? 'var(--brutal-success)' : 'var(--brutal-border)',
-            strokeWidth: 1,
-          },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: isEdgeCompleted ? 'var(--brutal-success)' : 'var(--brutal-border)',
-          },
-        });
-      }
-    });
-
-    return { nodes: nodeList, edges: edgeList };
-  }, [currentStage, completedStages, onStageClick]);
+  const progress = Math.round((completedStages.length / STAGE_ORDER.length) * 100);
 
   return (
     <div className="bg-brutal-surface border-b border-brutal-border">
-      {/* 简化版进度条 - 始终显示 */}
+      {/* 头部信息栏 */}
       <div className="flex items-center justify-between px-6 py-3">
         <div className="flex items-center gap-4">
           {/* 阶段进度 */}
@@ -181,16 +58,14 @@ export function StageFlow({ currentStage, completedStages, onStageClick }: Stage
             <div className="w-24 h-1 bg-brutal-border">
               <div
                 className="h-full bg-brutal-accent transition-all"
-                style={{ width: `${Math.round((completedStages.length / STAGE_ORDER.length) * 100)}%` }}
+                style={{ width: `${progress}%` }}
               />
             </div>
-            <span className="text-xs font-mono text-brutal-muted">
-              {Math.round((completedStages.length / STAGE_ORDER.length) * 100)}%
-            </span>
+            <span className="text-xs font-mono text-brutal-muted">{progress}%</span>
           </div>
         </div>
 
-        {/* 阶段快速跳转 - 带名称提示 */}
+        {/* 阶段快速跳转 */}
         <div className="flex items-center gap-2 flex-wrap">
           {STAGE_ORDER.map((stage) => {
             const stageName = STAGE_LABELS[stage];
@@ -225,28 +100,76 @@ export function StageFlow({ currentStage, completedStages, onStageClick }: Stage
         </div>
       </div>
 
-      {/* 完整流程图 - 始终显示，砍掉折叠按钮 */}
-      <div className="h-28 border-t border-brutal-border">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          fitView
-          fitViewOptions={{ padding: 0.2 }}
-          nodesDraggable={false}
-          nodesConnectable={false}
-          panOnDrag={false}
-          zoomOnScroll={false}
-          zoomOnPinch={false}
-          zoomOnDoubleClick={false}
-          nodeTypes={nodeTypes}
-          attributionPosition="bottom-left"
-        >
-          <Background gap={40} size={1} color="var(--brutal-border)" />
-        </ReactFlow>
+      {/* 静态流程图 - 纯 CSS/HTML，无交互 */}
+      <div className="border-t border-brutal-border bg-brutal-bg/30">
+        <div className="flex items-center justify-center gap-4 py-6 px-4 overflow-x-auto">
+          {STAGE_ORDER.map((stage, index) => {
+            const isCurrent = stage === currentStage;
+            const isCompleted = completedStages.includes(stage);
+            const isLocked = !isCurrent && !isCompleted;
+
+            // 节点样式
+            const nodeClasses = isCurrent
+              ? 'bg-brutal-accent border-brutal-accent text-brutal-bg'
+              : isCompleted
+              ? 'border-brutal-success text-brutal-success bg-brutal-bg'
+              : 'border-brutal-border text-brutal-muted bg-brutal-bg';
+
+            const labelClasses = isCurrent
+              ? 'text-brutal-accent font-bold'
+              : isCompleted
+              ? 'text-brutal-success'
+              : 'text-brutal-muted';
+
+            return (
+              <div key={stage} className="flex items-center gap-4 flex-shrink-0">
+                {/* 阶段节点 */}
+                <div
+                  onClick={() => onStageClick?.(stage)}
+                  className={`flex flex-col items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity ${
+                    isLocked ? 'opacity-60' : ''
+                  }`}
+                >
+                  <div className={`w-10 h-10 flex items-center justify-center text-sm border ${nodeClasses}`}>
+                    {STAGE_NUMBERS[stage]}
+                  </div>
+                  <span className={`text-xs uppercase tracking-wider ${labelClasses}`}>
+                    {STAGE_LABELS[stage]}
+                  </span>
+                </div>
+
+                {/* 连接线（最后一个不显示） */}
+                {index < STAGE_ORDER.length - 1 && (
+                  <div className="flex items-center">
+                    <div
+                      className="w-8 h-px"
+                      style={{
+                        backgroundColor: isCompleted ? 'var(--brutal-success)' : 'var(--brutal-border)',
+                      }}
+                    />
+                    <svg
+                      width="8"
+                      height="8"
+                      viewBox="0 0 8 8"
+                      className="-ml-1"
+                      style={{
+                        color: isCompleted ? 'var(--brutal-success)' : 'var(--brutal-border)',
+                      }}
+                    >
+                      <path
+                        d="M0 0 L8 4 L0 8 Z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 }
-
 
 export default StageFlow;
