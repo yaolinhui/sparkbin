@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { X, ZoomIn, ZoomOut, Maximize2, GitGraph } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { Project, StageKey } from '../types';
@@ -27,13 +27,27 @@ interface BlueprintLink {
   target: string;
   color: string;
   dashed?: boolean;
+  directed?: boolean;
 }
-
 
 export function ProjectBlueprint({ project, onClose, onStageClick }: ProjectBlueprintProps) {
   const { t } = useI18n();
-  const [selectedNode] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [hasDragged, setHasDragged] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+
+  // ESC 关闭
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const { nodes, links } = useMemo(() => {
     const nodes: BlueprintNode[] = [];
@@ -43,7 +57,7 @@ export function ProjectBlueprint({ project, onClose, onStageClick }: ProjectBlue
       id: 'project',
       name: project.title,
       val: 30,
-      color: '#374151',
+      color: 'var(--brutal-text)',
       group: 'center',
       x: 0,
       y: 0,
@@ -65,7 +79,7 @@ export function ProjectBlueprint({ project, onClose, onStageClick }: ProjectBlue
         id: stageKey,
         name: t('stage.' + stageKey),
         val: isCompleted ? 20 : isCurrent ? 18 : 15,
-        color: isCompleted ? '#10b981' : isCurrent ? '#3b82f6' : '#9ca3af',
+        color: isCompleted ? 'var(--brutal-success)' : isCurrent ? 'var(--brutal-accent)' : 'var(--brutal-muted)',
         x,
         y,
         group: 'stage',
@@ -76,16 +90,18 @@ export function ProjectBlueprint({ project, onClose, onStageClick }: ProjectBlue
       links.push({
         source: 'project',
         target: stageKey,
-        color: isCompleted ? '#10b981' : isCurrent ? '#3b82f6' : '#d1d5db',
+        color: isCompleted ? 'var(--brutal-success)' : isCurrent ? 'var(--brutal-accent)' : 'var(--brutal-border)',
         dashed: !isCompleted && !isCurrent,
+        directed: false,
       });
 
       if (index < STAGE_ORDER.length - 1) {
         links.push({
           source: stageKey,
           target: STAGE_ORDER[index + 1],
-          color: isCompleted ? '#10b981' : '#d1d5db',
+          color: isCompleted ? 'var(--brutal-success)' : 'var(--brutal-border)',
           dashed: !isCompleted,
+          directed: true,
         });
       }
     });
@@ -93,9 +109,38 @@ export function ProjectBlueprint({ project, onClose, onStageClick }: ProjectBlue
     return { nodes, links };
   }, [project, t]);
 
-  const handleZoomIn = () => setZoom(z => Math.min(z * 1.2, 3));
-  const handleZoomOut = () => setZoom(z => Math.max(z / 1.2, 0.3));
-  const handleReset = () => setZoom(1);
+  const handleZoomIn = () => setZoom((z) => Math.min(z * 1.2, 3));
+  const handleZoomOut = () => setZoom((z) => Math.max(z / 1.2, 0.3));
+  const handleReset = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setHasDragged(false);
+    dragStart.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      setHasDragged(true);
+    }
+    setPan({ x: dragStart.current.panX + dx, y: dragStart.current.panY + dy });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleNodeClick = (node: BlueprintNode) => {
+    if (hasDragged) return;
+    setSelectedNode(node.id);
+    if (node.stageKey) onStageClick(node.stageKey);
+  };
 
   return (
     <div className="fixed inset-0 bg-brutal-bg/95 z-50 flex flex-col">
@@ -124,61 +169,91 @@ export function ProjectBlueprint({ project, onClose, onStageClick }: ProjectBlue
 
       <div className="flex-1 relative overflow-hidden">
         <svg
-          className="w-full h-full"
-          viewBox={[-400 * zoom, -300 * zoom, 800 * zoom, 600 * zoom].join(' ')}
+          className={`w-full h-full ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+          viewBox={[-400 / zoom, -300 / zoom, 800 / zoom, 600 / zoom].join(' ')}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
         >
           <defs>
-            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-              <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280" />
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="25" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" style={{ fill: 'var(--brutal-muted)' }} />
             </marker>
           </defs>
 
-          {links.map((link, index) => {
-            const sourceNode = nodes.find(n => n.id === link.source);
-            const targetNode = nodes.find(n => n.id === link.target);
-            if (!sourceNode || !targetNode) return null;
-            return (
-              <line
-                key={index}
-                x1={sourceNode.x || 0}
-                y1={sourceNode.y || 0}
-                x2={targetNode.x || 0}
-                y2={targetNode.y || 0}
-                stroke={link.color}
-                strokeWidth={link.dashed ? 1 : 2}
-                strokeDasharray={link.dashed ? '5,5' : 'none'}
-              />
-            );
-          })}
+          <g transform={`translate(${pan.x}, ${pan.y})`}>
+            {links.map((link, index) => {
+              const sourceNode = nodes.find((n) => n.id === link.source);
+              const targetNode = nodes.find((n) => n.id === link.target);
+              if (!sourceNode || !targetNode) return null;
+              return (
+                <line
+                  key={index}
+                  x1={sourceNode.x || 0}
+                  y1={sourceNode.y || 0}
+                  x2={targetNode.x || 0}
+                  y2={targetNode.y || 0}
+                  stroke={link.color}
+                  strokeWidth={link.dashed ? 1 : 2}
+                  strokeDasharray={link.dashed ? '5,5' : 'none'}
+                  markerEnd={link.directed ? 'url(#arrowhead)' : undefined}
+                />
+              );
+            })}
 
-          {nodes.map((node) => (
-            <g
-              key={node.id}
-              transform={'translate(' + (node.x || 0) + ', ' + (node.y || 0) + ')'}
-              onClick={() => node.stageKey && onStageClick(node.stageKey)}
-              style={{ cursor: node.stageKey ? 'pointer' : 'default' }}
-            >
-              <circle
-                r={node.val}
-                fill={node.color}
-                stroke={selectedNode === node.id ? '#3b82f6' : '#374151'}
-                strokeWidth={selectedNode === node.id ? 3 : 1}
-              />
-              <text textAnchor="middle" dy={node.val + 15} className="text-xs font-mono" fill="#374151">
-                {node.name}
-              </text>
-              {node.status && (
-                <text textAnchor="middle" dy={node.val + 28} className="text-xs" fill={
-                  node.status === 'completed' ? '#10b981' : node.status === 'in_progress' ? '#3b82f6' : '#9ca3af'
-                }>
-                  {node.status === 'completed' && '完成'}
-                  {node.status === 'in_progress' && '进行中'}
-                  {node.status === 'pending' && '待处理'}
-                  {node.status === 'locked' && '未开始'}
-                </text>
-              )}
-            </g>
-          ))}
+            {nodes.map((node) => {
+              const isSelected = selectedNode === node.id;
+              const isHovered = hoveredNode === node.id;
+              const radius = node.val + (isHovered ? 3 : 0);
+              return (
+                <g
+                  key={node.id}
+                  transform={'translate(' + (node.x || 0) + ', ' + (node.y || 0) + ')'}
+                  onClick={() => handleNodeClick(node)}
+                  onMouseEnter={() => setHoveredNode(node.id)}
+                  onMouseLeave={() => setHoveredNode(null)}
+                  style={{ cursor: node.stageKey ? 'pointer' : 'default' }}
+                >
+                  <circle
+                    r={radius}
+                    fill={node.color}
+                    stroke={isSelected ? 'var(--brutal-accent)' : 'var(--brutal-bg)'}
+                    strokeWidth={isSelected ? 3 : isHovered ? 2 : 1}
+                  />
+                  <text
+                    textAnchor="middle"
+                    dy={radius + 15}
+                    className="text-xs font-mono"
+                    style={{ fill: 'var(--brutal-text)', pointerEvents: 'none' }}
+                  >
+                    {node.name}
+                  </text>
+                  {node.status && (
+                    <text
+                      textAnchor="middle"
+                      dy={radius + 28}
+                      className="text-xs"
+                      style={{
+                        fill:
+                          node.status === 'completed'
+                            ? 'var(--brutal-success)'
+                            : node.status === 'in_progress'
+                              ? 'var(--brutal-accent)'
+                              : 'var(--brutal-muted)',
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      {node.status === 'completed' && '完成'}
+                      {node.status === 'in_progress' && '进行中'}
+                      {node.status === 'pending' && '待处理'}
+                      {node.status === 'locked' && '未开始'}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+          </g>
         </svg>
       </div>
     </div>
