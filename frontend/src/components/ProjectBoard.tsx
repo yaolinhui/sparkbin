@@ -14,6 +14,26 @@ import { ModelSelector } from './ModelSelector';
 import { AIPetConfig } from './AIPetConfig';
 import type { AIPetConfig as AIPetConfigType } from '../types';
 
+// 宠物问候语
+const PET_GREETINGS: Record<string, string[]> = {
+  morning: ['早上好呀！今天也要加油哦～', '喵～新的一天开始啦！', '早！记得喝杯咖啡☕'],
+  afternoon: ['下午好！进度怎么样啦？', '该休息会儿啦～', '加油加油！快要完成了！'],
+  evening: ['晚上好！辛苦啦～', '今天做得真棒！', '早点休息哦，明天继续！'],
+  night: ['这么晚还在工作呀？', '注意休息哦～', '墨墨陪你加班💪'],
+};
+
+// 根据时间获取问候语
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  let timeKey: keyof typeof PET_GREETINGS = 'morning';
+  if (hour >= 12 && hour < 18) timeKey = 'afternoon';
+  else if (hour >= 18 && hour < 22) timeKey = 'evening';
+  else if (hour >= 22 || hour < 6) timeKey = 'night';
+
+  const greetings = PET_GREETINGS[timeKey];
+  return greetings[Math.floor(Math.random() * greetings.length)];
+}
+
 interface ProjectBoardProps {
   onLogout: () => void;
 }
@@ -75,6 +95,8 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isPetConfigOpen, setIsPetConfigOpen] = useState(false);
+  const [showPetBubble, setShowPetBubble] = useState(false);
+  const [petDialogue, setPetDialogue] = useState('');
   const [petConfig, setPetConfig] = useState<AIPetConfigType | null>(() => {
     const saved = localStorage.getItem('sparkbin_pet_config');
     return saved ? JSON.parse(saved) : null;
@@ -136,6 +158,23 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   };
 
   const status = getSystemStatus();
+
+  // 宠物配置
+  const petEmoji = petConfig?.type === 'robot' ? '🤖' :
+                   petConfig?.type === 'panda' ? '🐼' :
+                   petConfig?.type === 'fox' ? '🦊' : '🐱';
+  const petName = petConfig?.name || '墨墨';
+  const petColor = petConfig?.type === 'robot' ? '#60a5fa' :
+                   petConfig?.type === 'panda' ? '#a3a3a3' :
+                   petConfig?.type === 'fox' ? '#f97316' : '#fbbf24';
+
+  // 点击宠物显示问候
+  const handlePetClick = () => {
+    const greeting = getGreeting();
+    setPetDialogue(greeting);
+    setShowPetBubble(true);
+    setTimeout(() => setShowPetBubble(false), 4000);
+  };
 
   return (
     <div className="min-h-screen bg-brutal-bg text-brutal-text font-mono">
@@ -285,7 +324,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         )}
 
         {/* Filtered Projects */}
-        {filteredProjects.length > 0 && (
+        {(filteredProjects.length > 0 || filter === 'all') && (
           <>
             <SectionHeader
               title={filter === 'all' ? t('section.active_projects') : `FILTERED: ${filter}`}
@@ -299,6 +338,21 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                   index={index}
                 />
               ))}
+              {/* 添加新项目卡片 */}
+              {filter !== 'archived' && (
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="bg-brutal-surface border-2 border-dashed border-brutal-border p-4 cursor-pointer
+                           hover:border-brutal-accent hover:bg-brutal-accent/5
+                           transition-all flex flex-col items-center justify-center min-h-[200px]"
+                >
+                  <div className="w-12 h-12 border-2 border-brutal-border rounded-full flex items-center justify-center mb-3
+                                group-hover:border-brutal-accent">
+                    <Plus className="w-6 h-6 text-brutal-muted" />
+                  </div>
+                  <span className="text-sm font-mono text-brutal-muted">添加新项目</span>
+                </button>
+              )}
             </div>
           </>
         )}
@@ -360,17 +414,63 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         )}
       </main>
 
-      {/* Add Button - Brutalist Style */}
-      <button
-        onClick={() => setIsCreateModalOpen(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 border-2 border-brutal-accent bg-brutal-bg text-brutal-accent
-                   hover:bg-brutal-accent hover:text-brutal-bg
-                   transition-colors duration-75
-                   flex items-center justify-center"
-        style={{ boxShadow: '4px 4px 0px var(--brutal-accent)' }}
-      >
-        <Plus className="w-6 h-6" />
-      </button>
+      {/* AI Pet - Fixed Bottom Right */}
+      <div className="fixed bottom-6 right-6 flex flex-col items-end gap-2">
+        {/* 对话气泡 */}
+        {showPetBubble && (
+          <div className="mb-2 relative"
+          >
+            <div
+              className="px-4 py-3 rounded-2xl text-sm font-mono text-center max-w-[200px]"
+              style={{
+                backgroundColor: petColor,
+                color: '#fff',
+                border: '2px solid #000',
+                boxShadow: '4px 4px 0px #000',
+              }}
+            >
+              {petDialogue}
+            </div>
+            {/* 气泡尾巴 */}
+            <div
+              className="absolute -bottom-2 right-6 w-0 h-0"
+              style={{
+                borderLeft: '8px solid transparent',
+                borderRight: '8px solid transparent',
+                borderTop: `8px solid ${petColor}`,
+              }}
+            />
+          </div>
+        )}
+
+        {/* 宠物按钮 */}
+        <button
+          onClick={handlePetClick}
+          className="w-16 h-16 bg-brutal-bg border-2 border-brutal-border
+                     hover:border-brutal-accent hover:scale-110
+                     transition-all duration-200
+                     flex items-center justify-center text-4xl"
+          style={{ boxShadow: '4px 4px 0px var(--brutal-border)' }}
+          title={`${petName} - 点击互动`}
+        >
+          {petEmoji}
+          {/* 性格装饰 */}
+          <span className="absolute -top-1 -right-1 text-lg"
+          >
+            {petConfig?.personality === 'gentle' ? '🌸' :
+             petConfig?.personality === 'rational' ? '📊' :
+             petConfig?.personality === 'zen' ? '🧘' : '⚡'}
+          </span>
+        </button>
+
+        {/* 配置按钮 */}
+        <button
+          onClick={() => setIsPetConfigOpen(true)}
+          className="text-xs text-brutal-muted hover:text-brutal-accent font-mono"
+        >
+          更换宠物
+        </button>
+      </div>
 
       {/* Modals */}
       <CreateProjectModal
