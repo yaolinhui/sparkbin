@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Send, ChevronRight, ChevronLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useI18n } from '../i18n';
 import { aiService } from '../services/ai';
+import type { AIPetConfig } from '../types';
 
 interface Message {
   id: string;
@@ -20,57 +21,31 @@ interface AIChatProps {
 
 const WELCOME_MESSAGES: Record<string, { zh: string; en: string }> = {
   idea: {
-    zh: '> 初始化创意模块...\n\n准备帮助您完善这个想法。\n\n可以尝试询问：\n• 目标用户是谁？\n• 解决什么问题？\n• 生成价值主张',
-    en: '> INITIALIZING_CREATIVE_MODULE...\n\nReady to help you refine this idea.\n\nTry asking:\n• Who is the target user?\n• What problem does this solve?\n• Generate a value proposition',
+    zh: '喵～我是你的创意小助手！\n\n让我帮你完善想法吧～',
+    en: 'Meow~ I\'m your creative assistant!\n\nLet me help refine your idea~',
   },
   validate: {
-    zh: '> 初始化验证模块...\n\n准备帮助您验证想法。\n\n可以尝试询问：\n• 生成调研问卷\n• 用户访谈提纲\n• 竞品对比分析',
-    en: '> INITIALIZING_VALIDATION_MODULE...\n\nReady to help validate your idea.\n\nTry asking:\n• Generate survey questions\n• Interview outline\n• Competitor analysis',
+    zh: '准备帮你验证想法！\n\n我们一起确认方向对不对～',
+    en: 'Ready to validate your idea!\n\nLet\'s confirm the direction together~',
   },
   prototype: {
-    zh: '> 初始化原型模块...\n\n准备帮助您构建原型。\n\n可以尝试询问：\n• 功能清单拆分\n• 技术选型建议\n• MVP优先级',
-    en: '> INITIALIZING_PROTOTYPE_MODULE...\n\nReady to help build your prototype.\n\nTry asking:\n• Feature breakdown\n• Tech stack recommendations\n• MVP priorities',
+    zh: '来构建原型吧！\n\n我可以帮你拆分功能、选技术栈～',
+    en: 'Let\'s build the prototype!\n\nI can help with features and tech stack~',
   },
   ship: {
-    zh: '> 初始化发布模块...\n\n准备帮助您发布产品。\n\n可以尝试询问：\n• 发布检查清单\n• 多平台文案生成\n• 用户反馈收集',
-    en: '> INITIALIZING_SHIP_MODULE...\n\nReady to help launch your product.\n\nTry asking:\n• Launch checklist\n• Multi-platform copy\n• User feedback collection',
+    zh: '发布倒计时！\n\n检查一下清单，准备启航～',
+    en: 'Launch countdown!\n\nCheck the list, ready to sail~',
   },
   grow: {
-    zh: '> 初始化增长模块...\n\n准备帮助您获取用户。\n\n可以尝试询问：\n• 内容日历规划\n• 渠道策略建议\n• 增长实验设计',
-    en: '> INITIALIZING_GROWTH_MODULE...\n\nReady to help you acquire users.\n\nTry asking:\n• Content calendar\n• Channel strategy\n• Growth experiments',
+    zh: '增长时间到！\n\n让我们获取更多用户～',
+    en: 'Growth time!\n\nLet\'s acquire more users~',
   },
   monetize: {
-    zh: '> 初始化变现模块...\n\n准备帮助您实现收入。\n\n可以尝试询问：\n• 定价策略建议\n• 转化漏斗分析\n• 收入优化方案',
-    en: '> INITIALIZING_MONETIZE_MODULE...\n\nReady to help you generate revenue.\n\nTry asking:\n• Pricing strategy\n• Conversion funnel analysis\n• Revenue optimization',
+    zh: '变现模式开启！\n\n帮你设计定价策略～',
+    en: 'Monetization mode on!\n\nHelp you design pricing strategy~',
   },
 };
 
-const QUICK_ACTIONS: Record<string, { zh: string; en: string }[]> = {
-  idea: [
-    { zh: '目标用户', en: 'target_user' },
-    { zh: '价值主张', en: 'value_prop' },
-  ],
-  validate: [
-    { zh: '调研问卷', en: 'survey' },
-    { zh: '竞品分析', en: 'competitors' },
-  ],
-  prototype: [
-    { zh: '功能拆分', en: 'features' },
-    { zh: '技术选型', en: 'tech_stack' },
-  ],
-  ship: [
-    { zh: '发布清单', en: 'checklist' },
-    { zh: '推广文案', en: 'copy' },
-  ],
-  grow: [
-    { zh: '内容日历', en: 'calendar' },
-    { zh: '渠道策略', en: 'channels' },
-  ],
-  monetize: [
-    { zh: '定价建议', en: 'pricing' },
-    { zh: '转化分析', en: 'funnel' },
-  ],
-};
 
 // Markdown styles for AI responses
 const markdownStyles = `
@@ -98,18 +73,39 @@ export function AIChat({
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [petConfig, setPetConfig] = useState<AIPetConfig | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // 加载宠物配置
+  useEffect(() => {
+    const saved = localStorage.getItem('sparkbin_pet_config');
+    if (saved) {
+      setPetConfig(JSON.parse(saved));
+    }
+  }, []);
 
   const handleToggleCollapse = () => {
     onCollapsedChange?.(!isCollapsed);
   };
 
+  // 宠物外观
+  const petEmoji = petConfig?.type === 'robot' ? '🤖' :
+                   petConfig?.type === 'panda' ? '🐼' :
+                   petConfig?.type === 'fox' ? '🦊' : '🐱';
+  const petName = petConfig?.name || '墨墨';
+  const petColor = petConfig?.type === 'robot' ? '#60a5fa' :
+                   petConfig?.type === 'panda' ? '#a3a3a3' :
+                   petConfig?.type === 'fox' ? '#f97316' : '#fbbf24';
+  const personalityEmoji = petConfig?.personality === 'gentle' ? '🌸' :
+                           petConfig?.personality === 'rational' ? '📊' :
+                           petConfig?.personality === 'zen' ? '🧘' : '⚡';
+
   useEffect(() => {
     if (messages.length === 0) {
       const welcome = WELCOME_MESSAGES[stage] || {
-        zh: '> 准备就绪',
-        en: '> Ready to assist.',
+        zh: `嗨～我是${petName}，你的AI小伙伴！`,
+        en: `Hi~ I'm ${petName}, your AI buddy!`,
       };
       setMessages([
         {
@@ -119,41 +115,41 @@ export function AIChat({
         },
       ]);
     }
-  }, [stage, language]);
+  }, [stage, language, petName]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const buildMessages = (userInput: string) => {
-    const stageLabel = WELCOME_MESSAGES[stage]?.zh?.split('\n')[0]?.replace('> ', '') || stage;
-    const systemPrompt = language === 'zh'
-      ? `你是专业的项目顾问，擅长帮助创业者完善产品和项目。当前阶段：${stageLabel}`
-      : `You are a professional project consultant. Current stage: ${stageLabel}`;
-    const contextPrompt = projectTitle ? `Project: ${projectTitle}` : '';
+    const personality = petConfig?.personality || 'gentle';
+    const verbosity = petConfig?.verbosity || 'moderate';
+
+    const personalityPrompts: Record<string, string> = {
+      gentle: '你是一位温柔鼓励的助手，总是用温暖的语气回应，善于发现用户的优点并给予肯定。',
+      rational: '你是一位理性分析的助手，擅长逻辑思考和数据分析，给出清晰、有条理的建议。',
+      zen: '你是一位佛系平和的助手，说话慢条斯理，善于让人放松心情，不焦虑。',
+      sharp: '你是一位犀利直接的助手，善于发现问题本质，敢于挑战和质疑，推动用户思考。',
+    };
+
+    const systemPrompt = `${personalityPrompts[personality]}
+当前阶段：${stage}
+项目名称：${projectTitle || '未命名'}
+回复风格：${verbosity === 'quiet' ? '简洁' : verbosity === 'chatty' ? '详细活泼' : '适中'}
+请以${petName}的身份回复，语气要符合性格设定。`;
 
     const msgs: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
-      {
-        role: 'system',
-        content: `${systemPrompt}\n${contextPrompt}`,
-      },
+      { role: 'system', content: systemPrompt },
     ];
 
     const recentMessages = messages.slice(-10);
     for (const msg of recentMessages) {
       if (msg.id !== 'welcome') {
-        msgs.push({
-          role: msg.role,
-          content: msg.content,
-        });
+        msgs.push({ role: msg.role, content: msg.content });
       }
     }
 
-    msgs.push({
-      role: 'user',
-      content: userInput,
-    });
-
+    msgs.push({ role: 'user', content: userInput });
     return msgs;
   };
 
@@ -192,14 +188,12 @@ export function AIChat({
         );
       }
 
-      // 检查是否需要触发内容生成
       const generateKeywords = ['generate', 'create', 'write', 'draft', 'template', '生成', '创建', '写', '模板'];
       if (generateKeywords.some((kw) => input.toLowerCase().includes(kw))) {
         onGenerateContent?.(fullContent);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      // 识别配置错误并给出友好提示
       const isConfigError = errorMessage.includes('not configured') ||
                            errorMessage.includes('inactive') ||
                            errorMessage.includes('未配置') ||
@@ -209,7 +203,6 @@ export function AIChat({
       } else {
         setError(`${t('ai.error_prefix')} ${errorMessage}`);
       }
-      // 移除空的 AI 消息
       setMessages((prev) => prev.filter((msg) => msg.id !== aiMessage.id));
     } finally {
       setIsThinking(false);
@@ -224,26 +217,20 @@ export function AIChat({
     }
   };
 
-  const handleQuickAction = (action: string) => {
-    setInput(action);
-  };
-
-  const actions = QUICK_ACTIONS[stage] || [];
-
-  // 折叠状态 - 垂直按钮
+  // 折叠状态 - 显示宠物图标
   if (isCollapsed) {
     return (
       <div className="h-full flex items-center justify-center">
         <button
           onClick={handleToggleCollapse}
           className="flex flex-col items-center gap-2 px-2 py-4 bg-brutal-surface border border-brutal-border
-                     hover:bg-brutal-accent hover:text-brutal-bg transition-all duration-300 h-32"
-          title={t('ai.expand_assistant')}
+                     hover:border-brutal-accent transition-all duration-300 h-40"
+          title={`展开${petName}`}
         >
           <ChevronLeft className="w-4 h-4" />
           <div className="flex flex-col items-center gap-1">
-            <Bot className="w-5 h-5" />
-            <span className="text-xs font-mono [writing-mode:vertical-lr]">AI</span>
+            <span className="text-3xl">{petEmoji}</span>
+            <span className="text-xs font-mono [writing-mode:vertical-lr]">{petName}</span>
           </div>
         </button>
       </div>
@@ -257,47 +244,52 @@ export function AIChat({
         onClick={handleToggleCollapse}
         className="absolute -left-6 top-4 w-6 h-10 bg-brutal-surface border border-r-0 border-brutal-border
                    flex items-center justify-center hover:bg-brutal-accent hover:text-brutal-bg transition-colors z-10"
-        title={t('ai.collapse_assistant')}
+        title={`收起${petName}`}
       >
         <ChevronRight className="w-4 h-4" />
       </button>
 
-      {/* Header */}
-      <div className="flex items-center gap-2 p-4 border-b border-brutal-border bg-brutal-bg flex-shrink-0">
-        <div className="w-8 h-8 border border-brutal-accent flex items-center justify-center bg-brutal-accent">
-          <Bot className="w-4 h-4 text-brutal-bg" />
+      {/* Header - 宠物形象 */}
+      <div className="flex flex-col items-center p-4 border-b border-brutal-border bg-brutal-bg flex-shrink-0">
+        <div className="relative">
+          <div
+            className="w-20 h-20 rounded-full flex items-center justify-center text-5xl border-4"
+            style={{
+              backgroundColor: petColor + '20',
+              borderColor: petColor,
+              boxShadow: `0 4px 0 ${petColor}`,
+            }}
+          >
+            {petEmoji}
+          </div>
+          <span className="absolute -top-1 -right-1 text-xl">{personalityEmoji}</span>
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="font-mono text-sm truncate">{t('ai.assistant')}</div>
-          <div className="text-xs text-brutal-muted font-mono">backend-proxy-mode</div>
+        <div className="mt-2 text-center">
+          <div className="font-mono text-sm font-bold">{petName}</div>
+          <div className="text-xs text-brutal-muted font-mono">你的AI小伙伴</div>
         </div>
       </div>
 
-      {/* Messages - 自动填充剩余空间，内容过多时滚动 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 font-mono text-sm min-h-0">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 font-mono text-sm min-h-0">
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
+            className={`flex gap-2 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
           >
+            {message.role === 'assistant' && (
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-lg"
+                style={{ backgroundColor: petColor + '30' }}
+              >
+                {petEmoji}
+              </div>
+            )}
             <div
-              className={`w-8 h-8 flex items-center justify-center flex-shrink-0 border ${
+              className={`max-w-[80%] p-3 text-sm rounded-2xl ${
                 message.role === 'user'
-                  ? 'border-brutal-text bg-brutal-text'
-                  : 'border-brutal-accent bg-brutal-accent'
-              }`}
-            >
-              {message.role === 'user' ? (
-                <User className="w-4 h-4 text-brutal-bg" />
-              ) : (
-                <Bot className="w-4 h-4 text-brutal-bg" />
-              )}
-            </div>
-            <div
-              className={`max-w-[85%] p-3 text-sm ${
-                message.role === 'user'
-                  ? 'bg-brutal-text text-brutal-bg border border-brutal-text'
-                  : 'bg-brutal-bg text-brutal-text border border-brutal-border'
+                  ? 'bg-brutal-text text-brutal-bg rounded-br-none'
+                  : 'bg-brutal-bg border border-brutal-border rounded-bl-none'
               }`}
             >
               {message.role === 'assistant' ? (
@@ -311,17 +303,19 @@ export function AIChat({
           </div>
         ))}
         {isThinking && (
-          <div className="flex gap-3">
-            <div className="w-8 h-8 border border-brutal-accent bg-brutal-accent flex items-center justify-center">
-              <Bot className="w-4 h-4 text-brutal-bg" />
+          <div className="flex gap-2">
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-lg"
+              style={{ backgroundColor: petColor + '30' }}
+            >
+              {petEmoji}
             </div>
-            <div className="bg-brutal-bg border border-brutal-border p-3 flex items-center gap-2">
-              <span className="text-brutal-accent animate-blink">{'>'}</span>
-              <span className="text-brutal-muted">{t('ai.thinking')}</span>
+            <div className="bg-brutal-bg border border-brutal-border p-3 rounded-2xl rounded-bl-none flex items-center gap-2">
+              <span className="text-brutal-accent">{petName}正在思考</span>
               <span className="flex gap-1">
-                <span className="w-1.5 h-1.5 bg-brutal-accent animate-pulse" />
-                <span className="w-1.5 h-1.5 bg-brutal-accent animate-pulse delay-75" />
-                <span className="w-1.5 h-1.5 bg-brutal-accent animate-pulse delay-150" />
+                <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce" />
+                <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce delay-75" />
+                <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce delay-150" />
               </span>
             </div>
           </div>
@@ -336,45 +330,32 @@ export function AIChat({
         </div>
       )}
 
-      {/* Quick Actions */}
-      {actions.length > 0 && (
-        <div className="px-4 py-2 border-t border-brutal-border bg-brutal-bg flex-shrink-0">
-          <div className="flex flex-wrap gap-2">
-            {actions.map((action) => (
-              <button
-                key={action.en}
-                onClick={() => handleQuickAction(action[language])}
-                className="text-xs px-2 py-1 border border-brutal-border hover:border-brutal-accent transition-colors"
-              >
-                {language === 'zh' ? action.zh : action.en}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Input - 固定在底部 */}
+      {/* Input */}
       <div className="p-3 border-t border-brutal-border flex-shrink-0 bg-brutal-surface">
         <div className="flex gap-2">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={`>>> ${t('placeholder.type_message')}`}
+            placeholder={`和${petName}聊天...`}
             className="flex-1 p-2 bg-brutal-bg border border-brutal-border resize-none
-                       focus:border-brutal-accent transition-colors h-[60px] text-sm font-mono"
+                       focus:border-brutal-accent transition-colors h-[60px] text-sm font-mono rounded"
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isThinking}
-            className="px-4 bg-brutal-accent text-brutal-bg border border-brutal-accent
-                       hover:bg-brutal-text hover:border-brutal-text
-                       disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-3 flex items-center justify-center rounded transition-colors"
+            style={{
+              backgroundColor: petColor,
+              opacity: !input.trim() || isThinking ? 0.5 : 1,
+            }}
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-4 h-4 text-white" />
           </button>
         </div>
       </div>
     </div>
   );
 }
+
+export default AIChat;
