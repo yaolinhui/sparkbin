@@ -262,7 +262,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   };
 
   return (
-    <div className="min-h-screen bg-brutal-bg text-brutal-text font-mono">
+    <div className="h-screen flex flex-col overflow-hidden bg-brutal-bg text-brutal-text font-mono">
       {/* Header - 可折叠 */}
       <div className="border-b border-brutal-border bg-brutal-surface">
         {isHeaderExpanded ? (
@@ -401,7 +401,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       />
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden" style={{ height: "calc(100vh - 200px)" }}>
+      <div className="flex flex-1 overflow-hidden min-h-0" >
         {/* Left: Editor - 根据 AI 聊天状态自适应宽度 */}
         <div className="flex-1 flex flex-col min-w-0 border-r border-brutal-border bg-brutal-surface transition-all duration-300">
           <div className="flex items-center justify-between px-6 py-3 border-b border-brutal-border">
