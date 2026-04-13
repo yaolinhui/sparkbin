@@ -325,8 +325,8 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
         </div>
       )}
 
-      <div className="flex-1 overflow-hidden min-h-0">
-        <div className="h-full overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="p-6 min-h-full">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={notes.map((n) => n.id)} strategy={rectSortingStrategy}>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -357,7 +357,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
             </div>
           )}
 
-          <div className="mt-6 pt-4 border-t border-brutal-border pb-20">
+          <div className="mt-6 pt-4 border-t border-brutal-border">
             <p className="text-xs text-brutal-muted font-mono">💡 提示：拖拽便利贴可排序，点击编辑图标修改内容</p>
           </div>
         </div>
