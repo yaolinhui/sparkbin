@@ -209,6 +209,14 @@ export interface GitHubConfig {
   filePath: string;
 }
 
+// AI 宠物配置
+export interface AIPetConfig {
+  type: 'cat' | 'robot' | 'panda' | 'fox';
+  name: string;
+  personality: 'gentle' | 'rational' | 'zen' | 'sharp';
+  verbosity: 'quiet' | 'moderate' | 'chatty';
+}
+
 // Brutalist style - English uppercase labels (Vibe/Indie Hacker flow)
 export const STAGE_LABELS: Record<StageKey, string> = {
   idea: 'IDEA',        // 想法
