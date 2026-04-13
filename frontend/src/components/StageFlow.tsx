@@ -3,6 +3,7 @@ import { STAGE_ORDER, type StageKey } from '../types';
 
 interface StageFlowProps {
   currentStage: StageKey;
+  viewingStage?: StageKey;
   completedStages: StageKey[];
   onStageClick?: (stage: StageKey) => void;
   onCompleteStage?: () => void;
@@ -30,6 +31,7 @@ const STAGE_LABELS: Record<StageKey, string> = {
 
 export function StageFlow({
   currentStage,
+  viewingStage,
   completedStages,
   onStageClick,
   onCompleteStage,
@@ -44,7 +46,8 @@ export function StageFlow({
         {/* 左侧：阶段跳转按钮 */}
         <div className="flex items-center gap-1 flex-shrink-0">
           {STAGE_ORDER.map((stage) => {
-            const isCurrent = stage === currentStage;
+            const isCurrent = stage === currentStage && viewingStage === currentStage;
+            const isViewing = stage === viewingStage;
             const isCompleted = completedStages.includes(stage);
 
             return (
@@ -52,18 +55,21 @@ export function StageFlow({
                 key={stage}
                 onClick={() => onStageClick?.(stage)}
                 className={`flex flex-col items-center px-2 py-1 transition-colors min-w-[40px]
-                  ${isCurrent ? 'bg-brutal-accent/10' : 'hover:bg-brutal-bg/50'}
+                  ${isCurrent || isViewing ? 'bg-cyan-500/10' :
+                    'hover:bg-brutal-bg/50'}
                 `}
-                title={`${STAGE_LABELS[stage]} ${isCompleted ? '(已完成)' : isCurrent ? '(进行中)' : ''}`}
+                title={`${STAGE_LABELS[stage]} ${isCompleted ? '(已完成)' : isCurrent ? '(进行中)' : isViewing ? '(查看中)' : ''}`}
               >
                 <span className={`text-xs font-mono ${
-                  isCurrent ? 'text-brutal-accent font-bold' :
+                  isCurrent ? 'text-cyan-400 font-bold' :
+                  isViewing ? 'text-cyan-400' :
                   isCompleted ? 'text-brutal-success' : 'text-brutal-muted'
                 }`}>
                   {STAGE_NUMBERS[stage]}
                 </span>
                 <span className={`text-[10px] font-mono ${
-                  isCurrent ? 'text-brutal-accent' :
+                  isCurrent ? 'text-cyan-400' :
+                  isViewing ? 'text-cyan-400' :
                   isCompleted ? 'text-brutal-success' : 'text-brutal-muted'
                 }`}>
                   {STAGE_LABELS[stage].slice(0, 2)}

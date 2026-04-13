@@ -396,6 +396,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       {/* Stage Flow - 包含阶段跳转、进度和提交按钮 */}
       <StageFlow
         currentStage={validCurrentStage}
+        viewingStage={displayStage}
         completedStages={completedStages}
         onStageClick={(stage) => setViewingStage(stage)}
         onCompleteStage={handleCompleteStage}
