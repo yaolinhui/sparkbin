@@ -13,6 +13,7 @@ import { PrototypeStage } from './PrototypeStage';
 import { ShipStage } from './ShipStage';
 import { GrowStage } from './GrowStage';
 import { MonetizeStage } from './MonetizeStage';
+import { ProjectBlueprint } from './ProjectBlueprint';
 import { type StageKey, type ProjectStatus } from '../types';
 
 interface ProjectDetailProps {
@@ -46,6 +47,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [viewingStage, setViewingStage] = useState<StageKey | null>(null); // 正在查看的阶段（可切换）
   const [isAIChatCollapsed, setIsAIChatCollapsed] = useState(false); // AI 聊天折叠状态
+  const [showBlueprint, setShowBlueprint] = useState(false); // 项目蓝图显示状态
 
   // 如果没有项目数据或 stages 为空，获取完整项目详情
   useEffect(() => {
