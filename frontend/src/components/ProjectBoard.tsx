@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Github, Terminal, LogOut, Server, Settings, Cat } from 'lucide-react';
+import { Plus, Github, Terminal, LogOut, Server, Settings, Cat, ChevronDown, ChevronRight } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
 import { isAdmin } from '../services/api';
@@ -102,6 +102,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
     return saved ? JSON.parse(saved) : null;
   });
   const [filter, setFilter] = useState<'all' | 'active' | 'paused' | 'archived'>('all');
+  const [isArchivedExpanded, setIsArchivedExpanded] = useState(false);
 
   // 初始加载
   useEffect(() => {
@@ -360,17 +361,33 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         {/* Archived Projects - only show when filter === 'all' */}
         {filter === 'all' && filteredArchived.length > 0 && (
           <>
-            <SectionHeader title={t('section.archived_projects')} index={2} />
-            <div className="space-y-px border border-brutal-border" style={{ backgroundColor: 'var(--brutal-border)' }}>
-              {filteredArchived.map((project, index) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  index={filteredProjects.length + index}
-                  compact
-                />
-              ))}
-            </div>
+            <button
+              onClick={() => setIsArchivedExpanded((v) => !v)}
+              className="w-full flex items-center gap-3 px-3 py-2 my-6 border border-brutal-border bg-brutal-bg hover:bg-brutal-surface-hover transition-colors group"
+            >
+              <span className="text-brutal-muted group-hover:text-brutal-text transition-colors">
+                {isArchivedExpanded ? (
+                  <ChevronDown className="w-4 h-4" />
+                ) : (
+                  <ChevronRight className="w-4 h-4" />
+                )}
+              </span>
+              <span className="text-brutal-muted font-mono text-xs">// {t('section.archived_projects')}</span>
+              <div className="flex-1 h-px bg-brutal-border opacity-50" />
+              <span className="text-brutal-muted font-mono text-xs">{String(filteredArchived.length).padStart(3, '0')}</span>
+            </button>
+            {isArchivedExpanded && (
+              <div className="space-y-px border border-brutal-border" style={{ backgroundColor: 'var(--brutal-border)' }}>
+                {filteredArchived.map((project, index) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    index={filteredProjects.length + index}
+                    compact
+                  />
+                ))}
+              </div>
+            )}
           </>
         )}
 
