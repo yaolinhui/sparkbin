@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Pause, Play, Archive, Lock, LogOut, ChevronUp, Menu, GitGraph } from 'lucide-react';
+import { ArrowLeft, Pause, Play, Archive, LogOut, ChevronUp, Menu, GitGraph } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useI18n, useStatusLabel, useStageLabel } from '../i18n';
 import type { Project, Stage } from "../types";
@@ -393,45 +393,20 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
         )}
       </div>
 
-      {/* Stage Flow */}
+      {/* Stage Flow - 包含阶段跳转、进度和提交按钮 */}
       <StageFlow
         currentStage={validCurrentStage}
         completedStages={completedStages}
         onStageClick={(stage) => setViewingStage(stage)}
+        onCompleteStage={handleCompleteStage}
+        isCompleting={isCompleting}
+        canComplete={!isCurrentStageLocked}
       />
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden min-h-0" >
         {/* Left: Editor - 根据 AI 聊天状态自适应宽度 */}
         <div className="flex-1 flex flex-col min-w-0 border-r border-brutal-border bg-brutal-surface transition-all duration-300">
-          <div className="flex items-center justify-between px-6 py-3 border-b border-brutal-border">
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-brutal-muted">//</span>
-              <span className="font-mono text-sm">
-                {currentStageLabel}
-              </span>
-              {isCurrentStageLocked && (
-                <span className="flex items-center gap-1 text-xs text-brutal-muted">
-                  <Lock className="w-3 h-3" />
-                  {t('status.locked')}
-                </span>
-              )}
-            </div>
-            {!isCurrentStageLocked && (
-              <button
-                onClick={handleCompleteStage}
-                disabled={isCompleting}
-                className="btn-brutal-primary h-9 flex items-center gap-2"
-              >
-                {isCompleting ? (
-                  <div className="w-4 h-4 border border-brutal-bg border-t-transparent animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4" />
-                )}
-                {t('action.commit_stage')}
-              </button>
-            )}
-          </div>
           <div className="flex-1 flex flex-col overflow-hidden min-h-0">
             {displayStage === 'idea' ? (
               <IdeaStage
