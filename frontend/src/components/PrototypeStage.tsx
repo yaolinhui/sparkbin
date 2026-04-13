@@ -332,7 +332,7 @@ export function PrototypeStage({ project, onUpdateContent, isLocked }: Prototype
             <button
               onClick={getAiSuggestion}
               disabled={isGeneratingSuggestion || data.features.length === 0}
-              className="btn-brutal flex items-center gap-2 text-xs"
+              className="btn-brutal h-9 flex items-center gap-2 text-xs"
             >
               {isGeneratingSuggestion ? (
                 <div className="w-3 h-3 border border-brutal-text border-t-transparent animate-spin" />
@@ -429,7 +429,7 @@ export function PrototypeStage({ project, onUpdateContent, isLocked }: Prototype
                   <button
                     onClick={generateDesignPrompt}
                     disabled={generatingPrompt}
-                    className="btn-brutal flex items-center gap-2 text-xs"
+                    className="btn-brutal h-9 flex items-center gap-2 text-xs"
                   >
                     {generatingPrompt ? (
                       <div className="w-3 h-3 border border-brutal-text border-t-transparent animate-spin" />
@@ -441,7 +441,7 @@ export function PrototypeStage({ project, onUpdateContent, isLocked }: Prototype
                   {data.designPrompt && (
                     <button
                       onClick={() => navigator.clipboard.writeText(data.designPrompt || '')}
-                      className="btn-brutal flex items-center gap-2 text-xs"
+                      className="btn-brutal h-9 flex items-center gap-2 text-xs"
                     >
                       <Copy className="w-3 h-3" />
                       复制
@@ -475,7 +475,7 @@ export function PrototypeStage({ project, onUpdateContent, isLocked }: Prototype
                 {!isLocked && (
                   <button
                     onClick={() => setShowAddFeature(true)}
-                    className="btn-brutal flex items-center gap-2 text-xs"
+                    className="btn-brutal h-9 flex items-center gap-2 text-xs"
                   >
                     <Plus className="w-3 h-3" />
                     添加功能
@@ -600,14 +600,14 @@ export function PrototypeStage({ project, onUpdateContent, isLocked }: Prototype
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowAddFeature(false)}
-                className="flex-1 btn-brutal py-2"
+                className="flex-1 btn-brutal h-9 py-2"
               >
                 取消
               </button>
               <button
                 onClick={addFeature}
                 disabled={!newFeatureName.trim()}
-                className="flex-1 btn-brutal-primary py-2"
+                className="flex-1 btn-brutal-primary h-9 py-2"
               >
                 添加
               </button>
@@ -732,7 +732,7 @@ function TemplateSelector({
         <h3 className="text-sm font-mono text-brutal-text">
           选择设计模板（可选，用于生成提示词）
         </h3>
-        <button onClick={onBack} className="btn-brutal text-xs">
+        <button onClick={onBack} className="btn-brutal h-9 text-xs">
           ← 返回
         </button>
       </div>
@@ -879,7 +879,7 @@ function FeatureRow({
             />
             <button
               onClick={saveNotes}
-              className="btn-brutal-primary px-3 py-1 text-xs"
+              className="btn-brutal-primary h-9 px-3 py-1 text-xs"
             >
               <Save className="w-3 h-3" />
             </button>

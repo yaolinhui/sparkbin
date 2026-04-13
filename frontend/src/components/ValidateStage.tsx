@@ -347,7 +347,7 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
           {!isLocked && (
             <button
               onClick={() => setShowAddItem(true)}
-              className="btn-brutal flex items-center gap-2 text-xs"
+              className="btn-brutal h-9 flex items-center gap-2 text-xs"
             >
               <Plus className="w-3 h-3" />
               添加验证项
@@ -356,7 +356,7 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
           <button
             onClick={getAIAnalysis}
             disabled={isAnalyzing || data.items.length === 0}
-            className="btn-brutal flex items-center gap-2 text-xs"
+            className="btn-brutal h-9 flex items-center gap-2 text-xs"
           >
             {isAnalyzing ? (
               <div className="w-3 h-3 border border-brutal-text border-t-transparent animate-spin" />
@@ -497,7 +497,7 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
                     key={type}
                     onClick={() => generateTool(type)}
                     disabled={generatingTool === type || isLocked}
-                    className="w-full btn-brutal flex items-center justify-between text-xs py-2"
+                    className="w-full btn-brutal h-9 flex items-center justify-between text-xs py-2"
                   >
                     <span className="flex items-center gap-2">
                       <Icon className={`w-4 h-4 ${config.color}`} />
@@ -565,7 +565,7 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
             <div className="p-4 border-t border-brutal-border">
               <button
                 onClick={() => setShowDecisionModal(true)}
-                className="w-full btn-brutal-primary text-xs py-3"
+                className="w-full btn-brutal-primary h-9 text-xs py-3"
               >
                 做出 GO/NO-GO 决策
               </button>
@@ -604,14 +604,14 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowAddItem(false)}
-                className="flex-1 btn-brutal py-2"
+                className="flex-1 btn-brutal h-9 py-2"
               >
                 取消
               </button>
               <button
                 onClick={addItem}
                 disabled={!newItemTitle.trim()}
-                className="flex-1 btn-brutal-primary py-2"
+                className="flex-1 btn-brutal-primary h-9 py-2"
               >
                 添加
               </button>
@@ -648,13 +648,13 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setEditingItem(null)}
-                className="flex-1 btn-brutal py-2"
+                className="flex-1 btn-brutal h-9 py-2"
               >
                 取消
               </button>
               <button
                 onClick={saveEdit}
-                className="flex-1 btn-brutal-primary py-2"
+                className="flex-1 btn-brutal-primary h-9 py-2"
               >
                 保存
               </button>
@@ -768,13 +768,13 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowResultModal(null)}
-                className="flex-1 btn-brutal py-2"
+                className="flex-1 btn-brutal h-9 py-2"
               >
                 取消
               </button>
               <button
                 onClick={saveResult}
-                className="flex-1 btn-brutal-primary py-2"
+                className="flex-1 btn-brutal-primary h-9 py-2"
               >
                 保存结果
               </button>
@@ -1091,13 +1091,13 @@ function DecisionModal({
 
         {/* Actions */}
         <div className="p-4 border-t border-brutal-border bg-brutal-bg flex gap-3">
-          <button onClick={onClose} className="flex-1 btn-brutal py-3">
+          <button onClick={onClose} className="flex-1 btn-brutal h-9 py-3">
             取消
           </button>
           <button
             onClick={handleDecide}
             disabled={!selectedDecision}
-            className="flex-1 btn-brutal-primary py-3"
+            className="flex-1 btn-brutal-primary h-9 py-3"
           >
             确认决策
           </button>

@@ -216,7 +216,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                 <LanguageSwitcher />
                 <button
                   onClick={() => setIsPetConfigOpen(true)}
-                  className="btn-brutal flex items-center gap-2"
+                  className="btn-brutal h-9 flex items-center gap-2"
                   title="AI 宠物配置"
                 >
                   <Cat className="w-4 h-4" />
@@ -225,7 +225,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                 {isAdmin() && (
                   <button
                     onClick={() => navigate('/admin')}
-                    className="btn-brutal flex items-center gap-2"
+                    className="btn-brutal h-9 flex items-center gap-2"
                     title="系统管理"
                   >
                     <Settings className="w-4 h-4" />
@@ -235,14 +235,14 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                 <ModelSelector />
                 <button
                   onClick={() => setIsConfigModalOpen(true)}
-                  className="btn-brutal flex items-center gap-2"
+                  className="btn-brutal h-9 flex items-center gap-2"
                   title="GitHub Backup"
                 >
                   <Github className="w-4 h-4" />
                 </button>
                 <button
                   onClick={onLogout}
-                  className="btn-brutal flex items-center gap-2 border-brutal-warning text-brutal-warning"
+                  className="btn-brutal h-9 flex items-center gap-2 border-brutal-warning text-brutal-warning"
                   title="Logout"
                 >
                   <LogOut className="w-4 h-4" />

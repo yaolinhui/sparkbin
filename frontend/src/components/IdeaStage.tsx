@@ -296,7 +296,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
         </div>
         {!isLocked && (
           <div className="flex items-center gap-2">
-            <button onClick={getAiSuggestion} disabled={isGenerating} className="btn-brutal flex items-center gap-2 text-xs">
+            <button onClick={getAiSuggestion} disabled={isGenerating} className="btn-brutal h-9 flex items-center gap-2 text-xs">
               {isGenerating ? (
                 <div className="w-3 h-3 border border-brutal-text border-t-transparent animate-spin" />
               ) : (
@@ -304,7 +304,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
               )}
               AI 建议
             </button>
-            <button onClick={addNote} className="btn-brutal flex items-center gap-2 text-xs group">
+            <button onClick={addNote} className="btn-brutal h-9 flex items-center gap-2 text-xs group">
               <Plus className="w-3 h-3 text-brutal-text group-active:text-brutal-bg" />
               添加
             </button>

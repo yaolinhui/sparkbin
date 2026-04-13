@@ -272,7 +272,7 @@ export function ShipStage({ project, onUpdateContent, isLocked }: ShipStageProps
                     <button
                       onClick={() => generatePlatformContent(platform.key as PlatformContent['platform'])}
                       disabled={isGenerating || isLocked}
-                      className="text-xs btn-brutal px-2 py-1"
+                      className="text-xs btn-brutal h-9 px-2 py-1"
                     >
                       {isGenerating ? (
                         <RefreshCw className="w-3 h-3 animate-spin" />
@@ -331,7 +331,7 @@ export function ShipStage({ project, onUpdateContent, isLocked }: ShipStageProps
               {!isLocked && (
                 <button
                   onClick={() => setEditingMetrics(!editingMetrics)}
-                  className="text-xs btn-brutal px-2 py-1"
+                  className="text-xs btn-brutal h-9 px-2 py-1"
                 >
                   {editingMetrics ? '取消' : '编辑'}
                 </button>
@@ -358,7 +358,7 @@ export function ShipStage({ project, onUpdateContent, isLocked }: ShipStageProps
                   ))}
                   <button
                     onClick={saveMetrics}
-                    className="w-full btn-brutal-primary py-2 text-xs"
+                    className="w-full btn-brutal-primary h-9 py-2 text-xs"
                   >
                     保存
                   </button>
@@ -400,7 +400,7 @@ export function ShipStage({ project, onUpdateContent, isLocked }: ShipStageProps
               {!isLocked && (
                 <button
                   onClick={() => setShowAddFeedback(true)}
-                  className="text-xs btn-brutal px-2 py-1"
+                  className="text-xs btn-brutal h-9 px-2 py-1"
                 >
                   <Plus className="w-3 h-3" />
                   添加
@@ -483,11 +483,11 @@ export function ShipStage({ project, onUpdateContent, isLocked }: ShipStageProps
                 />
               </div>
               <div className="flex gap-3">
-                <button onClick={() => setShowAddFeedback(false)} className="flex-1 btn-brutal py-2">取消</button>
+                <button onClick={() => setShowAddFeedback(false)} className="flex-1 btn-brutal h-9 py-2">取消</button>
                 <button
                   onClick={addFeedback}
                   disabled={!newFeedback.content.trim()}
-                  className="flex-1 btn-brutal-primary py-2"
+                  className="flex-1 btn-brutal-primary h-9 py-2"
                 >
                   添加
                 </button>

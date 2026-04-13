@@ -190,7 +190,7 @@ export function AdminPage({ onLogout }: AdminPageProps) {
           </div>
           <button
             onClick={onLogout}
-            className="btn-brutal flex items-center gap-2 border-brutal-warning text-brutal-warning"
+            className="btn-brutal h-9 flex items-center gap-2 border-brutal-warning text-brutal-warning"
           >
             退出登录
           </button>
@@ -351,14 +351,14 @@ export function AdminPage({ onLogout }: AdminPageProps) {
                   <button
                     onClick={handleTest}
                     disabled={isLoading}
-                    className="flex-1 btn-brutal py-3 disabled:opacity-50"
+                    className="flex-1 btn-brutal h-9 py-3 disabled:opacity-50"
                   >
                     {isLoading ? '测试中...' : '测试连接'}
                   </button>
                   <button
                     onClick={handleSave}
                     disabled={isLoading}
-                    className="flex-1 btn-brutal-primary py-3 disabled:opacity-50"
+                    className="flex-1 btn-brutal-primary h-9 py-3 disabled:opacity-50"
                   >
                     {isLoading ? '保存中...' : '保存配置'}
                   </button>

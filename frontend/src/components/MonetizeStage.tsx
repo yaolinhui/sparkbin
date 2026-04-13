@@ -169,7 +169,7 @@ export function MonetizeStage({ project, onUpdateContent, isLocked }: MonetizeSt
           <button
             onClick={getAIAnalysis}
             disabled={isAnalyzing}
-            className="btn-brutal flex items-center gap-2 text-xs"
+            className="btn-brutal h-9 flex items-center gap-2 text-xs"
           >
             {isAnalyzing ? (
               <RefreshCw className="w-3 h-3 animate-spin" />
@@ -296,7 +296,7 @@ export function MonetizeStage({ project, onUpdateContent, isLocked }: MonetizeSt
           <div className="px-4 py-3 border-b border-brutal-border flex items-center justify-between">
             <span className="font-mono text-sm">定价方案</span>
             {!isLocked && (
-              <button onClick={() => setShowAddTier(true)} className="btn-brutal flex items-center gap-2 text-xs">
+              <button onClick={() => setShowAddTier(true)} className="btn-brutal h-9 flex items-center gap-2 text-xs">
                 <Plus className="w-3 h-3" />
                 添加档位
               </button>
@@ -468,11 +468,11 @@ export function MonetizeStage({ project, onUpdateContent, isLocked }: MonetizeSt
                 </button>
               </div>
               <div className="flex gap-3">
-                <button onClick={() => setShowAddTier(false)} className="flex-1 btn-brutal py-2">取消</button>
+                <button onClick={() => setShowAddTier(false)} className="flex-1 btn-brutal h-9 py-2">取消</button>
                 <button
                   onClick={addTier}
                   disabled={!newTier.name?.trim()}
-                  className="flex-1 btn-brutal-primary py-2"
+                  className="flex-1 btn-brutal-primary h-9 py-2"
                 >
                   添加
                 </button>

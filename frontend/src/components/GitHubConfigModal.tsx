@@ -162,14 +162,14 @@ export function GitHubConfigModal({ isOpen, onClose }: GitHubConfigModalProps) {
             <button
               onClick={handleTest}
               disabled={!token || !owner || !repo || isTesting}
-              className="btn-brutal flex-1"
+              className="btn-brutal h-9 flex-1"
             >
               {isTesting ? `${t('ai.processing')}` : t('action.test_connection')}
             </button>
             <button
               onClick={handleSave}
               disabled={!token || !owner || !repo}
-              className="btn-brutal-primary flex-1"
+              className="btn-brutal-primary h-9 flex-1"
             >
               {t('action.save')}
               <ArrowRight className="w-4 h-4 inline ml-2" />

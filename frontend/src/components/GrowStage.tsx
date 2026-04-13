@@ -194,7 +194,7 @@ export function GrowStage({ project, onUpdateContent, isLocked }: GrowStageProps
           <button
             onClick={getAIAnalysis}
             disabled={isAnalyzing}
-            className="btn-brutal flex items-center gap-2 text-xs"
+            className="btn-brutal h-9 flex items-center gap-2 text-xs"
           >
             {isAnalyzing ? (
               <RefreshCw className="w-3 h-3 animate-spin" />
@@ -244,7 +244,7 @@ export function GrowStage({ project, onUpdateContent, isLocked }: GrowStageProps
               <button
                 onClick={() => setShowAddContent(true)}
                 disabled={isLocked}
-                className="btn-brutal flex items-center gap-2 text-xs"
+                className="btn-brutal h-9 flex items-center gap-2 text-xs"
               >
                 <Plus className="w-3 h-3" />
                 添加内容
@@ -409,7 +409,7 @@ export function GrowStage({ project, onUpdateContent, isLocked }: GrowStageProps
                   <button
                     onClick={generateContentIdea}
                     disabled={generatingContent}
-                    className="btn-brutal px-3"
+                    className="btn-brutal h-9 px-3"
                   >
                     {generatingContent ? <RefreshCw className="w-4 h-4 animate-spin" /> : '✨'}
                   </button>
@@ -461,11 +461,11 @@ export function GrowStage({ project, onUpdateContent, isLocked }: GrowStageProps
                 />
               </div>
               <div className="flex gap-3">
-                <button onClick={() => setShowAddContent(false)} className="flex-1 btn-brutal py-2">取消</button>
+                <button onClick={() => setShowAddContent(false)} className="flex-1 btn-brutal h-9 py-2">取消</button>
                 <button
                   onClick={addContent}
                   disabled={!newContent.title?.trim()}
-                  className="flex-1 btn-brutal-primary py-2"
+                  className="flex-1 btn-brutal-primary h-9 py-2"
                 >
                   添加
                 </button>

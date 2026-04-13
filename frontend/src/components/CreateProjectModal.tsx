@@ -29,15 +29,55 @@ const AI_PET_CAT = `
 export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps) {
   const { t } = useI18n();
   const [painPoint, setPainPoint] = useState('');
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    if (isOpen) window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
   const [title, setTitle] = useState('');
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    if (isOpen) window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
   const [isOptimizing, setIsOptimizing] = useState(false);
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    if (isOpen) window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    if (isOpen) window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    if (isOpen) window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
 
   // AI 理解确认相关状态
   const [dimensions, setDimensions] = useState<UnderstandingDimension[]>([]);
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    if (isOpen) window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
   const [editingDimension, setEditingDimension] = useState<number | null>(null);
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    if (isOpen) window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
   const [editContent, setEditContent] = useState('');
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    if (isOpen) window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
 
   const createProject = useProjectStore((state) => state.createProject);
   const isAIConfigured = useAIStore((state) => state.isConfigured);
@@ -262,7 +302,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                 <button
                   onClick={handleOptimize}
                   disabled={!painPoint.trim() || isOptimizing}
-                  className="btn-brutal-primary flex items-center justify-center gap-2 w-full py-3"
+                  className="btn-brutal-primary h-9 flex items-center justify-center gap-2 w-full py-3"
                 >
                   {isOptimizing ? (
                     <>
@@ -288,7 +328,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                     // 跳过 AI，直接进入第 3 步手动输入
                     setStep(3);
                   }}
-                  className="btn-brutal w-full py-3 text-brutal-muted hover:text-brutal-text"
+                  className="btn-brutal h-9 w-full py-3 text-brutal-muted hover:text-brutal-text"
                 >
                   跳过 — 手动输入
                 </button>
@@ -404,14 +444,14 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
               <div className="flex gap-2 pt-4">
                 <button
                   onClick={() => setStep(1)}
-                  className="btn-brutal flex-1"
+                  className="btn-brutal h-9 flex-1"
                 >
                   &lt; 返回修改描述
                 </button>
                 <button
                   onClick={handleConfirmUnderstanding}
                   disabled={isOptimizing || dimensions.every(d => !d.isCorrect)}
-                  className="btn-brutal-primary flex-1"
+                  className="btn-brutal-primary h-9 flex-1"
                 >
                   {isOptimizing ? (
                     <>
@@ -460,14 +500,14 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
               <div className="flex gap-2">
                 <button
                   onClick={() => setStep(2)}
-                  className="btn-brutal flex-1"
+                  className="btn-brutal h-9 flex-1"
                 >
                   &lt; {t('nav.back')}
                 </button>
                 <button
                   onClick={handleCreate}
                   disabled={!title.trim()}
-                  className="btn-brutal-primary flex-1"
+                  className="btn-brutal-primary h-9 flex-1"
                 >
                   {t('action.execute')}
                   <ArrowRight className="w-4 h-4 inline ml-2" />

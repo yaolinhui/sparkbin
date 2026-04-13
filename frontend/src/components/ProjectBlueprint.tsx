@@ -106,17 +106,17 @@ export function ProjectBlueprint({ project, onClose, onStageClick }: ProjectBlue
           <span className="text-xs text-brutal-muted font-mono">// {project.title}</span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={handleZoomOut} className="btn-brutal p-2" title="缩小">
+          <button onClick={handleZoomOut} className="btn-brutal h-9 p-2" title="缩小">
             <ZoomOut className="w-4 h-4" />
           </button>
           <span className="text-xs font-mono w-16 text-center">{Math.round(zoom * 100)}%</span>
-          <button onClick={handleZoomIn} className="btn-brutal p-2" title="放大">
+          <button onClick={handleZoomIn} className="btn-brutal h-9 p-2" title="放大">
             <ZoomIn className="w-4 h-4" />
           </button>
-          <button onClick={handleReset} className="btn-brutal p-2" title="重置">
+          <button onClick={handleReset} className="btn-brutal h-9 p-2" title="重置">
             <Maximize2 className="w-4 h-4" />
           </button>
-          <button onClick={onClose} className="btn-brutal p-2 ml-4" title="关闭">
+          <button onClick={onClose} className="btn-brutal h-9 p-2 ml-4" title="关闭">
             <X className="w-4 h-4" />
           </button>
         </div>

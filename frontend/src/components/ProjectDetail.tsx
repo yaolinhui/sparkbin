@@ -139,13 +139,13 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => window.location.reload()}
-              className="btn-brutal"
+              className="btn-brutal h-9 focus-visible:ring-2 focus-visible:ring-brutal-accent focus-visible:outline-none"
             >
               重试
             </button>
             <button
               onClick={() => navigate('/')}
-              className="btn-brutal-primary"
+              className="btn-brutal-primary h-9 focus-visible:ring-2 focus-visible:ring-brutal-accent focus-visible:outline-none"
             >
               返回首页
             </button>
@@ -162,7 +162,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
           <p className="text-brutal-muted mb-4">{t('error.project_not_found')}</p>
           <button
             onClick={() => navigate('/')}
-            className="btn-brutal"
+            className="btn-brutal h-9 focus-visible:ring-2 focus-visible:ring-brutal-accent focus-visible:outline-none"
           >
             {t('action.return_to_dashboard')}
           </button>
@@ -232,7 +232,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
         return (
           <button
             onClick={() => handleStatusChange('paused')}
-            className="btn-brutal flex items-center gap-2"
+            className="btn-brutal h-9 flex items-center gap-2"
           >
             <Pause className="w-4 h-4" />
             {t('action.pause')}
@@ -242,7 +242,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
         return (
           <button
             onClick={() => handleStatusChange('active')}
-            className="btn-brutal flex items-center gap-2 text-brutal-success border-brutal-success"
+            className="btn-brutal h-9 flex items-center gap-2 text-brutal-success border-brutal-success"
           >
             <Play className="w-4 h-4" />
             {t('action.resume')}
@@ -252,7 +252,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
         return (
           <button
             onClick={() => handleStatusChange('active')}
-            className="btn-brutal flex items-center gap-2"
+            className="btn-brutal h-9 flex items-center gap-2"
           >
             <Archive className="w-4 h-4" />
             {t('action.restore')}
@@ -285,7 +285,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   onClick={() => setShowBlueprint(true)}
-                  className="btn-brutal flex items-center gap-2 text-brutal-accent border-brutal-accent"
+                  className="btn-brutal h-9 flex items-center gap-2 text-brutal-accent border-brutal-accent"
                   title="项目蓝图"
                 >
                   <GitGraph className="w-4 h-4" />
@@ -293,7 +293,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 </button>
                 <button
                   onClick={() => setIsHeaderExpanded(false)}
-                  className="btn-brutal p-2"
+                  className="btn-brutal h-9 p-2"
                   title="折叠头部"
                 >
                   <ChevronUp className="w-4 h-4" />
@@ -302,14 +302,14 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 {project.status !== 'archived' && (
                   <button
                     onClick={() => handleStatusChange('archived')}
-                    className="btn-brutal"
+                    className="btn-brutal h-9 focus-visible:ring-2 focus-visible:ring-brutal-accent focus-visible:outline-none"
                   >
                     <Archive className="w-4 h-4" />
                   </button>
                 )}
                 <button
                   onClick={onLogout}
-                  className="btn-brutal flex items-center gap-2 border-brutal-warning text-brutal-warning"
+                  className="btn-brutal h-9 flex items-center gap-2 border-brutal-warning text-brutal-warning"
                   title="Logout"
                 >
                   <LogOut className="w-4 h-4" />
@@ -362,27 +362,27 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   onClick={() => setShowBlueprint(true)}
-                  className="btn-brutal p-2 text-brutal-accent border-brutal-accent"
+                  className="btn-brutal h-9 p-2 text-brutal-accent border-brutal-accent"
                   title="项目蓝图"
                 >
                   <GitGraph className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setIsHeaderExpanded(true)}
-                  className="btn-brutal p-2"
+                  className="btn-brutal h-9 p-2"
                   title="展开头部"
                 >
                   <Menu className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleStatusChange(project.status === 'active' ? 'paused' : 'active')}
-                  className="btn-brutal p-2"
+                  className="btn-brutal h-9 p-2"
                 >
                   {project.status === 'active' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                 </button>
                 <button
                   onClick={onLogout}
-                  className="btn-brutal p-2 border-brutal-warning text-brutal-warning"
+                  className="btn-brutal h-9 p-2 border-brutal-warning text-brutal-warning"
                   title="Logout"
                 >
                   <LogOut className="w-4 h-4" />
@@ -421,7 +421,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
               <button
                 onClick={handleCompleteStage}
                 disabled={isCompleting}
-                className="btn-brutal-primary flex items-center gap-2"
+                className="btn-brutal-primary h-9 flex items-center gap-2"
               >
                 {isCompleting ? (
                   <div className="w-4 h-4 border border-brutal-bg border-t-transparent animate-spin" />
@@ -541,13 +541,13 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
               <div className="flex gap-3">
                 <button
                   onClick={handleCancelProceed}
-                  className="flex-1 btn-brutal py-3"
+                  className="flex-1 btn-brutal h-9 py-3"
                 >
                   {'<'} RETURN_TO_EDIT
                 </button>
                 <button
                   onClick={handleConfirmProceed}
-                  className="flex-1 btn-brutal-primary py-3"
+                  className="flex-1 btn-brutal-primary h-9 py-3"
                 >
                   PROCEED {'>'}
                 </button>

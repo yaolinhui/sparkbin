@@ -267,10 +267,10 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
 
         {/* Actions */}
         <div className="flex gap-3 p-4 border-t border-brutal-border bg-brutal-bg">
-          <button onClick={onClose} className="flex-1 btn-brutal py-3">
+          <button onClick={onClose} className="flex-1 btn-brutal h-9 py-3">
             再看看
           </button>
-          <button onClick={handleSave} className="flex-1 btn-brutal-primary py-3">
+          <button onClick={handleSave} className="flex-1 btn-brutal-primary h-9 py-3">
             领养 {form.name}！
           </button>
         </div>

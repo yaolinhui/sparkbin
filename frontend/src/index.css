@@ -105,21 +105,21 @@ body {
 /* ============================================
    SCROLLBAR - Adapts to theme
    ============================================ */
-::-webkit-scrollbar {
+*::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track {
   background: var(--brutal-bg);
 }
 
-::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar-thumb {
   background: var(--brutal-border);
   border: 1px solid var(--brutal-bg);
 }
 
-::-webkit-scrollbar-thumb:hover {
+*::-webkit-scrollbar-thumb:hover {
   background: var(--brutal-muted);
 }
 
