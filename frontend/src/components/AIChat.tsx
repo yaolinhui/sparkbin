@@ -46,6 +46,40 @@ const WELCOME_MESSAGES: Record<string, { zh: string; en: string }> = {
   },
 };
 
+// 快速操作按钮 - 宠物风格推荐
+const QUICK_ACTIONS: Record<string, { zh: string; emoji: string }[]> = {
+  idea: [
+    { zh: '目标用户是谁？', emoji: '👥' },
+    { zh: '价值主张', emoji: '💎' },
+    { zh: '痛点分析', emoji: '🎯' },
+  ],
+  validate: [
+    { zh: '调研问卷', emoji: '📋' },
+    { zh: '竞品分析', emoji: '🔍' },
+    { zh: '用户访谈', emoji: '🎤' },
+  ],
+  prototype: [
+    { zh: '功能拆分', emoji: '📦' },
+    { zh: '技术选型', emoji: '⚙️' },
+    { zh: 'MVP规划', emoji: '🚀' },
+  ],
+  ship: [
+    { zh: '发布清单', emoji: '✅' },
+    { zh: '推广文案', emoji: '📢' },
+    { zh: '反馈收集', emoji: '💬' },
+  ],
+  grow: [
+    { zh: '内容日历', emoji: '📅' },
+    { zh: '渠道策略', emoji: '📣' },
+    { zh: '增长实验', emoji: '🧪' },
+  ],
+  monetize: [
+    { zh: '定价建议', emoji: '💰' },
+    { zh: '转化分析', emoji: '📊' },
+    { zh: '收入优化', emoji: '📈' },
+  ],
+};
+
 
 // Markdown styles for AI responses
 const markdownStyles = `
@@ -217,6 +251,12 @@ export function AIChat({
     }
   };
 
+  const handleQuickAction = (action: string) => {
+    setInput(action);
+  };
+
+  const quickActions = QUICK_ACTIONS[stage] || [];
+
   // 折叠状态 - 显示宠物图标
   if (isCollapsed) {
     return (
@@ -327,6 +367,27 @@ export function AIChat({
       {error && (
         <div className="mx-4 mb-2 p-2 border border-brutal-warning text-brutal-warning text-xs font-mono flex-shrink-0">
           {error}
+        </div>
+      )}
+
+      {/* Quick Actions - 宠物推荐按钮 */}
+      {quickActions.length > 0 && (
+        <div className="px-4 py-2 border-t border-brutal-border bg-brutal-bg flex-shrink-0">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs text-brutal-muted font-mono">💡 {petName}推荐问：</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {quickActions.map((action) => (
+              <button
+                key={action.zh}
+                onClick={() => handleQuickAction(action.zh)}
+                className="text-xs px-3 py-1.5 border border-brutal-border hover:border-brutal-accent hover:bg-brutal-accent/10 transition-colors rounded-full flex items-center gap-1"
+              >
+                <span>{action.emoji}</span>
+                <span>{action.zh}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
