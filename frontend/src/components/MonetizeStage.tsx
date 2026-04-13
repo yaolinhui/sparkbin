@@ -348,7 +348,7 @@ export function MonetizeStage({ project, onUpdateContent, isLocked }: MonetizeSt
             <span className="font-mono text-sm">转化漏斗</span>
           </div>
           <div className="p-4">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <FunnelStage
                 label="访客"
                 value={data.funnel.visitors}

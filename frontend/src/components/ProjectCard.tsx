@@ -119,7 +119,7 @@ export function ProjectCard({ project, index, compact }: ProjectCardProps) {
       </div>
 
       {/* Title */}
-      <h3 className="font-mono font-bold text-sm mb-2 line-clamp-1">
+      <h3 className="font-mono font-bold text-sm mb-2 {...props} line-clamp-1" title={project.title}>
         {project.title}
       </h3>
 

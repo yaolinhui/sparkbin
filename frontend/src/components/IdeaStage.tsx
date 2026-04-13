@@ -261,6 +261,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
 
   const deleteNote = async (id: string) => {
     if (isLocked) return;
+    if (!window.confirm('确定要删除这个便利贴吗？')) return;
     const newNotes = notes.filter((note) => note.id !== id);
     setNotes(newNotes);
     await saveNotes(newNotes);
@@ -329,7 +330,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
         <div className="p-6 min-h-full">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={notes.map((n) => n.id)} strategy={rectSortingStrategy}>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {notes.map((note) => (
                   <SortableNote
                     key={note.id}

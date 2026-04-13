@@ -57,7 +57,7 @@ const STATUS_CONFIG = {
   },
   failed: {
     label: '验证失败',
-    color: 'border-brutal-error bg-red-500/10 text-red-500',
+    color: 'border-brutal-error bg-brutal-error/10 text-brutal-error',
     icon: AlertCircle,
   },
 };
@@ -397,7 +397,7 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
             data.decision === 'go'
               ? 'bg-brutal-success/10 border-brutal-success text-brutal-success'
               : data.decision === 'no_go'
-              ? 'bg-red-500/10 border-red-500 text-red-500'
+              ? 'bg-brutal-error/10 border-brutal-error text-brutal-error'
               : 'bg-brutal-warning/10 border-brutal-warning text-brutal-warning'
           }`}
         >
@@ -424,7 +424,7 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Kanban Board */}
-        <div className="flex-1 flex gap-4 p-6 overflow-x-auto">
+            <div className="flex-1 flex gap-4 p-6 overflow-x-auto min-h-0">
           {/* Pending Column */}
           <KanbanColumn
             title="待验证"
@@ -740,7 +740,7 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
                         ? conclusion === 'passed'
                           ? 'bg-brutal-success text-brutal-bg border-brutal-success'
                           : conclusion === 'failed'
-                          ? 'bg-red-500 text-white border-red-500'
+                          ? 'bg-brutal-error text-white border-brutal-error'
                           : 'bg-brutal-warning text-brutal-bg border-brutal-warning'
                         : 'border-brutal-border'
                     }`}
@@ -875,7 +875,7 @@ function ValidationCard({
                 item.result.conclusion === 'passed'
                   ? 'text-brutal-success'
                   : item.result.conclusion === 'failed'
-                  ? 'text-red-500'
+                  ? 'text-brutal-error'
                   : 'text-brutal-warning'
               }
             >
@@ -1040,14 +1040,14 @@ function DecisionModal({
             onClick={() => setSelectedDecision('no_go')}
             className={`w-full p-4 border-2 text-left ${
               selectedDecision === 'no_go'
-                ? 'border-red-500 bg-red-500/10'
-                : 'border-brutal-border hover:border-red-500/50'
+                ? 'border-brutal-error bg-brutal-error/10'
+                : 'border-brutal-border hover:border-brutal-error/50'
             }`}
           >
             <div className="flex items-center gap-3">
-              <X className={`w-5 h-5 ${selectedDecision === 'no_go' ? 'text-red-500' : ''}`} />
+              <X className={`w-5 h-5 ${selectedDecision === 'no_go' ? 'text-brutal-error' : ''}`} />
               <div>
-                <p className="font-mono font-bold text-red-500">NO-GO - 放弃</p>
+                <p className="font-mono font-bold text-brutal-error">NO-GO - 放弃</p>
                 <p className="text-xs font-mono text-brutal-muted mt-1">
                   痛点不存在或用户不愿付费，项目归档
                 </p>

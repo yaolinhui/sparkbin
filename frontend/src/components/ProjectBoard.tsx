@@ -200,7 +200,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
               <div className="text-right">
                 <div className="text-xs text-brutal-muted">{t('system.status')}</div>
                 <div className={`text-xs font-mono ${status.color} flex items-center gap-2`}>
-                  <span className="status-dot status-online" style={{ borderRadius: '50%' }} />
+                  <span className="status-dot status-online rounded-full"  />
                   {status.text}
                 </div>
               </div>
@@ -254,7 +254,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
 
         {/* Metrics Bar */}
         <div className="border-t border-brutal-border px-6 py-3">
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <DataDisplay
               value={projects.length}
               label={t('system.total_projects')}

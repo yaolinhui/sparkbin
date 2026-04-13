@@ -120,7 +120,7 @@ function CompactStageView({
         </span>
 
         {/* 当前阶段高亮 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-mono font-bold text-brutal-text">
             {stageLabel}
           </span>
@@ -130,7 +130,7 @@ function CompactStageView({
         </div>
 
         {/* 进度条 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="w-24 h-1 bg-brutal-border">
             <div
               className="h-full bg-brutal-accent transition-all"
@@ -142,7 +142,7 @@ function CompactStageView({
       </div>
 
       {/* 阶段快速跳转 */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {STAGE_ORDER.map((stage) => (
           <button
             key={stage}

@@ -269,7 +269,7 @@ export function AdminPage({ onLogout }: AdminPageProps) {
                 <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
                   选择提供商
                 </label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {(Object.keys(PROVIDER_INFO) as AIProvider[]).map((p) => (
                     <button
                       key={p}

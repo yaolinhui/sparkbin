@@ -515,7 +515,7 @@ export function PrototypeStage({ project, onUpdateContent, isLocked }: Prototype
                   {checklistDone}/{checklistTotal}
                 </span>
               </div>
-              <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {Object.entries(data.releaseChecklist).map(([key, checked]) => (
                   <label
                     key={key}
@@ -736,7 +736,7 @@ function TemplateSelector({
           ← 返回
         </button>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {DEFAULT_TEMPLATES.map((template) => {
           const isSelected = selected === template.id;
 

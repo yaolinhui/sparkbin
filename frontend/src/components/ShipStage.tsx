@@ -214,7 +214,7 @@ export function ShipStage({ project, onUpdateContent, isLocked }: ShipStageProps
             <Check className="w-4 h-4 text-brutal-accent" />
             <span className="font-mono text-sm">发布检查清单</span>
           </div>
-          <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
             {CHECKLIST_ITEMS.map(({ key, label, icon: Icon }) => (
               <label
                 key={key}

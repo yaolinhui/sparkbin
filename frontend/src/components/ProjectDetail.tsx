@@ -401,7 +401,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       />
 
       {/* Main Content */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden" style={{ height: "calc(100vh - 200px)" }}>
         {/* Left: Editor - 根据 AI 聊天状态自适应宽度 */}
         <div className="flex-1 flex flex-col min-w-0 border-r border-brutal-border bg-brutal-surface transition-all duration-300">
           <div className="flex items-center justify-between px-6 py-3 border-b border-brutal-border">
