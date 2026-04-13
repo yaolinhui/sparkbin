@@ -4,6 +4,7 @@ import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
 import { useI18n } from '../i18n';
 import { aiService } from '../services/ai';
+import { SnakeLoader } from './SnakeLoader';
 
 interface UnderstandingDimension {
   id: number;
@@ -258,7 +259,9 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
   return (
     <div className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="border border-brutal-border bg-brutal-surface w-full max-w-2xl">
+      <div className="border border-brutal-border bg-brutal-surface w-full max-w-2xl relative">
+        {/* 贪吃蛇加载动画 */}
+        <SnakeLoader isLoading={isOptimizing} text="AI 正在深度理解..." />
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-brutal-border">
           <div>
