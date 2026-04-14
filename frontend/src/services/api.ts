@@ -4,27 +4,38 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 // Token 和角色管理
 let authToken: string | null = localStorage.getItem('sparkbin_token');
 let userRole: string | null = localStorage.getItem('sparkbin_role');
+let userId: string | null = localStorage.getItem('sparkbin_user_id');
 
 export function setAuthToken(token: string) {
   authToken = token;
   localStorage.setItem('sparkbin_token', token);
-  // 从 JWT 中解析角色
+  // 从 JWT 中解析角色和用户 ID
   try {
     const parts = token.split('.');
     if (parts.length !== 3 || !parts[1]) throw new Error('Invalid token');
     const payload = JSON.parse(atob(parts[1]!));
     userRole = payload.role || 'user';
+    userId = payload.sub || payload.user_id || null;
     localStorage.setItem('sparkbin_role', userRole || 'user');
+    if (userId) {
+      localStorage.setItem('sparkbin_user_id', userId);
+    } else {
+      localStorage.removeItem('sparkbin_user_id');
+    }
   } catch {
     userRole = 'user';
+    userId = null;
+    localStorage.removeItem('sparkbin_user_id');
   }
 }
 
 export function clearAuthToken() {
   authToken = null;
   userRole = null;
+  userId = null;
   localStorage.removeItem('sparkbin_token');
   localStorage.removeItem('sparkbin_role');
+  localStorage.removeItem('sparkbin_user_id');
 }
 
 export function getAuthToken(): string | null {
@@ -41,6 +52,10 @@ export function isAdmin(): boolean {
 
 export function getUserRole(): string {
   return userRole || 'user';
+}
+
+export function getUserId(): string | null {
+  return userId;
 }
 
 // 通用请求函数

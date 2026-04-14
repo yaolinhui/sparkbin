@@ -34,11 +34,11 @@ export function getCurrentProvider(): AIProvider {
 
 export function setCurrentProvider(provider: AIProvider) {
   currentProvider = provider;
-  localStorage.setItem('sparkbin_ai_provider', provider);
+  localStorage.setItem('sparkbin_ai_provider_v2', provider);
 }
 
 // 初始化时读取保存的 provider
-const savedProvider = localStorage.getItem('sparkbin_ai_provider') as AIProvider | null;
+const savedProvider = localStorage.getItem('sparkbin_ai_provider_v2') as AIProvider | null;
 if (savedProvider && ['deepseek', 'kimi', 'doubao', 'openai'].includes(savedProvider)) {
   currentProvider = savedProvider;
 }

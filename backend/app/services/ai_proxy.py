@@ -226,6 +226,14 @@ class AIProxyService:
             traceback.print_exc()
             status = "error"
             error_msg = str(e)
+            # 某些异常（如 httpx.ConnectError）message 为空，按类型构造友好提示
+            if not error_msg:
+                if isinstance(e, httpx.ConnectError):
+                    error_msg = f"无法连接到 {provider.value} API 服务器，请检查网络或切换其他模型"
+                elif isinstance(e, httpx.TimeoutException):
+                    error_msg = f"{provider.value} API 请求超时，请稍后重试"
+                else:
+                    error_msg = f"{provider.value} API 调用失败: {type(e).__name__}"
             logger.error(f"Error in chat_completion: {error_msg}")
             # 发送错误信息给前端，而不是抛出异常导致连接中断
             error_data = json.dumps({"error": error_msg or "Unknown error occurred"})

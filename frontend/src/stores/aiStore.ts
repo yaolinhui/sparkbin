@@ -17,7 +17,7 @@ interface AIActions {
 
 // 从 localStorage 读取保存的 provider
 const getSavedProvider = (): AIProvider => {
-  const saved = localStorage.getItem('sparkbin_ai_provider') as AIProvider | null;
+  const saved = localStorage.getItem('sparkbin_ai_provider_v2') as AIProvider | null;
   if (saved && ['deepseek', 'kimi', 'doubao'].includes(saved)) {
     return saved;
   }
@@ -33,7 +33,7 @@ export const useAIStore = create<AIState & AIActions>()(
 
     setProvider: (provider: AIProvider) => {
       aiService.updateProvider(provider);
-      localStorage.setItem('sparkbin_ai_provider', provider);
+      localStorage.setItem('sparkbin_ai_provider_v2', provider);
       set({ provider });
     },
 

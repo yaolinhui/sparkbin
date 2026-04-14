@@ -1,171 +1,242 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface SnakeLoaderProps {
   isLoading: boolean;
   text?: string;
 }
 
-export function SnakeLoader({ isLoading, text = 'AI 正在思考...' }: SnakeLoaderProps) {
-  const [progress, setProgress] = useState(0);
+const LOADING_LOGS = [
+  '> Initializing neural context...',
+  '> Parsing user intent...',
+  '> Extracting key dimensions...',
+  '> Cross-referencing patterns...',
+  '> Synthesizing response...',
+  '> Finalizing output...',
+];
 
+export function SnakeLoader({ isLoading, text = 'AI 正在深度理解...' }: SnakeLoaderProps) {
+  const [progress, setProgress] = useState(0);
+  const [logs, setLogs] = useState<string[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  // 监听容器尺寸变化
+  useEffect(() => {
+    if (!containerRef.current || !isLoading) return;
+
+    const updateSize = () => {
+      if (containerRef.current) {
+        setSize({
+          width: containerRef.current.offsetWidth,
+          height: containerRef.current.offsetHeight,
+        });
+      }
+    };
+
+    updateSize();
+    const resizeObserver = new ResizeObserver(updateSize);
+    resizeObserver.observe(containerRef.current);
+
+    return () => resizeObserver.disconnect();
+  }, [isLoading]);
+
+  // 蛇身进度动画 - 沿着边框循环爬行
   useEffect(() => {
     if (!isLoading) {
       setProgress(0);
       return;
     }
 
-    // 模拟进度增加
+    let startTime: number | null = null;
+    let animationFrameId: number;
+
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      // 3秒绕边框一圈
+      const newProgress = (elapsed / 3000) % 1;
+      setProgress(newProgress);
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animationFrameId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [isLoading]);
+
+  // 终端日志逐行输出
+  useEffect(() => {
+    if (!isLoading) {
+      setLogs([]);
+      return;
+    }
+
+    setLogs([LOADING_LOGS[0]]);
+    let index = 0;
     const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) return 0;
-        return prev + 2;
-      });
-    }, 100);
+      index++;
+      if (index < LOADING_LOGS.length) {
+        setLogs(prev => [...prev.slice(-3), LOADING_LOGS[index]]);
+      }
+    }, 700);
 
     return () => clearInterval(interval);
   }, [isLoading]);
 
   if (!isLoading) return null;
 
-  // 计算贪吃蛇位置 - 沿着边框移动
-  // 边框路径: 左上 -> 右上 -> 右下 -> 左下 -> 回到左上
-  const getSnakePosition = () => {
-    const p = progress % 100;
-    // 每边占 25%
-    if (p < 25) {
-      // 上边: 从左到右
-      return {
-        left: `${(p / 25) * 100}%`,
-        top: '-2px',
-        transform: 'translateX(-50%)',
-      };
-    } else if (p < 50) {
-      // 右边: 从上到下
-      return {
-        right: '-2px',
-        top: `${((p - 25) / 25) * 100}%`,
-        transform: 'translateY(-50%)',
-      };
-    } else if (p < 75) {
-      // 下边: 从右到左
-      return {
-        right: `${((p - 50) / 25) * 100}%`,
-        bottom: '-2px',
-        transform: 'translateX(50%)',
-      };
-    } else {
-      // 左边: 从下到上
-      return {
-        left: '-2px',
-        bottom: `${((p - 75) / 25) * 100}%`,
-        transform: 'translateY(50%)',
-      };
-    }
-  };
+  const { width, height } = size;
+  const padding = 3;
+  const rectW = Math.max(0, width - padding * 2);
+  const rectH = Math.max(0, height - padding * 2);
+  const perimeter = rectW * 2 + rectH * 2;
 
-  // 生成拖尾效果 - 多个小点
-  const getTrailPositions = () => {
-    const trail: Array<{
-      left?: string;
-      right?: string;
-      top?: string;
-      bottom?: string;
-      transform: string;
-      opacity: number;
-      scale: number;
-    }> = [];
-    const trailLength = 8; // 拖尾长度
+  // 主蛇身：周长的 22%，连续光带
+  const headLen = perimeter > 0 ? perimeter * 0.22 : 0;
+  const headGap = perimeter > 0 ? perimeter * 0.78 : 0;
+  const headOffset = perimeter > 0 ? -progress * perimeter : 0;
 
-    for (let i = 0; i < trailLength; i++) {
-      const trailProgress = (progress - i * 3 + 100) % 100;
-      const p = trailProgress;
-
-      let pos: {
-        left?: string;
-        right?: string;
-        top?: string;
-        bottom?: string;
-        transform: string;
-      };
-
-      if (p < 25) {
-        pos = {
-          left: `${(p / 25) * 100}%`,
-          top: '-2px',
-          transform: 'translateX(-50%)',
-        };
-      } else if (p < 50) {
-        pos = {
-          right: '-2px',
-          top: `${((p - 25) / 25) * 100}%`,
-          transform: 'translateY(-50%)',
-        };
-      } else if (p < 75) {
-        pos = {
-          right: `${((p - 50) / 25) * 100}%`,
-          bottom: '-2px',
-          transform: 'translateX(50%)',
-        };
-      } else {
-        pos = {
-          left: '-2px',
-          bottom: `${((p - 75) / 25) * 100}%`,
-          transform: 'translateY(50%)',
-        };
-      }
-
-      trail.push({
-        ...pos,
-        opacity: 1 - i * 0.12,
-        scale: 1 - i * 0.08,
-      });
-    }
-
-    return trail;
-  };
-
-  const snakePos = getSnakePosition();
-  const trailPositions = getTrailPositions();
+  // 拖尾光晕：周长的 45%，更宽更淡
+  const tailLen = perimeter > 0 ? perimeter * 0.45 : 0;
+  const tailGap = perimeter > 0 ? perimeter * 0.55 : 0;
+  const tailOffset = perimeter > 0 ? -progress * perimeter : 0;
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-10">
-      {/* 贪吃蛇头部 */}
-      <div
-        className="absolute w-3 h-3 bg-brutal-accent rounded-sm"
-        style={{
-          ...snakePos,
-          transition: 'none',
-          boxShadow: '0 0 8px var(--brutal-accent)',
-        }}
-      />
+    <div
+      ref={containerRef}
+      className="absolute inset-0 z-50 bg-brutal-bg/70 backdrop-blur-[2px] flex items-center justify-center"
+    >
+      {/* SVG 边框贪吃蛇 */}
+      {width > 0 && height > 0 && (
+        <svg
+          className="absolute inset-0 pointer-events-none"
+          width={width}
+          height={height}
+        >
+          <defs>
+            <filter id="snake-glow" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feFlood floodColor="var(--brutal-accent)" result="color" />
+              <feComposite in="color" in2="blur" operator="in" result="shadow" />
+              <feMerge>
+                <feMergeNode in="shadow" />
+                <feMergeNode in="shadow" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <linearGradient id="snake-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="var(--brutal-accent)" />
+              <stop offset="50%" stopColor="#fff" />
+              <stop offset="100%" stopColor="var(--brutal-accent)" />
+            </linearGradient>
+          </defs>
 
-      {/* 贪吃蛇拖尾 */}
-      {trailPositions.map((pos, index) => (
-        <div
-          key={index}
-          className="absolute bg-brutal-accent rounded-sm"
-          style={{
-            width: `${8 - index}px`,
-            height: `${8 - index}px`,
-            ...pos,
-            opacity: pos.opacity,
-            transform: `${pos.transform} scale(${pos.scale})`,
-            transition: 'none',
-          }}
-        />
-      ))}
+          {/* 边框跑道 - 淡淡的引导线 */}
+          <rect
+            x={padding}
+            y={padding}
+            width={rectW}
+            height={rectH}
+            fill="none"
+            stroke="var(--brutal-border)"
+            strokeWidth={1}
+            strokeDasharray="4 4"
+            opacity={0.4}
+          />
 
-      {/* 角落的小方块装饰 */}
-      <div className="absolute -top-1 -left-1 w-2 h-2 bg-brutal-accent animate-pulse" />
-      <div className="absolute -top-1 -right-1 w-2 h-2 bg-brutal-accent animate-pulse delay-75" />
-      <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-brutal-accent animate-pulse delay-150" />
-      <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-brutal-accent animate-pulse delay-200" />
+          {/* 拖尾光晕层：更宽、更淡 */}
+          <rect
+            x={padding}
+            y={padding}
+            width={rectW}
+            height={rectH}
+            fill="none"
+            stroke="var(--brutal-accent)"
+            strokeWidth={10}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray={`${tailLen} ${tailGap}`}
+            strokeDashoffset={tailOffset}
+            opacity={0.25}
+            filter="url(#snake-glow)"
+            style={{ transition: 'none' }}
+          />
 
-      {/* 加载文字 */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="bg-brutal-surface/90 border border-brutal-border px-4 py-2 flex items-center gap-3">
-          <div className="w-4 h-4 border-2 border-brutal-accent border-t-transparent animate-spin" />
-          <span className="text-sm font-mono">{text}</span>
+          {/* 贪吃蛇本体：发光的渐变主蛇身 */}
+          <rect
+            x={padding}
+            y={padding}
+            width={rectW}
+            height={rectH}
+            fill="none"
+            stroke="url(#snake-gradient)"
+            strokeWidth={5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray={`${headLen} ${headGap}`}
+            strokeDashoffset={headOffset}
+            filter="url(#snake-glow)"
+            style={{ transition: 'none' }}
+          />
+        </svg>
+      )}
+
+      {/* 四角脉冲扫描标记 */}
+      <div className="absolute top-0 left-0 w-6 h-6 border-t-[3px] border-l-[3px] border-brutal-accent animate-pulse" />
+      <div className="absolute top-0 right-0 w-6 h-6 border-t-[3px] border-r-[3px] border-brutal-accent animate-pulse" style={{ animationDelay: '200ms' }} />
+      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-[3px] border-r-[3px] border-brutal-accent animate-pulse" style={{ animationDelay: '400ms' }} />
+      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-[3px] border-l-[3px] border-brutal-accent animate-pulse" style={{ animationDelay: '600ms' }} />
+
+      {/* 中心终端窗口 */}
+      <div className="relative border-2 border-brutal-border bg-brutal-surface/95 shadow-[8px_8px_0px_rgba(0,0,0,0.3)] min-w-[300px] max-w-[90%]">
+        {/* 终端标题栏 */}
+        <div className="flex items-center justify-between px-3 py-2 border-b border-brutal-border bg-brutal-bg">
+          <span className="text-[10px] font-mono text-brutal-muted uppercase tracking-wider">
+            // SYSTEM.LOADING
+          </span>
+          <div className="flex gap-1.5">
+            <div className="w-2 h-2 bg-brutal-border" />
+            <div className="w-2 h-2 bg-brutal-border" />
+            <div className="w-2 h-2 bg-brutal-accent animate-pulse" />
+          </div>
+        </div>
+
+        {/* 终端内容 */}
+        <div className="p-5 space-y-4">
+          {/* 主标题 */}
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 border-2 border-brutal-accent border-t-transparent animate-spin" />
+            <span className="text-sm font-mono font-bold text-brutal-text">{text}</span>
+          </div>
+
+          {/* 进度条 */}
+          <div className="w-full h-2 bg-brutal-border/30 border border-brutal-border">
+            <div
+              className="h-full bg-brutal-accent animate-pulse"
+              style={{
+                width: `${Math.min(95, (logs.length / LOADING_LOGS.length) * 100)}%`,
+                transition: 'width 0.3s ease-out',
+              }}
+            />
+          </div>
+
+          {/* 终端日志 */}
+          <div className="bg-brutal-bg border border-brutal-border p-3 min-h-[100px]">
+            <div className="space-y-1 font-mono text-xs">
+              {logs.map((log, i) => (
+                <div
+                  key={`${i}-${log}`}
+                  className={`${
+                    i === logs.length - 1 ? 'text-brutal-accent' : 'text-brutal-muted'
+                  }`}
+                >
+                  {log}
+                  {i === logs.length - 1 && (
+                    <span className="animate-blink ml-0.5">_</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -3,6 +3,8 @@ import { Send, ChevronRight, ChevronLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
+import { getUserId } from '../services/api';
+import { PET_OPTIONS } from './AIPetConfig.constants';
 import type { AIPetConfig } from '../types';
 
 interface Message {
@@ -111,26 +113,25 @@ export function AIChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const petConfigKey = `sparkbin_pet_config_${getUserId() || 'guest'}`;
+
   // 加载宠物配置
   useEffect(() => {
-    const saved = localStorage.getItem('sparkbin_pet_config');
+    const saved = localStorage.getItem(petConfigKey);
     if (saved) {
       setPetConfig(JSON.parse(saved));
     }
-  }, []);
+  }, [petConfigKey]);
 
   const handleToggleCollapse = () => {
     onCollapsedChange?.(!isCollapsed);
   };
 
-  // 宠物外观
-  const petEmoji = petConfig?.type === 'robot' ? '🤖' :
-                   petConfig?.type === 'panda' ? '🐼' :
-                   petConfig?.type === 'fox' ? '🦊' : '🐱';
-  const petName = petConfig?.name || '墨墨';
-  const petColor = petConfig?.type === 'robot' ? '#60a5fa' :
-                   petConfig?.type === 'panda' ? '#a3a3a3' :
-                   petConfig?.type === 'fox' ? '#f97316' : '#fbbf24';
+  // 宠物外观 - 从常量配置中查找，避免硬编码遗漏
+  const selectedPet = PET_OPTIONS.find((p) => p.id === petConfig?.type) || PET_OPTIONS[0];
+  const petEmoji = selectedPet.emoji;
+  const petName = petConfig?.name || selectedPet.name;
+  const petColor = selectedPet.color;
   const personalityEmoji = petConfig?.personality === 'gentle' ? '🌸' :
                            petConfig?.personality === 'rational' ? '📊' :
                            petConfig?.personality === 'zen' ? '🧘' : '⚡';

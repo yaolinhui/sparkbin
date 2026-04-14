@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Github, Terminal, LogOut, Server, Settings, Cat, ChevronDown, ChevronRight } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
-import { isAdmin } from '../services/api';
+import { isAdmin, getUserId } from '../services/api';
 import { useI18n } from '../i18n/hooks';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectModal } from './CreateProjectModal';
@@ -86,8 +86,9 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   const [isPetConfigOpen, setIsPetConfigOpen] = useState(false);
   const [showPetBubble, setShowPetBubble] = useState(false);
   const [petDialogue, setPetDialogue] = useState('');
+  const petConfigKey = `sparkbin_pet_config_${getUserId() || 'guest'}`;
   const [petConfig, setPetConfig] = useState<AIPetConfigType | null>(() => {
-    const saved = localStorage.getItem('sparkbin_pet_config');
+    const saved = localStorage.getItem(petConfigKey);
     return saved ? JSON.parse(saved) : null;
   });
   const [filter, setFilter] = useState<'all' | 'active' | 'paused' | 'archived'>('all');
@@ -526,7 +527,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
           config={petConfig}
           onSave={(config: AIPetConfigType) => {
             setPetConfig(config);
-            localStorage.setItem('sparkbin_pet_config', JSON.stringify(config));
+            localStorage.setItem(petConfigKey, JSON.stringify(config));
           }}
           onClose={() => setIsPetConfigOpen(false)}
         />
