@@ -16,8 +16,18 @@ import {
   Trash2,
   Edit3,
 } from 'lucide-react';
-import { useI18n } from '../i18n';
+import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
+import {
+  DndContext,
+  useDraggable,
+  useDroppable,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import type { Project, ValidationItem, ValidationTool, ValidationData } from '../types';
 
 interface ValidateStageProps {
@@ -97,7 +107,6 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
     notes: '',
   });
 
-  // 初始化数据
   useEffect(() => {
     const validateStage = project.stages?.validate;
     if (validateStage?.content) {
@@ -151,6 +160,7 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
     const defaultData: ValidationData = { items: defaultItems, tools: [] };
     setData(defaultData);
     saveData(defaultData);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id]);
 
   // 保存数据
@@ -332,6 +342,59 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
     (item) => item.status === 'validated' || item.status === 'failed'
   );
 
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  // 获取列 ID 对应的状态
+  const getStatusFromColumnId = (columnId: string): ValidationItem['status'] => {
+    switch (columnId) {
+      case 'pending': return 'pending';
+      case 'in_progress': return 'in_progress';
+      case 'validated': return 'validated';
+      default: return 'pending';
+    }
+  };
+
+  // 获取状态对应的列 ID
+  const getColumnIdFromStatus = (status: ValidationItem['status']) => {
+    if (status === 'pending') return 'pending';
+    if (status === 'in_progress') return 'in_progress';
+    return 'validated';
+  };
+
+  // 处理拖拽结束
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || isLocked) return;
+
+    const activeId = active.id as string;
+    const activeItem = data.items.find((i) => i.id === activeId);
+    if (!activeItem) return;
+
+    const overId = over.id as string;
+    let targetColumn = overId;
+
+    // 如果落在卡片上，找到该卡片所在的列
+    if (!['pending', 'in_progress', 'validated'].includes(overId)) {
+      const overItem = data.items.find((i) => i.id === overId);
+      if (overItem) {
+        targetColumn = getColumnIdFromStatus(overItem.status);
+      }
+    }
+
+    const sourceColumn = getColumnIdFromStatus(activeItem.status);
+    if (sourceColumn !== targetColumn) {
+      const newStatus = getStatusFromColumnId(targetColumn);
+      await updateStatus(activeId, newStatus);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-brutal-bg">
       {/* Header */}
@@ -424,61 +487,84 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Kanban Board */}
-            <div className="flex-1 flex gap-4 p-6 overflow-x-auto min-h-0">
-          {/* Pending Column */}
-          <KanbanColumn
-            title="待验证"
-            count={pendingItems.length}
-            color="border-brutal-border"
-          >
-            {pendingItems.map((item) => (
-              <ValidationCard
-                key={item.id}
-                item={item}
-                isLocked={isLocked}
-                onStart={() => updateStatus(item.id, 'in_progress')}
-                onEdit={() => startEdit(item)}
-                onDelete={() => deleteItem(item.id)}
-              />
-            ))}
-          </KanbanColumn>
+        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+          <div className="flex-1 flex gap-4 p-6 overflow-x-auto min-h-0">
+            {/* Pending Column */}
+            <DroppableKanbanColumn
+              id="pending"
+              title="待验证"
+              count={pendingItems.length}
+              color="border-brutal-border"
+            >
+              {pendingItems.map((item) => (
+                <DraggableValidationCard
+                  key={item.id}
+                  id={item.id}
+                  item={item}
+                  isLocked={isLocked}
+                >
+                  <ValidationCard
+                    item={item}
+                    isLocked={isLocked}
+                    onStart={() => updateStatus(item.id, 'in_progress')}
+                    onEdit={() => startEdit(item)}
+                    onDelete={() => deleteItem(item.id)}
+                  />
+                </DraggableValidationCard>
+              ))}
+            </DroppableKanbanColumn>
 
-          {/* In Progress Column */}
-          <KanbanColumn
-            title="进行中"
-            count={inProgressItems.length}
-            color="border-brutal-warning"
-          >
-            {inProgressItems.map((item) => (
-              <ValidationCard
-                key={item.id}
-                item={item}
-                isLocked={isLocked}
-                onRecord={() => openResultModal(item)}
-                onEdit={() => startEdit(item)}
-                onDelete={() => deleteItem(item.id)}
-              />
-            ))}
-          </KanbanColumn>
+            {/* In Progress Column */}
+            <DroppableKanbanColumn
+              id="in_progress"
+              title="进行中"
+              count={inProgressItems.length}
+              color="border-brutal-warning"
+            >
+              {inProgressItems.map((item) => (
+                <DraggableValidationCard
+                  key={item.id}
+                  id={item.id}
+                  item={item}
+                  isLocked={isLocked}
+                >
+                  <ValidationCard
+                    item={item}
+                    isLocked={isLocked}
+                    onRecord={() => openResultModal(item)}
+                    onEdit={() => startEdit(item)}
+                    onDelete={() => deleteItem(item.id)}
+                  />
+                </DraggableValidationCard>
+              ))}
+            </DroppableKanbanColumn>
 
-          {/* Completed Column */}
-          <KanbanColumn
-            title="已验证"
-            count={completedItems.length}
-            color="border-brutal-success"
-          >
-            {completedItems.map((item) => (
-              <ValidationCard
-                key={item.id}
-                item={item}
-                isLocked={isLocked}
-                onRecord={() => openResultModal(item)}
-                onEdit={() => startEdit(item)}
-                onDelete={() => deleteItem(item.id)}
-              />
-            ))}
-          </KanbanColumn>
-        </div>
+            {/* Completed Column */}
+            <DroppableKanbanColumn
+              id="validated"
+              title="已验证"
+              count={completedItems.length}
+              color="border-brutal-success"
+            >
+              {completedItems.map((item) => (
+                <DraggableValidationCard
+                  key={item.id}
+                  id={item.id}
+                  item={item}
+                  isLocked={isLocked}
+                >
+                  <ValidationCard
+                    item={item}
+                    isLocked={isLocked}
+                    onRecord={() => openResultModal(item)}
+                    onEdit={() => startEdit(item)}
+                    onDelete={() => deleteItem(item.id)}
+                  />
+                </DraggableValidationCard>
+              ))}
+            </DroppableKanbanColumn>
+          </div>
+        </DndContext>
 
         {/* Tools Panel */}
         <div className="w-80 border-l border-brutal-border bg-brutal-surface flex flex-col">
@@ -795,18 +881,22 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
   );
 }
 
-// 子组件：看板列
-function KanbanColumn({
+// 子组件：可拖放看板列
+function DroppableKanbanColumn({
+  id,
   title,
   count,
   color,
   children,
 }: {
+  id: string;
   title: string;
   count: number;
   color: string;
   children: React.ReactNode;
 }) {
+  const { setNodeRef, isOver } = useDroppable({ id, data: { type: 'column' } });
+
   return (
     <div className="flex-shrink-0 w-72 flex flex-col">
       <div
@@ -815,9 +905,52 @@ function KanbanColumn({
         <span className="text-xs font-mono font-bold">{title}</span>
         <span className="text-xs font-mono text-brutal-muted">{count}</span>
       </div>
-      <div className="flex-1 border-x border-b border-brutal-border bg-brutal-bg/50 p-3 space-y-3 overflow-y-auto">
+      <div
+        ref={setNodeRef}
+        className={`flex-1 border-x border-b border-brutal-border bg-brutal-bg/50 p-3 space-y-3 overflow-y-auto transition-colors ${
+          isOver ? 'bg-brutal-accent/10' : ''
+        }`}
+      >
         {children}
       </div>
+    </div>
+  );
+}
+
+// 子组件：可拖拽验证卡片包装器
+function DraggableValidationCard({
+  id,
+  item,
+  isLocked,
+  children,
+}: {
+  id: string;
+  item: ValidationItem;
+  isLocked: boolean;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id,
+    data: { type: 'card', item },
+    disabled: isLocked,
+  });
+
+  const style = transform
+    ? {
+        transform: CSS.Translate.toString(transform),
+        zIndex: 50,
+      }
+    : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={`${isDragging ? 'opacity-50' : ''} ${isLocked ? '' : 'cursor-grab active:cursor-grabbing'}`}
+    >
+      {children}
     </div>
   );
 }

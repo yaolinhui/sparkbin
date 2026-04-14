@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Pause, Play, Archive, LogOut, ChevronUp, Menu, GitGraph } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
-import { useI18n, useStatusLabel, useStageLabel } from '../i18n';
+import { useI18n, useStatusLabel, useStageLabel } from '../i18n/hooks';
 import type { Project, Stage } from "../types";
 import { StageFlow } from './StageFlow';
 import { RichTextEditor } from './RichTextEditor';

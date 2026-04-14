@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Edit2, Check, Plus, X, Lightbulb, GripVertical } from 'lucide-react';
-import { useI18n } from '../i18n';
+import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
 import type { Project } from '../types';
 import {
@@ -35,7 +35,7 @@ interface IdeaStageProps {
 }
 
 const AI_PET_CAT = `
-    /\_/\
+    /_/\
    ( o.o )
     > ^ <
    /|   |\
@@ -196,7 +196,9 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
           setNotes(parsed);
           return;
         }
-      } catch {}
+      } catch {
+        // ignore parse error
+      }
     }
     const defaultNotes: StickyNote[] = [
       { id: '1', title: '核心痛点', content: project.painPoint || '描述你想解决的核心问题...', color: 'accent' },
@@ -207,6 +209,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
     ];
     setNotes(defaultNotes);
     saveNotes(defaultNotes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.painPoint]);
 
   const saveNotes = async (newNotes: StickyNote[]) => {

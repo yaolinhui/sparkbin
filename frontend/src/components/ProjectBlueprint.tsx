@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { X, GitGraph, Clock, AlertTriangle, CheckCircle2, ChevronRight } from 'lucide-react';
-import { useI18n } from '../i18n';
+import { useI18n } from '../i18n/hooks';
 import type { Project, StageKey } from '../types';
 import { STAGE_ORDER } from '../types';
 
@@ -69,9 +69,11 @@ function getBlockReason(project: Project, stageKey: StageKey): string | undefine
       if (validateStage?.content) {
         try {
           const data = JSON.parse(validateStage.content);
-          const validatedCount = (data.items || []).filter((i: any) => i.status === 'validated').length;
+          const validatedCount = (data.items || []).filter((i: { status: string }) => i.status === 'validated').length;
           if (validatedCount === 0) return '验证阶段缺少通过项，建议补充用户反馈后再设计原型';
-        } catch {}
+        } catch {
+          // ignore parse error
+        }
       }
       break;
     }
@@ -102,7 +104,9 @@ function getBlockReason(project: Project, stageKey: StageKey): string | undefine
           const checklistDone = Object.values(checklist).filter(Boolean).length;
           if (checklistDone < 3) return '发布准备度不足，建议先完成核心配置再启动增长';
           if (!data.launchUrl) return '缺少上线链接，建议先完成产品发布';
-        } catch {}
+        } catch {
+          // ignore parse error
+        }
       }
       break;
     }
@@ -112,10 +116,12 @@ function getBlockReason(project: Project, stageKey: StageKey): string | undefine
         try {
           const data = JSON.parse(growStage.content);
           const contents = data.contentCalendar || [];
-          const channels = (data.channelMetrics || []).filter((c: any) => (c.totalUsers || 0) > 0).length;
+          const channels = (data.channelMetrics || []).filter((c: { totalUsers?: number }) => (c.totalUsers || 0) > 0).length;
           if (contents.length === 0) return '增长阶段缺少内容布局，建议先积累内容和用户';
           if (channels < 2) return '覆盖渠道较少，建议至少建立 2 个增长渠道后再考虑变现';
-        } catch {}
+        } catch {
+          // ignore parse error
+        }
       }
       break;
     }
@@ -146,7 +152,7 @@ function parseStageMetric(project: Project, stageKey: StageKey, t: (k: string) =
       case 'validate': {
         if (stage?.content) {
           const data = JSON.parse(stage.content);
-          const items: any[] = data.items || [];
+          const items: Array<{ status: string } & Record<string, unknown>> = data.items || [];
           const validated = items.filter((i) => i.status === 'validated').length;
           const failed = items.filter((i) => i.status === 'failed').length;
           summary = `${validated}/${items.length || 0} 已验证`;
@@ -168,7 +174,7 @@ function parseStageMetric(project: Project, stageKey: StageKey, t: (k: string) =
       case 'prototype': {
         if (stage?.content) {
           const data = JSON.parse(stage.content);
-          const features: any[] = data.features || [];
+          const features: Array<{ status: string } & Record<string, unknown>> = data.features || [];
           const doneFeatures = features.filter((f) => f.status === 'done').length;
           const checklist = data.releaseChecklist || {};
           summary = `${features.length} 项功能`;
@@ -205,9 +211,9 @@ function parseStageMetric(project: Project, stageKey: StageKey, t: (k: string) =
       case 'grow': {
         if (stage?.content) {
           const data = JSON.parse(stage.content);
-          const contents: any[] = data.contentCalendar || [];
+          const contents: Array<{ status: string } & Record<string, unknown>> = data.contentCalendar || [];
           const published = contents.filter((c) => c.status === 'published').length;
-          const channels = (data.channelMetrics || []).filter((c: any) => (c.totalUsers || 0) > 0).length;
+          const channels = (data.channelMetrics || []).filter((c: { totalUsers?: number }) => (c.totalUsers || 0) > 0).length;
           summary = `${contents.length} 篇内容`;
           detailLines.push(
             { label: '内容', value: `${published}/${contents.length} 发布`, highlight: published > 0 },

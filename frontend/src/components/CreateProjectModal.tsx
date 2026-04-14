@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, ArrowRight, Check, Edit2 } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
-import { useI18n } from '../i18n';
+import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
 import { SnakeLoader } from './SnakeLoader';
 

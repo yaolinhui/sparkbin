@@ -16,9 +16,10 @@ import {
   Users,
   RefreshCw,
 } from 'lucide-react';
-import { useI18n } from '../i18n';
+import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
-import type { Project, ShipData, PlatformContent, UserFeedback } from '../types';
+import { useProjectStore } from '../stores/projectStore';
+import type { Project, ShipData, PlatformContent, UserFeedback, PrototypeData, Feature } from '../types';
 
 interface ShipStageProps {
   project: Project;
@@ -60,7 +61,6 @@ export function ShipStage({ project, onUpdateContent, isLocked }: ShipStageProps
   const [newFeedback, setNewFeedback] = useState({ content: '', rating: 5, source: '' });
   const [metricsForm, setMetricsForm] = useState(data.metrics);
 
-  // 初始化数据
   useEffect(() => {
     const shipStage = project.stages?.ship;
     if (shipStage?.content) {
@@ -81,6 +81,7 @@ export function ShipStage({ project, onUpdateContent, isLocked }: ShipStageProps
         // 使用默认值
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id]);
 
   // 保存数据
@@ -171,6 +172,59 @@ export function ShipStage({ project, onUpdateContent, isLocked }: ShipStageProps
   // 获取平台文案
   const getPlatformContent = (platform: string) => {
     return data.contents.find(c => c.platform === platform);
+  };
+
+  // 闭环反馈：将用户反馈转为原型阶段的功能项
+  const [convertingFeedbackId, setConvertingFeedbackId] = useState<string | null>(null);
+  const convertFeedbackToFeature = async (feedback: UserFeedback) => {
+    setConvertingFeedbackId(feedback.id);
+    try {
+      const prototypeStage = project.stages?.prototype;
+      let prototypeData: PrototypeData = {
+        features: [],
+        releaseChecklist: { domain: false, ssl: false, payment: false, analytics: false, feedback: false },
+      };
+
+      if (prototypeStage?.content) {
+        try {
+          const parsed = JSON.parse(prototypeStage.content);
+          if (parsed && typeof parsed === 'object') {
+            prototypeData = {
+              features: parsed.features || [],
+              selectedPlatform: parsed.selectedPlatform,
+              selectedTemplate: parsed.selectedTemplate,
+              techStack: parsed.techStack,
+              designPrompt: parsed.designPrompt,
+              releaseChecklist: parsed.releaseChecklist || { domain: false, ssl: false, payment: false, analytics: false, feedback: false },
+            };
+          }
+        } catch {
+          // 解析失败使用默认值
+        }
+      }
+
+      const newFeature: Feature = {
+        id: Date.now().toString(),
+        name: feedback.content.slice(0, 40) || '用户反馈需求',
+        priority: feedback.rating <= 2 ? 'P0' : 'P1',
+        status: 'todo',
+        notes: `来自用户反馈 (${feedback.source || '未知来源'}) - 评分: ${feedback.rating}/5`,
+        order: prototypeData.features.length,
+      };
+
+      const updatedPrototypeData: PrototypeData = {
+        ...prototypeData,
+        features: [...prototypeData.features, newFeature],
+      };
+
+      await useProjectStore.getState().updateStageContent(project.id, 'prototype', JSON.stringify(updatedPrototypeData));
+      alert(`已将该反馈转为原型阶段的功能项：${newFeature.name}`);
+    } catch (error) {
+      console.error('Failed to convert feedback:', error);
+      alert('流转失败，请重试');
+    } finally {
+      setConvertingFeedbackId(null);
+    }
   };
 
   return (
@@ -429,6 +483,25 @@ export function ShipStage({ project, onUpdateContent, isLocked }: ShipStageProps
                       )}
                     </div>
                     <p className="text-xs font-mono text-brutal-text">{feedback.content}</p>
+                    {!isLocked && (
+                      <button
+                        onClick={() => convertFeedbackToFeature(feedback)}
+                        disabled={convertingFeedbackId === feedback.id}
+                        className="mt-2 text-xs text-brutal-accent hover:underline flex items-center gap-1"
+                      >
+                        {convertingFeedbackId === feedback.id ? (
+                          <>
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                            流转中...
+                          </>
+                        ) : (
+                          <>
+                            <Rocket className="w-3 h-3" />
+                            转为原型需求
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 ))
               )}

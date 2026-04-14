@@ -18,9 +18,11 @@ import {
   Trash2,
   Save,
   Copy,
+  ExternalLink,
 } from 'lucide-react';
-import { useI18n } from '../i18n';
+import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
+import { ImageUpload } from './ImageUpload';
 import type { Project, PrototypeData, PlatformType, Feature, DesignTemplate } from '../types';
 
 interface PrototypeStageProps {
@@ -93,7 +95,6 @@ export function PrototypeStage({ project, onUpdateContent, isLocked }: Prototype
   const [newFeatureName, setNewFeatureName] = useState('');
   const [newFeaturePriority, setNewFeaturePriority] = useState<'P0' | 'P1' | 'P2'>('P1');
 
-  // 初始化数据
   useEffect(() => {
     const prototypeStage = project.stages?.prototype;
     if (prototypeStage?.content) {
@@ -176,6 +177,7 @@ export function PrototypeStage({ project, onUpdateContent, isLocked }: Prototype
       setData(initialData);
       saveData(initialData);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id]);
 
   // 保存数据
@@ -842,8 +844,14 @@ function FeatureRow({
           )}
         </div>
 
-        {/* Status & Actions */}
-        <div className="flex items-center gap-3">
+        {/* Screenshot & Status & Actions */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <ImageUpload
+            value={feature.screenshot}
+            onChange={(base64) => onUpdate({ screenshot: base64 })}
+            disabled={isLocked}
+          />
+
           <select
             value={feature.status}
             onChange={(e) => onUpdate({ status: e.target.value as Feature['status'] })}
@@ -862,27 +870,48 @@ function FeatureRow({
             </span>
           )}
 
+          {feature.referenceUrl && (
+            <a
+              href={feature.referenceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-brutal-accent hover:underline flex items-center gap-1"
+            >
+              <ExternalLink className="w-3 h-3" />
+              参考
+            </a>
+          )}
+
           {feature.notes && !isEditing && (
             <span className="text-xs text-brutal-muted truncate">{feature.notes}</span>
           )}
         </div>
 
-        {/* Edit Notes */}
+        {/* Edit Notes & Reference URL */}
         {isEditing && (
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 space-y-2">
             <input
               type="text"
               value={editNotes}
               onChange={(e) => setEditNotes(e.target.value)}
               placeholder="添加备注..."
-              className="flex-1 p-2 border border-brutal-border bg-brutal-bg font-mono text-xs"
+              className="w-full p-2 border border-brutal-border bg-brutal-bg font-mono text-xs"
             />
-            <button
-              onClick={saveNotes}
-              className="btn-brutal-primary h-9 px-3 py-1 text-xs"
-            >
-              <Save className="w-3 h-3" />
-            </button>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={feature.referenceUrl || ''}
+                onChange={(e) => onUpdate({ referenceUrl: e.target.value })}
+                placeholder="参考链接 URL..."
+                className="flex-1 p-2 border border-brutal-border bg-brutal-bg font-mono text-xs"
+              />
+              <button
+                onClick={saveNotes}
+                className="btn-brutal-primary h-9 px-3 py-1 text-xs"
+              >
+                <Save className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         )}
       </div>

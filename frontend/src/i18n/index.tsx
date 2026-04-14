@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 
-export type Language = 'zh' | 'en';
+export { type Language, type I18nContextType, I18nContext } from './context';
 
 const translations = {
   zh: {
@@ -293,14 +293,7 @@ const translations = {
   },
 };
 
-interface I18nContextType {
-  language: Language;
-  setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
-  toggleLanguage: () => void;
-}
-
-const I18nContext = createContext<I18nContextType | null>(null);
+import { I18nContext } from './context';
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguage] = useState<Language>(() => {
@@ -350,33 +343,3 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useI18n() {
-  const context = useContext(I18nContext);
-  if (!context) {
-    throw new Error('useI18n must be used within I18nProvider');
-  }
-  return context;
-}
-
-// Hook for stage labels
-export function useStageLabel(stageKey: string): string {
-  const { t, language } = useI18n();
-  const key = `stage.${stageKey}`;
-  const translated = t(key);
-
-  // If translation not found, fallback to uppercase
-  if (translated === key) {
-    return stageKey.toUpperCase();
-  }
-
-  // For Chinese, return as-is; for English, uppercase
-  return language === 'en' ? translated.toUpperCase() : translated;
-}
-
-// Hook for status labels
-export function useStatusLabel(status: string): string {
-  const { t } = useI18n();
-  const key = `status.${status}`;
-  const translated = t(key);
-  return translated === key ? status.toUpperCase() : translated;
-}

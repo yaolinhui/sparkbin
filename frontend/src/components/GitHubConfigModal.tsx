@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Github, ArrowRight } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
-import { useI18n } from '../i18n';
+import { useI18n } from '../i18n/hooks';
 
 interface GitHubConfigModalProps {
   isOpen: boolean;

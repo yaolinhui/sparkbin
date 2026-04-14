@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Pause, Archive, ArrowRight, Calendar } from 'lucide-react';
-import { useI18n, useStageLabel, useStatusLabel } from '../i18n';
+import { useI18n, useStageLabel, useStatusLabel } from '../i18n/hooks';
 import type { Project } from '../types';
 import { type StageKey } from '../types';
 

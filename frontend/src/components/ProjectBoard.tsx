@@ -4,14 +4,15 @@ import { Plus, Github, Terminal, LogOut, Server, Settings, Cat, ChevronDown, Che
 import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
 import { isAdmin } from '../services/api';
-import { useI18n } from '../i18n';
+import { useI18n } from '../i18n/hooks';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectModal } from './CreateProjectModal';
 import { GitHubConfigModal } from './GitHubConfigModal';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { ModelSelector } from './ModelSelector';
-import { AIPetConfig, PET_OPTIONS, getContextDialogue } from './AIPetConfig';
+import { AIPetConfig } from './AIPetConfig';
+import { PET_OPTIONS, getContextDialogue } from './AIPetConfig.constants';
 import type { AIPetConfig as AIPetConfigType } from '../types';
 
 interface ProjectBoardProps {
@@ -96,7 +97,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   useEffect(() => {
     fetchProjects();
     checkAIConfig(); // 检查 AI 配置状态
-  }, []);
+  }, [fetchProjects, checkAIConfig]);
 
   // Stats
   const { activeProjects, archivedProjects, pausedProjects } = useMemo(() => {
@@ -166,9 +167,9 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
     const currentStageData = currentProject?.stages?.[currentStageKey];
     const stageContent = currentStageData?.content || '';
     const isStageEmpty = !stageContent || stageContent.length < 20;
-    const completedStagesCount = Object.values(currentProject?.stages || {}).filter((s: any) => s?.isLocked).length;
+    const completedStagesCount = Object.values(currentProject?.stages || {}).filter((s: import('../types').Stage) => s?.isLocked).length;
     const hasWarnings = currentProject ?
-      Object.entries(currentProject.stages || {}).some(([, stage]: [string, any]) => {
+      Object.entries(currentProject.stages || {}).some(([, stage]: [string, import('../types').Stage]) => {
         if (!stage?.isLocked) return false;
         const text = stage?.content || '';
         return text.length < 20;
@@ -184,7 +185,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         isStageEmpty,
         completedStages: completedStagesCount,
         totalStages: 6,
-        projectStatus: (currentProject?.status as any) || 'active',
+        projectStatus: currentProject?.status || 'active',
         hasWarnings,
       }
     );
@@ -435,7 +436,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
             ? filteredArchived.length === 0
             : filteredProjects.length === 0
         ) && (
-          <div className="border border-brutal-border bg-brutal-surface p-12 text-center">
+          <div className="border border-brutal-border bg-brutal-surface p-12 text-center mt-6">
             <div className="text-6xl mb-4 opacity-30">&gt;_</div>
             <h3 className="text-sm font-mono uppercase tracking-wider mb-2">
               {filter === 'all' ? t('project.no_projects') : `No ${filter} projects found`}

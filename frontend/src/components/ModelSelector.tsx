@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Cpu } from 'lucide-react';
-import { useI18n } from '../i18n';
+import { useI18n } from '../i18n/hooks';
 import { getCurrentProvider, setCurrentProvider } from '../services/ai';
 import { authApi, aiApi } from '../services/api';
 import type { AIProvider } from '../services/api';

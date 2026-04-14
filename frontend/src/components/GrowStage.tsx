@@ -10,8 +10,9 @@ import {
   ChevronRight,
   BookOpen,
 } from 'lucide-react';
-import { useI18n } from '../i18n';
+import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
+import { MonthView } from './MonthView';
 import type { Project, GrowData, ContentItem, ContentType, ChannelKey, ChannelMetrics } from '../types';
 
 interface GrowStageProps {
@@ -50,9 +51,9 @@ export function GrowStage({ project, onUpdateContent, isLocked }: GrowStageProps
     contentCalendar: [],
     channelMetrics: CHANNELS.map(c => ({ channel: c.key, newUsers: 0, totalUsers: 0, conversionRate: 0 })),
   });
-  // 视图模式预留 - 使用 void 操作符避免 "declared but never read" 错误
-  void 'calendar'; // _viewMode placeholder
+  const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [currentWeek, setCurrentWeek] = useState(0);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showAddContent, setShowAddContent] = useState(false);
   const [generatingContent, setGeneratingContent] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
@@ -66,7 +67,6 @@ export function GrowStage({ project, onUpdateContent, isLocked }: GrowStageProps
     scheduledDate: new Date().toISOString().split('T')[0],
   });
 
-  // 初始化数据
   useEffect(() => {
     const growStage = project.stages?.grow;
     if (growStage?.content) {
@@ -82,6 +82,7 @@ export function GrowStage({ project, onUpdateContent, isLocked }: GrowStageProps
         // 使用默认值
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id]);
 
   // 保存数据
@@ -230,17 +231,35 @@ export function GrowStage({ project, onUpdateContent, isLocked }: GrowStageProps
           {/* Calendar Header */}
           <div className="flex items-center justify-between px-4 py-2 border-b border-brutal-border bg-brutal-surface/50">
             <div className="flex items-center gap-2">
-              <button onClick={() => setCurrentWeek(w => w - 1)} className="p-1 hover:bg-brutal-border">
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="text-xs font-mono">
-                {currentWeek === 0 ? '本周' : currentWeek > 0 ? `+${currentWeek}周` : `${currentWeek}周`}
-              </span>
-              <button onClick={() => setCurrentWeek(w => w + 1)} className="p-1 hover:bg-brutal-border">
-                <ChevronRight className="w-4 h-4" />
-              </button>
+              {viewMode === 'week' && (
+                <>
+                  <button onClick={() => setCurrentWeek(w => w - 1)} className="p-1 hover:bg-brutal-border">
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs font-mono">
+                    {currentWeek === 0 ? '本周' : currentWeek > 0 ? `+${currentWeek}周` : `${currentWeek}周`}
+                  </span>
+                  <button onClick={() => setCurrentWeek(w => w + 1)} className="p-1 hover:bg-brutal-border">
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </div>
             <div className="flex items-center gap-2">
+              <div className="flex items-center border border-brutal-border">
+                <button
+                  onClick={() => setViewMode('week')}
+                  className={`px-3 py-1 text-xs font-mono ${viewMode === 'week' ? 'bg-brutal-accent text-brutal-bg' : 'hover:bg-brutal-surface-hover'}`}
+                >
+                  周
+                </button>
+                <button
+                  onClick={() => setViewMode('month')}
+                  className={`px-3 py-1 text-xs font-mono ${viewMode === 'month' ? 'bg-brutal-accent text-brutal-bg' : 'hover:bg-brutal-surface-hover'}`}
+                >
+                  月
+                </button>
+              </div>
               <button
                 onClick={() => setShowAddContent(true)}
                 disabled={isLocked}
@@ -253,67 +272,84 @@ export function GrowStage({ project, onUpdateContent, isLocked }: GrowStageProps
           </div>
 
           {/* Week View */}
-          <div className="flex-1 overflow-auto p-4">
-            <div className="grid grid-cols-7 gap-2 min-w-[600px]">
-              {['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((day, i) => {
-                const dayContents = weekContents.filter(c => {
-                  const date = new Date(c.scheduledDate);
-                  return date.getDay() === (i + 1) % 7;
-                });
+          {viewMode === 'week' && (
+            <div className="flex-1 overflow-auto p-4">
+              <div className="grid grid-cols-7 gap-2 min-w-[600px]">
+                {['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((day, i) => {
+                  const dayContents = weekContents.filter(c => {
+                    const date = new Date(c.scheduledDate);
+                    return date.getDay() === (i + 1) % 7;
+                  });
 
-                return (
-                  <div key={day} className="border border-brutal-border bg-brutal-surface min-h-[150px]">
-                    <div className="px-2 py-1 border-b border-brutal-border bg-brutal-bg/50">
-                      <span className="text-xs font-mono text-brutal-muted">{day}</span>
-                    </div>
-                    <div className="p-2 space-y-2">
-                      {dayContents.map(content => {
-                        const channel = CHANNELS.find(c => c.key === content.channel);
-                        return (
-                          <div
-                            key={content.id}
-                            className={`p-2 border text-xs font-mono cursor-pointer group ${
-                              content.status === 'published'
-                                ? 'border-brutal-success bg-brutal-success/10'
-                                : content.status === 'scheduled'
-                                ? 'border-brutal-warning bg-brutal-warning/10'
-                                : 'border-brutal-border bg-brutal-bg'
-                            }`}
-                          >
-                            <div className="flex items-center gap-1 mb-1">
-                              <span className="w-4 h-4 flex items-center justify-center bg-brutal-surface text-[8px]">
-                                {channel?.icon}
-                              </span>
-                              <span className="truncate flex-1">{content.title}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className={`text-[10px] px-1 ${
+                  return (
+                    <div key={day} className="border border-brutal-border bg-brutal-surface min-h-[150px]">
+                      <div className="px-2 py-1 border-b border-brutal-border bg-brutal-bg/50">
+                        <span className="text-xs font-mono text-brutal-muted">{day}</span>
+                      </div>
+                      <div className="p-2 space-y-2">
+                        {dayContents.map(content => {
+                          const channel = CHANNELS.find(c => c.key === content.channel);
+                          return (
+                            <div
+                              key={content.id}
+                              className={`p-2 border text-xs font-mono cursor-pointer group ${
                                 content.status === 'published'
-                                  ? 'text-brutal-success'
+                                  ? 'border-brutal-success bg-brutal-success/10'
                                   : content.status === 'scheduled'
-                                  ? 'text-brutal-warning'
-                                  : 'text-brutal-muted'
-                              }`}>
-                                {content.status === 'published' ? '已发布' : content.status === 'scheduled' ? '计划中' : '草稿'}
-                              </span>
-                              {!isLocked && (
-                                <button
-                                  onClick={() => deleteContent(content.id)}
-                                  className="opacity-0 group-hover:opacity-100 text-brutal-muted hover:text-brutal-warning"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              )}
+                                  ? 'border-brutal-warning bg-brutal-warning/10'
+                                  : 'border-brutal-border bg-brutal-bg'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1 mb-1">
+                                <span className="w-4 h-4 flex items-center justify-center bg-brutal-surface text-[8px]">
+                                  {channel?.icon}
+                                </span>
+                                <span className="truncate flex-1">{content.title}</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className={`text-[10px] px-1 ${
+                                  content.status === 'published'
+                                    ? 'text-brutal-success'
+                                    : content.status === 'scheduled'
+                                    ? 'text-brutal-warning'
+                                    : 'text-brutal-muted'
+                                }`}>
+                                  {content.status === 'published' ? '已发布' : content.status === 'scheduled' ? '计划中' : '草稿'}
+                                </span>
+                                {!isLocked && (
+                                  <button
+                                    onClick={() => deleteContent(content.id)}
+                                    className="opacity-0 group-hover:opacity-100 text-brutal-muted hover:text-brutal-warning"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Month View */}
+          {viewMode === 'month' && (
+            <div className="flex-1 overflow-hidden p-4">
+              <MonthView
+                currentDate={currentMonth}
+                onDateChange={setCurrentMonth}
+                contents={data.contentCalendar}
+                onSelectDate={(date) => {
+                  setNewContent({ ...newContent, scheduledDate: date.toISOString().split('T')[0] });
+                  setShowAddContent(true);
+                }}
+              />
+            </div>
+          )}
 
           {/* Stats */}
           <div className="px-4 py-3 border-t border-brutal-border bg-brutal-surface/50 flex gap-6">

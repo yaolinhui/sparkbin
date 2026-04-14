@@ -9,7 +9,7 @@ import {
   Check,
   RefreshCw,
 } from 'lucide-react';
-import { useI18n } from '../i18n';
+import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
 import type { Project, MonetizeData, MonetizeStrategy, PricingTier, FunnelMetrics } from '../types';
 
@@ -64,7 +64,6 @@ export function MonetizeStage({ project, onUpdateContent, isLocked }: MonetizeSt
     features: [''],
   });
 
-  // 初始化数据
   useEffect(() => {
     const monetizeStage = project.stages?.monetize;
     if (monetizeStage?.content) {
@@ -84,6 +83,7 @@ export function MonetizeStage({ project, onUpdateContent, isLocked }: MonetizeSt
         // 使用默认值
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id]);
 
   // 保存数据

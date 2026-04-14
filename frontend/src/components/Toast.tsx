@@ -51,17 +51,4 @@ export function Toast({ message, type = 'info', duration = 3000, onClose }: Toas
   );
 }
 
-// Toast 管理 Hook
-export function useToast() {
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    setToast({ message, type });
-  };
-
-  const hideToast = () => setToast(null);
-
-  return { toast, showToast, hideToast };
-}
-
 export default Toast;

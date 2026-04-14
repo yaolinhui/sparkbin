@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, ChevronRight, ChevronLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { useI18n } from '../i18n';
+import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
 import type { AIPetConfig } from '../types';
 
@@ -149,7 +149,7 @@ export function AIChat({
         },
       ]);
     }
-  }, [stage, language, petName]);
+  }, [stage, language, petName, messages.length]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
