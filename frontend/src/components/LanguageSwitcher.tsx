@@ -17,7 +17,7 @@ export function LanguageSwitcher() {
       title={t('system.language')}
     >
       <Globe className="w-4 h-4 text-brutal-accent" />
-      <span className="text-sm font-mono">
+      <span className="text-xs font-mono">
         {language === 'zh' ? '中文' : 'EN'}
       </span>
     </button>

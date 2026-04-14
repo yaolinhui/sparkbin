@@ -14,12 +14,12 @@ export function ThemeSwitcher() {
       {isLight ? (
         <>
           <Moon className="w-4 h-4 text-brutal-accent" />
-          <span className="text-sm font-mono">DARK</span>
+          <span className="text-xs font-mono">DARK</span>
         </>
       ) : (
         <>
           <Sun className="w-4 h-4 text-brutal-accent" />
-          <span className="text-sm font-mono">LIGHT</span>
+          <span className="text-xs font-mono">LIGHT</span>
         </>
       )}
     </button>

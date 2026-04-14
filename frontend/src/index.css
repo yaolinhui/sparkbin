@@ -412,6 +412,15 @@ input:focus, textarea:focus {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
+@keyframes pulse-slow {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2.5s ease-in-out infinite;
+}
+
 /* ============================================
    REACT FLOW - Theme aware
    ============================================ */

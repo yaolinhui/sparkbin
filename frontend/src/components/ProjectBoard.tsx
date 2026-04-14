@@ -11,28 +11,8 @@ import { GitHubConfigModal } from './GitHubConfigModal';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { ModelSelector } from './ModelSelector';
-import { AIPetConfig } from './AIPetConfig';
+import { AIPetConfig, PET_OPTIONS, getContextDialogue } from './AIPetConfig';
 import type { AIPetConfig as AIPetConfigType } from '../types';
-
-// 宠物问候语
-const PET_GREETINGS: Record<string, string[]> = {
-  morning: ['早上好呀！今天也要加油哦～', '喵～新的一天开始啦！', '早！记得喝杯咖啡☕'],
-  afternoon: ['下午好！进度怎么样啦？', '该休息会儿啦～', '加油加油！快要完成了！'],
-  evening: ['晚上好！辛苦啦～', '今天做得真棒！', '早点休息哦，明天继续！'],
-  night: ['这么晚还在工作呀？', '注意休息哦～', '墨墨陪你加班💪'],
-};
-
-// 根据时间获取问候语
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  let timeKey: keyof typeof PET_GREETINGS = 'morning';
-  if (hour >= 12 && hour < 18) timeKey = 'afternoon';
-  else if (hour >= 18 && hour < 22) timeKey = 'evening';
-  else if (hour >= 22 || hour < 6) timeKey = 'night';
-
-  const greetings = PET_GREETINGS[timeKey];
-  return greetings[Math.floor(Math.random() * greetings.length)];
-}
 
 interface ProjectBoardProps {
   onLogout: () => void;
@@ -85,6 +65,14 @@ function SectionHeader({ title, index }: { title: string; index: number }) {
 export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   const navigate = useNavigate();
   const { t } = useI18n();
+  const stageLabelMap: Record<string, string> = {
+    idea: t('stage.idea'),
+    validate: t('stage.validate'),
+    prototype: t('stage.prototype'),
+    ship: t('stage.ship'),
+    grow: t('stage.grow'),
+    monetize: t('stage.monetize'),
+  };
   const projects = useProjectStore((state) => state.projects);
   const isLoading = useProjectStore((state) => state.isLoading);
   const error = useProjectStore((state) => state.error);
@@ -161,20 +149,52 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   const status = getSystemStatus();
 
   // 宠物配置
-  const petEmoji = petConfig?.type === 'robot' ? '🤖' :
-                   petConfig?.type === 'panda' ? '🐼' :
-                   petConfig?.type === 'fox' ? '🦊' : '🐱';
-  const petName = petConfig?.name || '墨墨';
-  const petColor = petConfig?.type === 'robot' ? '#60a5fa' :
-                   petConfig?.type === 'panda' ? '#a3a3a3' :
-                   petConfig?.type === 'fox' ? '#f97316' : '#fbbf24';
+  const selectedPet = PET_OPTIONS.find(p => p.id === petConfig?.type) || PET_OPTIONS[0];
+  const petEmoji = selectedPet.emoji;
+  const petName = petConfig?.name || selectedPet.name;
+  const petColor = selectedPet.color;
 
-  // 点击宠物显示问候
+  // 点击宠物显示问候（上下文感知）
+  const [isPetBouncing, setIsPetBouncing] = useState(false);
   const handlePetClick = () => {
-    const greeting = getGreeting();
-    setPetDialogue(greeting);
+    setIsPetBouncing(true);
+
+    // 计算项目上下文
+    const currentStageKey = (activeProjects[0]?.currentStage || 'idea') as import('../types').StageKey;
+    const currentStageName = stageLabelMap[currentStageKey] || currentStageKey;
+    const currentProject = activeProjects[0];
+    const currentStageData = currentProject?.stages?.[currentStageKey];
+    const stageContent = currentStageData?.content || '';
+    const isStageEmpty = !stageContent || stageContent.length < 20;
+    const completedStagesCount = Object.values(currentProject?.stages || {}).filter((s: any) => s?.isLocked).length;
+    const hasWarnings = currentProject ?
+      Object.entries(currentProject.stages || {}).some(([, stage]: [string, any]) => {
+        if (!stage?.isLocked) return false;
+        const text = stage?.content || '';
+        return text.length < 20;
+      }) || isStageEmpty
+      : false;
+
+    const dialogue = getContextDialogue(
+      petConfig?.type || 'cat',
+      petConfig?.personality || 'gentle',
+      {
+        currentStage: currentStageKey,
+        stageName: currentStageName,
+        isStageEmpty,
+        completedStages: completedStagesCount,
+        totalStages: 6,
+        projectStatus: (currentProject?.status as any) || 'active',
+        hasWarnings,
+      }
+    );
+
+    setPetDialogue(dialogue);
     setShowPetBubble(true);
-    setTimeout(() => setShowPetBubble(false), 4000);
+    setTimeout(() => {
+      setShowPetBubble(false);
+      setIsPetBouncing(false);
+    }, 4500);
   };
 
   return (
@@ -243,7 +263,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                 </button>
                 <button
                   onClick={onLogout}
-                  className="btn-brutal h-9 flex items-center gap-2 border-brutal-warning text-brutal-warning"
+                  className="btn-brutal h-9 flex items-center gap-2"
                   title="Logout"
                 >
                   <LogOut className="w-4 h-4" />
@@ -463,10 +483,12 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         {/* 宠物按钮 */}
         <button
           onClick={handlePetClick}
-          className="w-16 h-16 bg-brutal-bg border-2 border-brutal-border
-                     hover:border-brutal-accent hover:scale-110
+          className={`relative w-16 h-16 bg-brutal-bg border-2 border-brutal-border
+                     hover:border-brutal-accent
                      transition-all duration-200
-                     flex items-center justify-center text-4xl"
+                     flex items-center justify-center text-4xl ${
+                       isPetBouncing ? 'scale-110' : 'animate-pulse-slow'
+                     }`}
           style={{ boxShadow: '4px 4px 0px var(--brutal-border)' }}
           title={`${petName} - 点击互动`}
         >
