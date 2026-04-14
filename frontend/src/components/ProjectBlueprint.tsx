@@ -1,5 +1,5 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
-import { X, ZoomIn, ZoomOut, Maximize2, GitGraph, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
+import { X, GitGraph, Clock, AlertTriangle, CheckCircle2, ChevronRight } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { Project, StageKey } from '../types';
 import { STAGE_ORDER } from '../types';
@@ -10,52 +10,254 @@ interface ProjectBlueprintProps {
   onStageClick: (stage: StageKey) => void;
 }
 
-interface BlueprintNode {
-  id: string;
+interface StageMetric {
+  key: StageKey;
   name: string;
-  val: number;
+  status: 'completed' | 'in_progress' | 'pending' | 'locked';
   color: string;
-  x?: number;
-  y?: number;
-  group: 'center' | 'stage' | 'content';
-  stageKey?: StageKey;
-  status?: 'completed' | 'in_progress' | 'pending' | 'locked';
-  content?: string;
-}
-
-interface BlueprintLink {
-  source: string;
-  target: string;
-  color: string;
-  dashed?: boolean;
-  directed?: boolean;
+  summary: string;
+  detailLines: { label: string; value: string; highlight?: boolean }[];
+  blockReason?: string;
+  durationDays: number;
 }
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
 }
 
-function getContentDensityLabel(content: string): string {
-  const text = stripHtml(content);
-  if (!text || text.length < 20) return '待补充';
-  if (text.length < 200) return '简要';
-  return '充实';
+function countDays(start: string | Date, end: string | Date): number {
+  const s = new Date(start).getTime();
+  const e = new Date(end).getTime();
+  return Math.max(1, Math.round((e - s) / (1000 * 60 * 60 * 24)));
 }
 
-function getContentDensityPercent(content: string): number {
-  const text = stripHtml(content);
-  if (!text) return 0;
-  return Math.min((text.length / 500) * 100, 100);
+function getChecklistProgress(obj: Record<string, boolean>): string {
+  const total = Object.keys(obj).length;
+  const done = Object.values(obj).filter(Boolean).length;
+  return `${done}/${total}`;
+}
+
+function getStageDuration(project: Project, stageKey: StageKey): number {
+  const stageIndex = STAGE_ORDER.indexOf(stageKey);
+  const stage = project.stages?.[stageKey];
+
+  let start: Date;
+  if (stageIndex === 0) {
+    start = new Date(project.createdAt);
+  } else {
+    const prevKey = STAGE_ORDER[stageIndex - 1];
+    const prevStage = project.stages?.[prevKey];
+    start = prevStage?.completedAt ? new Date(prevStage.completedAt) : new Date(project.createdAt);
+  }
+
+  const end = stage?.completedAt ? new Date(stage.completedAt) : new Date();
+  return countDays(start, end);
+}
+
+function getBlockReason(project: Project, stageKey: StageKey): string | undefined {
+  const stageIndex = STAGE_ORDER.indexOf(stageKey);
+  if (stageIndex <= 0) return undefined;
+
+  switch (stageKey) {
+    case 'validate': {
+      const ideaContent = stripHtml(project.stages?.idea?.content || '');
+      if (ideaContent.length < 20) return '想法阶段记录较简略，建议明确痛点和用户画像';
+      break;
+    }
+    case 'prototype': {
+      const validateStage = project.stages?.validate;
+      if (validateStage?.content) {
+        try {
+          const data = JSON.parse(validateStage.content);
+          const validatedCount = (data.items || []).filter((i: any) => i.status === 'validated').length;
+          if (validatedCount === 0) return '验证阶段缺少通过项，建议补充用户反馈后再设计原型';
+        } catch {}
+      }
+      break;
+    }
+    case 'ship': {
+      const prototypeStage = project.stages?.prototype;
+      if (prototypeStage?.content) {
+        try {
+          const data = JSON.parse(prototypeStage.content);
+          const features = data.features || [];
+          const checklist = data.releaseChecklist || {};
+          const checklistDone = Object.values(checklist).filter(Boolean).length;
+          if (features.length === 0) return '原型阶段缺少功能规划，建议先定义核心功能';
+          if (checklistDone < 3) return '原型发布准备尚不充分，建议完善发布检查清单';
+        } catch {
+          return '原型阶段数据异常，建议检查内容完整性';
+        }
+      } else {
+        return '原型阶段缺少记录，建议先完成原型设计';
+      }
+      break;
+    }
+    case 'grow': {
+      const shipStage = project.stages?.ship;
+      if (shipStage?.content) {
+        try {
+          const data = JSON.parse(shipStage.content);
+          const checklist = data.checklist || {};
+          const checklistDone = Object.values(checklist).filter(Boolean).length;
+          if (checklistDone < 3) return '发布准备度不足，建议先完成核心配置再启动增长';
+          if (!data.launchUrl) return '缺少上线链接，建议先完成产品发布';
+        } catch {}
+      }
+      break;
+    }
+    case 'monetize': {
+      const growStage = project.stages?.grow;
+      if (growStage?.content) {
+        try {
+          const data = JSON.parse(growStage.content);
+          const contents = data.contentCalendar || [];
+          const channels = (data.channelMetrics || []).filter((c: any) => (c.totalUsers || 0) > 0).length;
+          if (contents.length === 0) return '增长阶段缺少内容布局，建议先积累内容和用户';
+          if (channels < 2) return '覆盖渠道较少，建议至少建立 2 个增长渠道后再考虑变现';
+        } catch {}
+      }
+      break;
+    }
+  }
+
+  return undefined;
+}
+
+function parseStageMetric(project: Project, stageKey: StageKey, t: (k: string) => string): StageMetric {
+  const stage = project.stages?.[stageKey];
+  const isCompleted = stage?.isLocked ?? false;
+  const isCurrent = project.currentStage === stageKey;
+  const status = isCompleted ? 'completed' : isCurrent ? 'in_progress' : stage?.content ? 'pending' : 'locked';
+  const color = isCompleted ? 'var(--brutal-success)' : isCurrent ? 'var(--brutal-accent)' : 'var(--brutal-muted)';
+  const durationDays = getStageDuration(project, stageKey);
+
+  let summary = '待补充';
+  const detailLines: { label: string; value: string; highlight?: boolean }[] = [];
+
+  try {
+    switch (stageKey) {
+      case 'idea': {
+        const textLen = stripHtml(stage?.content || '').length;
+        summary = textLen < 20 ? '待补充' : textLen < 200 ? '简要' : '充实';
+        detailLines.push({ label: '字数', value: `${textLen} 字` });
+        break;
+      }
+      case 'validate': {
+        if (stage?.content) {
+          const data = JSON.parse(stage.content);
+          const items: any[] = data.items || [];
+          const validated = items.filter((i) => i.status === 'validated').length;
+          const failed = items.filter((i) => i.status === 'failed').length;
+          summary = `${validated}/${items.length || 0} 已验证`;
+          detailLines.push(
+            { label: '验证项', value: `${items.length} 项` },
+            { label: '已通过', value: `${validated} 项`, highlight: validated > 0 },
+            { label: '未通过', value: `${failed} 项` }
+          );
+          if (data.decision) {
+            detailLines.push({
+              label: '决策',
+              value: data.decision === 'go' ? '继续' : data.decision === 'no_go' ? '暂停' : '观望',
+              highlight: data.decision === 'go',
+            });
+          }
+        }
+        break;
+      }
+      case 'prototype': {
+        if (stage?.content) {
+          const data = JSON.parse(stage.content);
+          const features: any[] = data.features || [];
+          const doneFeatures = features.filter((f) => f.status === 'done').length;
+          const checklist = data.releaseChecklist || {};
+          summary = `${features.length} 项功能`;
+          detailLines.push(
+            { label: '功能', value: `${doneFeatures}/${features.length} 完成`, highlight: doneFeatures > 0 },
+            { label: '发布清单', value: getChecklistProgress(checklist) }
+          );
+          if (data.selectedPlatform) {
+            detailLines.push({ label: '平台', value: data.selectedPlatform });
+          }
+        }
+        break;
+      }
+      case 'ship': {
+        if (stage?.content) {
+          const data = JSON.parse(stage.content);
+          const checklist = data.checklist || {};
+          const platforms = data.platformBindings?.length || 0;
+          summary = `检查清单 ${getChecklistProgress(checklist)}`;
+          detailLines.push(
+            { label: '检查清单', value: getChecklistProgress(checklist), highlight: Object.values(checklist).filter(Boolean).length >= 3 },
+            { label: '绑定平台', value: `${platforms} 个` }
+          );
+          if (data.launchUrl) {
+            detailLines.push({ label: '上线链接', value: data.launchUrl });
+          }
+          if (data.metrics) {
+            const m = data.metrics;
+            detailLines.push({ label: '用户反馈', value: `${m.feedbackCount || 0} 条` });
+          }
+        }
+        break;
+      }
+      case 'grow': {
+        if (stage?.content) {
+          const data = JSON.parse(stage.content);
+          const contents: any[] = data.contentCalendar || [];
+          const published = contents.filter((c) => c.status === 'published').length;
+          const channels = (data.channelMetrics || []).filter((c: any) => (c.totalUsers || 0) > 0).length;
+          summary = `${contents.length} 篇内容`;
+          detailLines.push(
+            { label: '内容', value: `${published}/${contents.length} 发布`, highlight: published > 0 },
+            { label: '活跃渠道', value: `${channels} 个` }
+          );
+        }
+        break;
+      }
+      case 'monetize': {
+        if (stage?.content) {
+          const data = JSON.parse(stage.content);
+          const tiers = data.pricingTiers?.length || 0;
+          const mrr = data.mrr || 0;
+          const paid = data.paidUsers || 0;
+          summary = tiers > 0 ? `${tiers} 个定价档` : '待配置';
+          detailLines.push(
+            { label: '定价档', value: `${tiers} 个` },
+            { label: 'MRR', value: `¥${mrr}`, highlight: mrr > 0 },
+            { label: '付费用户', value: `${paid} 人`, highlight: paid > 0 }
+          );
+          if (data.funnel) {
+            const f = data.funnel;
+            const conversion = f.visitors > 0 ? ((f.paid / f.visitors) * 100).toFixed(1) : '0.0';
+            detailLines.push({ label: '转化率', value: `${conversion}%` });
+          }
+        }
+        break;
+      }
+    }
+  } catch {
+    summary = '数据异常';
+  }
+
+  const blockReason = getBlockReason(project, stageKey);
+
+  return {
+    key: stageKey,
+    name: t('stage.' + stageKey),
+    status,
+    color,
+    summary,
+    detailLines,
+    blockReason,
+    durationDays,
+  };
 }
 
 export function ProjectBlueprint({ project, onClose, onStageClick }: ProjectBlueprintProps) {
   const { t } = useI18n();
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [hasDragged, setHasDragged] = useState(false);
-  const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  const [selectedStage, setSelectedStage] = useState<StageKey>(project.currentStage);
 
   // ESC 关闭
   useEffect(() => {
@@ -66,319 +268,173 @@ export function ProjectBlueprint({ project, onClose, onStageClick }: ProjectBlue
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  const { nodes, links, diagnostics } = useMemo(() => {
-    const nodes: BlueprintNode[] = [];
-    const links: BlueprintLink[] = [];
-
-    const completedCount = STAGE_ORDER.filter((k) => project.stages?.[k]?.isLocked).length;
-    const progress = Math.round((completedCount / STAGE_ORDER.length) * 100);
-
-    nodes.push({
-      id: 'project',
-      name: project.title,
-      val: 30,
-      color: 'var(--brutal-text)',
-      group: 'center',
-      x: 0,
-      y: 0,
-    });
-
-    const stageRadius = 160;
-    const angleStep = (2 * Math.PI) / STAGE_ORDER.length;
-
-    STAGE_ORDER.forEach((stageKey, index) => {
-      const stage = project.stages?.[stageKey];
-      const isCompleted = stage?.isLocked ?? false;
-      const isCurrent = project.currentStage === stageKey;
-
-      const angle = angleStep * index - Math.PI / 2;
-      const x = Math.cos(angle) * stageRadius;
-      const y = Math.sin(angle) * stageRadius;
-
-      nodes.push({
-        id: stageKey,
-        name: t('stage.' + stageKey),
-        val: isCompleted ? 20 : isCurrent ? 18 : 15,
-        color: isCompleted ? 'var(--brutal-success)' : isCurrent ? 'var(--brutal-accent)' : 'var(--brutal-muted)',
-        x,
-        y,
-        group: 'stage',
-        stageKey,
-        status: isCompleted ? 'completed' : isCurrent ? 'in_progress' : stage?.content ? 'pending' : 'locked',
-        content: stage?.content || '',
-      });
-
-      links.push({
-        source: 'project',
-        target: stageKey,
-        color: isCompleted ? 'var(--brutal-success)' : isCurrent ? 'var(--brutal-accent)' : 'var(--brutal-border)',
-        dashed: !isCompleted && !isCurrent,
-        directed: false,
-      });
-
-      if (index < STAGE_ORDER.length - 1) {
-        links.push({
-          source: stageKey,
-          target: STAGE_ORDER[index + 1],
-          color: isCompleted ? 'var(--brutal-success)' : 'var(--brutal-border)',
-          dashed: !isCompleted,
-          directed: true,
-        });
-      }
-    });
-
-    // 诊断计算
-    const warnings: string[] = [];
-    let healthScore = 0;
-
-    STAGE_ORDER.forEach((k) => {
-      const s = project.stages?.[k];
-      const textLen = stripHtml(s?.content || '').length;
-      if (s?.isLocked) {
-        healthScore += 10;
-        if (textLen < 20) warnings.push(`${t('stage.' + k)}阶段已完成，但缺少详细记录`);
-      }
-      if (textLen >= 20) healthScore += 6.67;
-    });
-
-    healthScore = Math.min(Math.round(healthScore), 100);
-
-    const currentStage = project.stages?.[project.currentStage];
-    const currentTextLen = stripHtml(currentStage?.content || '').length;
-    if (currentTextLen < 20) {
-      warnings.unshift('当前阶段内容为空，建议尽快补充');
-    } else if (currentTextLen < 100) {
-      warnings.unshift('当前阶段记录较简略，可进一步丰富');
-    }
-
-    let suggestion = '项目推进顺利，建议继续深入当前阶段';
-    if (warnings.length > 0) {
-      const nextLocked = STAGE_ORDER.find((k, i) => {
-        const prev = i > 0 ? STAGE_ORDER[i - 1] : null;
-        if (!prev) return false;
-        const prevStage = project.stages?.[prev];
-        const currStage = project.stages?.[k];
-        return prevStage?.isLocked && !currStage?.isLocked && stripHtml(currStage?.content || '').length < 20;
-      });
-      if (nextLocked) {
-        suggestion = `建议优先完善${t('stage.' + nextLocked)}阶段的内容，为后续推进打好基础`;
-      } else {
-        suggestion = '建议先处理上方标记的薄弱环节';
-      }
-    }
-
-    let statusLabel: string;
-    let statusColor: string;
-    let StatusIcon: typeof CheckCircle2;
-    if (healthScore >= 80) {
-      statusLabel = '健康';
-      statusColor = 'var(--brutal-success)';
-      StatusIcon = CheckCircle2;
-    } else if (healthScore >= 50) {
-      statusLabel = '需关注';
-      statusColor = 'var(--brutal-warning)';
-      StatusIcon = AlertTriangle;
-    } else {
-      statusLabel = '有风险';
-      statusColor = 'var(--brutal-error)';
-      StatusIcon = AlertTriangle;
-    }
-
-    return {
-      nodes,
-      links,
-      diagnostics: {
-        healthScore,
-        progress,
-        statusLabel,
-        statusColor,
-        StatusIcon,
-        warnings: warnings.slice(0, 3),
-        suggestion,
-      },
-    };
+  const metrics = useMemo(() => {
+    return STAGE_ORDER.map((key) => parseStageMetric(project, key, t));
   }, [project, t]);
 
-  const handleZoomIn = () => setZoom((z) => Math.min(z * 1.2, 3));
-  const handleZoomOut = () => setZoom((z) => Math.max(z / 1.2, 0.3));
-  const handleReset = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  };
+  const selectedMetric = metrics.find((m) => m.key === selectedStage) || metrics[0];
+  const maxDuration = Math.max(1, ...metrics.map((m) => m.durationDays));
+  const completedCount = metrics.filter((m) => m.status === 'completed').length;
+  const progress = Math.round((completedCount / STAGE_ORDER.length) * 100);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setHasDragged(false);
-    dragStart.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    const dx = e.clientX - dragStart.current.x;
-    const dy = e.clientY - dragStart.current.y;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-      setHasDragged(true);
-    }
-    setPan({ x: dragStart.current.panX + dx, y: dragStart.current.panY + dy });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleNodeClick = (node: BlueprintNode) => {
-    if (hasDragged) return;
-    if (node.stageKey) onStageClick(node.stageKey);
+  const handleStageClick = (stageKey: StageKey) => {
+    setSelectedStage(stageKey);
+    onStageClick(stageKey);
   };
 
   return (
     <div className="fixed inset-0 bg-brutal-bg z-50 flex flex-col">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-brutal-border bg-brutal-surface">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-brutal-border bg-brutal-surface flex-shrink-0">
         <div className="flex items-center gap-3">
           <GitGraph className="w-5 h-5 text-brutal-accent" />
           <span className="font-mono text-lg font-bold">项目蓝图</span>
           <span className="text-xs text-brutal-muted font-mono">// {project.title}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={handleZoomOut} className="btn-brutal h-9 p-2" title="缩小">
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          <span className="text-xs font-mono w-16 text-center">{Math.round(zoom * 100)}%</span>
-          <button onClick={handleZoomIn} className="btn-brutal h-9 p-2" title="放大">
-            <ZoomIn className="w-4 h-4" />
-          </button>
-          <button onClick={handleReset} className="btn-brutal h-9 p-2" title="重置">
-            <Maximize2 className="w-4 h-4" />
-          </button>
-          <button onClick={onClose} className="btn-brutal h-9 p-2 ml-4" title="关闭">
+        <div className="flex items-center gap-4">
+          <div className="text-right hidden sm:block">
+            <div className="text-xs font-mono text-brutal-muted">整体进度</div>
+            <div className="text-sm font-mono font-bold text-brutal-accent">{progress}%</div>
+          </div>
+          <button onClick={onClose} className="btn-brutal h-9 p-2" title="关闭">
             <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      <div className="flex-1 relative overflow-hidden">
-        <svg
-          className={`w-full h-full ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-          viewBox={[-400 / zoom, -300 / zoom, 800 / zoom, 600 / zoom].join(' ')}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          <defs>
-            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="28" refY="3.5" orient="auto">
-              <polygon points="0 0, 10 3.5, 0 7" style={{ fill: 'var(--brutal-muted)' }} />
-            </marker>
-          </defs>
-
-          <g transform={`translate(${pan.x}, ${pan.y})`}>
-            {links.map((link, index) => {
-              const sourceNode = nodes.find((n) => n.id === link.source);
-              const targetNode = nodes.find((n) => n.id === link.target);
-              if (!sourceNode || !targetNode) return null;
-              return (
-                <line
-                  key={index}
-                  x1={sourceNode.x || 0}
-                  y1={sourceNode.y || 0}
-                  x2={targetNode.x || 0}
-                  y2={targetNode.y || 0}
-                  stroke={link.color}
-                  strokeWidth={link.dashed ? 1 : 2}
-                  strokeDasharray={link.dashed ? '5,5' : 'none'}
-                  markerEnd={link.directed ? 'url(#arrowhead)' : undefined}
-                />
-              );
-            })}
-
-            {/* Center node card */}
-            <foreignObject x={-90} y={-45} width="180" height="100">
-              <div
-                className="w-full h-full border-2 border-brutal-border bg-brutal-surface p-3 flex flex-col justify-center items-center shadow-sm"
-                style={{ pointerEvents: 'none' }}
-              >
-                <div className="text-sm font-mono font-bold text-brutal-text text-center leading-tight">{project.title}</div>
-                <div className="text-xs font-mono text-brutal-muted mt-2">整体进度 {diagnostics.progress}%</div>
-                <div className="w-full h-1.5 bg-brutal-bg border border-brutal-border mt-2">
-                  <div
-                    className="h-full bg-brutal-accent"
-                    style={{ width: `${diagnostics.progress}%` }}
-                  />
-                </div>
-              </div>
-            </foreignObject>
-
-            {/* Stage node cards */}
-            {nodes.filter((n) => n.group === 'stage').map((node) => {
-              const isHovered = hoveredNode === node.id;
-              const density = getContentDensityPercent(node.content || '');
-              const densityLabel = getContentDensityLabel(node.content || '');
-              const summary = stripHtml(node.content || '').slice(0, 18) || '// 暂无记录';
-              return (
-                <foreignObject
-                  key={node.id}
-                  x={(node.x || 0) - 58}
-                  y={(node.y || 0) - 38}
-                  width="116"
-                  height="82"
-                >
-                  <div
-                    className={`w-full h-full border bg-brutal-surface p-2 flex flex-col justify-between transition-all ${
-                      isHovered ? 'border-brutal-text scale-105 shadow-sm' : 'border-brutal-border'
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Left: Pipeline + Gantt */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto p-6">
+          {/* Pipeline */}
+          <div className="mb-8">
+            <div className="text-xs font-mono text-brutal-muted mb-4">// 创业管线</div>
+            <div className="flex items-stretch gap-2">
+              {metrics.map((m, index) => (
+                <div key={m.key} className="flex items-center flex-1 min-w-0">
+                  <button
+                    onClick={() => handleStageClick(m.key)}
+                    className={`flex-1 text-left border bg-brutal-surface p-3 transition-all hover:border-brutal-text ${
+                      selectedStage === m.key ? 'border-brutal-text ring-1 ring-brutal-text' : 'border-brutal-border'
                     }`}
-                    style={{ pointerEvents: 'auto', cursor: 'pointer', borderLeftWidth: '3px', borderLeftColor: node.color }}
-                    onClick={() => handleNodeClick(node)}
-                    onMouseEnter={() => setHoveredNode(node.id)}
-                    onMouseLeave={() => setHoveredNode(null)}
-                    title={isHovered ? summary : undefined}
+                    style={{ borderLeftWidth: '4px', borderLeftColor: m.color }}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-bold truncate" style={{ color: node.color }}>
-                        {node.name}
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-mono font-bold truncate" style={{ color: m.color }}>
+                        {m.name}
                       </span>
-                      <span className="text-[9px] font-mono text-brutal-muted">{densityLabel}</span>
+                      {m.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: m.color }} />}
                     </div>
-                    <div className="text-[10px] font-mono text-brutal-muted truncate leading-tight">
-                      {summary}
+                    <div className="text-xs font-mono text-brutal-muted truncate">{m.summary}</div>
+                    {m.blockReason && (
+                      <div className="mt-2 text-[10px] font-mono text-brutal-warning flex items-start gap-1">
+                        <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                        <span className="leading-tight">{m.blockReason}</span>
+                      </div>
+                    )}
+                  </button>
+                  {index < metrics.length - 1 && (
+                    <div className="flex-shrink-0 px-1">
+                      <ChevronRight className="w-4 h-4 text-brutal-border" />
                     </div>
-                    <div className="h-1 bg-brutal-bg border border-brutal-border mt-1">
-                      <div className="h-full" style={{ width: `${density}%`, backgroundColor: node.color }} />
-                    </div>
-                  </div>
-                </foreignObject>
-              );
-            })}
-          </g>
-        </svg>
-
-        {/* Diagnostic Panel */}
-        <div className="absolute bottom-4 left-4 border border-brutal-border bg-brutal-surface p-4 max-w-sm shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <diagnostics.StatusIcon className="w-5 h-5" style={{ color: diagnostics.statusColor }} />
-            <div>
-              <div className="text-sm font-mono font-bold text-brutal-text">
-                项目健康度: {diagnostics.healthScore}%
-              </div>
-              <div className="text-xs font-mono" style={{ color: diagnostics.statusColor }}>
-                状态: {diagnostics.statusLabel}
-              </div>
-            </div>
-          </div>
-
-          {diagnostics.warnings.length > 0 && (
-            <div className="space-y-1.5 mb-3">
-              {diagnostics.warnings.map((w, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs font-mono text-brutal-warning">
-                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                  <span className="leading-snug">{w}</span>
+                  )}
                 </div>
               ))}
             </div>
-          )}
+          </div>
 
-          <div className="flex items-start gap-2 text-xs font-mono text-brutal-muted border-t border-brutal-border pt-2">
-            <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-brutal-accent" />
-            <span className="leading-snug">{diagnostics.suggestion}</span>
+          {/* Gantt */}
+          <div className="flex-1 min-h-0">
+            <div className="text-xs font-mono text-brutal-muted mb-4">// 阶段时间轴</div>
+            <div className="border border-brutal-border bg-brutal-surface p-4">
+              <div className="space-y-3">
+                {metrics.map((m) => {
+                  const widthPct = (m.durationDays / maxDuration) * 100;
+                  const isCurrent = m.status === 'in_progress';
+                  return (
+                    <div key={m.key} className="flex items-center gap-3">
+                      <div className="w-16 text-xs font-mono text-brutal-text truncate flex-shrink-0">{m.name}</div>
+                      <div className="flex-1 h-6 bg-brutal-bg border border-brutal-border relative">
+                        <div
+                          className={`h-full ${isCurrent ? 'animate-pulse' : ''}`}
+                          style={{ width: `${Math.max(widthPct, 4)}%`, backgroundColor: m.color }}
+                        />
+                        <div className="absolute inset-0 flex items-center px-2">
+                          <span className="text-[10px] font-mono text-brutal-text mix-blend-difference">
+                            {m.durationDays} 天
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-4 pt-3 border-t border-brutal-border flex items-center gap-2 text-[10px] font-mono text-brutal-muted">
+                <Clock className="w-3 h-3" />
+                <span>项目创建于 {new Date(project.createdAt).toLocaleDateString('zh-CN')}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Detail Panel */}
+        <div className="w-80 border-l border-brutal-border bg-brutal-surface flex-shrink-0 flex flex-col">
+          <div className="p-4 border-b border-brutal-border">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-lg font-mono font-bold text-brutal-text">{selectedMetric.name}</span>
+              <span
+                className="text-xs px-1.5 py-0.5 font-mono"
+                style={{ color: selectedMetric.color, border: `1px solid ${selectedMetric.color}` }}
+              >
+                {selectedMetric.status === 'completed' ? '已完成' : selectedMetric.status === 'in_progress' ? '进行中' : selectedMetric.status === 'pending' ? '待处理' : '未开始'}
+              </span>
+            </div>
+            <div className="text-xs font-mono text-brutal-muted flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              已停留 {selectedMetric.durationDays} 天
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4">
+            {selectedMetric.blockReason && (
+              <div className="mb-4 border border-brutal-warning bg-brutal-warning/5 p-3">
+                <div className="flex items-start gap-2 text-xs font-mono text-brutal-warning">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span className="leading-snug">{selectedMetric.blockReason}</span>
+                </div>
+              </div>
+            )}
+
+            {selectedMetric.detailLines.length > 0 ? (
+              <div className="space-y-2">
+                {selectedMetric.detailLines.map((line, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between border-b border-brutal-border pb-2 last:border-0"
+                  >
+                    <span className="text-xs font-mono text-brutal-muted">{line.label}</span>
+                    <span
+                      className={`text-xs font-mono font-bold ${line.highlight ? 'text-brutal-accent' : 'text-brutal-text'}`}
+                    >
+                      {line.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs font-mono text-brutal-muted text-center py-8">
+                暂无详细记录
+              </div>
+            )}
+          </div>
+
+          <div className="p-4 border-t border-brutal-border">
+            <button
+              onClick={() => onStageClick(selectedMetric.key)}
+              className="w-full btn-brutal-primary h-10"
+            >
+              进入 {selectedMetric.name} 阶段
+            </button>
           </div>
         </div>
       </div>
