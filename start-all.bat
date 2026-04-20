@@ -12,7 +12,23 @@ set HTTPS_PROXY=
 :: 启动后端
 echo [1/2] 启动后端服务...
 cd /d "%~dp0backend"
-start "Backend" cmd /k "py -3.9 start.py"
+set "PY_CMD="
+where python >nul 2>nul
+if %errorlevel%==0 (
+    set "PY_CMD=python"
+) else (
+    where py >nul 2>nul
+    if %errorlevel%==0 (
+        set "PY_CMD=py -3"
+    ) else (
+        echo [错误] 未找到可用的 Python 解释器（python/py）。
+        echo 请先安装 Python 3.11+，然后重试。
+        pause
+        exit /b 1
+    )
+)
+echo 使用后端解释器: %PY_CMD%
+start "Backend" cmd /k "%PY_CMD% start.py"
 
 :: 等待后端启动
 timeout /t 5 /nobreak >nul
