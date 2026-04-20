@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import type { Theme } from './context';
 
 export { type Theme, type ThemeContextType, ThemeContext } from './context';
 import { ThemeContext } from './context';
@@ -40,4 +41,3 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     </ThemeContext.Provider>
   );
 }
-

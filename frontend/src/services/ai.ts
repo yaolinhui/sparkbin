@@ -18,6 +18,8 @@ export const AI_PROVIDER_NAMES: Record<AIProvider, string> = {
 // API 交互接口 - 从 api.ts 导入
 import { authApi, aiApi as originalAiApi } from './api';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 // 合并 authApi 和 aiApi 的方法
 export const aiApi = {
   ...originalAiApi,
@@ -69,7 +71,7 @@ class AIService {
     // 始终使用最新的 provider（从 localStorage 读取）
     const provider = getCurrentProvider();
 
-    const response = await fetch('http://localhost:8000/ai/chat', {
+    const response = await fetch(`${API_BASE_URL}/ai/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

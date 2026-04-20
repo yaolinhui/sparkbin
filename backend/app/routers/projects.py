@@ -9,7 +9,7 @@ from ..models import User, Project, Stage, StageKey, ProjectStatus, PromoteTask
 from ..schemas import (
     ProjectCreate, ProjectUpdate, ProjectInfo, ProjectDetail,
     PromoteTaskCreate, PromoteTaskUpdate, PromoteTaskInfo,
-    CompleteStageRequest, ProjectStatusUpdate, BaseResponse
+    CompleteStageRequest, ProjectStatusUpdate, BaseResponse, StageContentUpdate
 )
 from ..services.logger import OperationLogger
 
@@ -247,7 +247,7 @@ def update_project_status(
 def update_stage_content(
     project_id: UUID,
     stage_key: StageKey,
-    content: str,
+    request: StageContentUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -273,7 +273,7 @@ def update_stage_content(
         raise HTTPException(status_code=400, detail="Stage is locked")
 
     old_content = stage.content
-    stage.content = content
+    stage.content = request.content
     db.commit()
 
     # 记录日志
@@ -283,7 +283,52 @@ def update_stage_content(
         "stage",
         stage.id,
         {"content": old_content},
-        {"content": content}
+        {"content": request.content}
+    )
+
+    return _project_to_detail(project)
+
+
+@router.post("/{project_id}/stages/{stage_key}/reopen", response_model=ProjectDetail)
+def reopen_stage(
+    project_id: UUID,
+    stage_key: StageKey,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """重新打开已完成的阶段，允许继续编辑"""
+    project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user.id,
+        Project.deleted_at.is_(None)
+    ).first()
+
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    stage = db.query(Stage).filter(
+        Stage.project_id == project_id,
+        Stage.stage_key == stage_key
+    ).first()
+
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage not found")
+
+    if not stage.is_locked:
+        raise HTTPException(status_code=400, detail="Stage is not locked")
+
+    stage.is_locked = False
+    stage.completed_at = None
+    db.commit()
+    db.refresh(project)
+
+    logger = OperationLogger(db)
+    logger.log_update(
+        current_user.id,
+        "stage",
+        stage.id,
+        {"is_locked": True},
+        {"is_locked": False}
     )
 
     return _project_to_detail(project)
@@ -422,6 +467,15 @@ def update_promote_task(
     db: Session = Depends(get_db)
 ):
     """更新推广任务"""
+    project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user.id,
+        Project.deleted_at.is_(None)
+    ).first()
+
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
     task = db.query(PromoteTask).filter(
         PromoteTask.id == task_id,
         PromoteTask.project_id == project_id
@@ -455,6 +509,15 @@ def delete_promote_task(
     db: Session = Depends(get_db)
 ):
     """删除推广任务"""
+    project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user.id,
+        Project.deleted_at.is_(None)
+    ).first()
+
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
     task = db.query(PromoteTask).filter(
         PromoteTask.id == task_id,
         PromoteTask.project_id == project_id

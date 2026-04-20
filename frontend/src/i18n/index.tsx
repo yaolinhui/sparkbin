@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import type { Language } from './context';
 
 export { type Language, type I18nContextType, I18nContext } from './context';
 
@@ -342,4 +343,3 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     </I18nContext.Provider>
   );
 }
-
