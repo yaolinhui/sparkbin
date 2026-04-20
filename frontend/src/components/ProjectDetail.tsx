@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pause, Play, Archive, LogOut, ChevronUp, Menu, GitGraph } from 'lucide-react';
+import { ArrowLeft, Pause, Play, Archive, LogOut, ChevronUp, Menu, GitGraph, Trash2 } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useI18n, useStatusLabel, useStageLabel } from '../i18n/hooks';
 import type { Project, Stage } from "../types";
@@ -38,13 +38,19 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   );
   const updateStageContent = useProjectStore((state) => state.updateStageContent);
   const completeStage = useProjectStore((state) => state.completeStage);
+  const reopenStage = useProjectStore((state) => state.reopenStage);
   const updateProjectStatus = useProjectStore((state) => state.updateProjectStatus);
+  const deleteProject = useProjectStore((state) => state.deleteProject);
 
   const [isCompleting, setIsCompleting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isHeaderExpanded, setIsHeaderExpanded] = useState(false); // 头部折叠状态
   const [isLoading, setIsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeletingProject, setIsDeletingProject] = useState(false);
   const [viewingStage, setViewingStage] = useState<StageKey | null>(null); // 正在查看的阶段（可切换）
   const [isAIChatCollapsed, setIsAIChatCollapsed] = useState(false); // AI 聊天折叠状态
   const [showBlueprint, setShowBlueprint] = useState(false); // 项目蓝图显示状态
@@ -204,6 +210,11 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     setShowConfirmModal(false);
   };
 
+  const handleReopenStage = async () => {
+    if (!displayStageData || !displayStageData.isLocked) return;
+    await reopenStage(project.id, displayStage);
+  };
+
   const handleConfirmProceed = () => {
     setShowConfirmModal(false);
     setTimeout(() => handleCompleteStage(), 0);
@@ -215,6 +226,40 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
   const handleStatusChange = async (status: ProjectStatus) => {
     await updateProjectStatus(project.id, status);
+  };
+
+  const openDeleteModal = () => {
+    setDeleteConfirmInput('');
+    setDeleteError(null);
+    setShowDeleteModal(true);
+  };
+
+  const closeDeleteModal = () => {
+    if (isDeletingProject) return;
+    setShowDeleteModal(false);
+    setDeleteConfirmInput('');
+    setDeleteError(null);
+  };
+
+  const handleDeleteProject = async () => {
+    if (deleteConfirmInput.trim() !== project.title) {
+      setDeleteError('请输入与项目标题完全一致的文本后再删除。');
+      return;
+    }
+
+    setIsDeletingProject(true);
+    setDeleteError(null);
+
+    try {
+      await deleteProject(project.id);
+      setShowDeleteModal(false);
+      navigate('/');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '删除失败，请稍后重试。';
+      setDeleteError(message);
+    } finally {
+      setIsDeletingProject(false);
+    }
   };
 
   const handleGenerateContent = async (content: string) => {
@@ -308,6 +353,13 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                   </button>
                 )}
                 <button
+                  onClick={openDeleteModal}
+                  className="btn-brutal h-9 flex items-center gap-2 border-brutal-warning text-brutal-warning"
+                  title="删除项目"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <button
                   onClick={onLogout}
                   className="btn-brutal h-9 flex items-center gap-2 border-brutal-warning text-brutal-warning"
                   title="Logout"
@@ -387,6 +439,13 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
+                <button
+                  onClick={openDeleteModal}
+                  className="btn-brutal h-9 p-2 border-brutal-warning text-brutal-warning"
+                  title="删除项目"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </div>
@@ -414,36 +473,42 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 project={project}
                 onUpdateContent={handleContentChange}
                 isLocked={isDisplayStageLocked}
+                onToggleLock={handleReopenStage}
               />
             ) : displayStage === 'validate' ? (
               <ValidateStage
                 project={project}
                 onUpdateContent={handleContentChange}
                 isLocked={isDisplayStageLocked}
+                onToggleLock={handleReopenStage}
               />
             ) : displayStage === 'prototype' ? (
               <PrototypeStage
                 project={project}
                 onUpdateContent={handleContentChange}
                 isLocked={isDisplayStageLocked}
+                onToggleLock={handleReopenStage}
               />
             ) : displayStage === 'ship' ? (
               <ShipStage
                 project={project}
                 onUpdateContent={handleContentChange}
                 isLocked={isDisplayStageLocked}
+                onToggleLock={handleReopenStage}
               />
             ) : displayStage === 'grow' ? (
               <GrowStage
                 project={project}
                 onUpdateContent={handleContentChange}
                 isLocked={isDisplayStageLocked}
+                onToggleLock={handleReopenStage}
               />
             ) : displayStage === 'monetize' ? (
               <MonetizeStage
                 project={project}
                 onUpdateContent={handleContentChange}
                 isLocked={isDisplayStageLocked}
+                onToggleLock={handleReopenStage}
               />
             ) : currentStageData ? (
               <div className="h-full p-6 overflow-y-auto">
@@ -535,6 +600,71 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
               <div className="text-xs font-mono text-brutal-muted">
                 {'>'} AWAITING_USER_INPUT...
                 <span className="animate-blink">_</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Project Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-brutal-bg/90 flex items-center justify-center z-50 p-4">
+          <div className="border-2 border-brutal-warning bg-brutal-surface w-full max-w-lg">
+            <div className="flex items-center justify-between p-4 border-b border-brutal-warning bg-brutal-bg">
+              <div className="flex items-center gap-2">
+                <Trash2 className="w-4 h-4 text-brutal-warning" />
+                <span className="text-sm font-mono font-bold text-brutal-warning">DELETE PROJECT</span>
+              </div>
+              <button
+                onClick={closeDeleteModal}
+                disabled={isDeletingProject}
+                className="w-8 h-8 border border-brutal-border flex items-center justify-center hover:bg-brutal-text hover:text-brutal-bg transition-colors disabled:opacity-50"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="text-sm font-mono mb-4 text-brutal-text">
+                {'>'} 此操作会将项目从你的列表中删除（后端执行软删除）。
+              </div>
+              <div className="text-sm font-mono mb-4 text-brutal-warning">
+                {'>'} 请确认你要删除项目：<span className="font-bold">{project.title}</span>
+              </div>
+
+              <label className="block text-xs font-mono text-brutal-muted mb-2">
+                输入项目标题以确认删除
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmInput}
+                onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                disabled={isDeletingProject}
+                placeholder={project.title}
+                className="w-full h-10 px-3 border border-brutal-border bg-brutal-bg text-brutal-text font-mono"
+              />
+
+              {deleteError && (
+                <div className="mt-3 text-xs font-mono text-brutal-warning border border-brutal-warning/40 p-2 bg-brutal-warning/10">
+                  {deleteError}
+                </div>
+              )}
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={closeDeleteModal}
+                  disabled={isDeletingProject}
+                  className="flex-1 btn-brutal h-10 disabled:opacity-50"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleDeleteProject}
+                  disabled={isDeletingProject || deleteConfirmInput.trim() !== project.title}
+                  className="flex-1 btn-brutal h-10 border-brutal-warning text-brutal-warning disabled:opacity-50"
+                >
+                  {isDeletingProject ? '删除中...' : '确认删除'}
+                </button>
               </div>
             </div>
           </div>

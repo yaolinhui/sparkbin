@@ -21,6 +21,7 @@ interface ProjectActions {
   updateProjectStatus: (id: string, status: ProjectStatus) => Promise<void>;
   updateStageContent: (id: string, stage: StageKey, content: string) => Promise<void>;
   completeStage: (id: string, stage: StageKey) => Promise<void>;
+  reopenStage: (id: string, stage: StageKey) => Promise<void>;
   addPromoteTask: (id: string, text: string) => Promise<void>;
   togglePromoteTask: (id: string, taskIndex: number) => Promise<void>;
   updatePromoteTask: (id: string, taskId: string, done: boolean) => Promise<void>;
@@ -154,9 +155,11 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
       await projectsApi.delete(id);
       set((state) => ({
         projects: state.projects.filter((p) => p.id !== id),
+        lastSyncAt: new Date().toISOString(),
       }));
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to delete project' });
+      throw error instanceof Error ? error : new Error('Failed to delete project');
     }
   },
 
@@ -196,6 +199,19 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
       }));
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to complete stage' });
+    }
+  },
+
+  reopenStage: async (id: string, stage: StageKey) => {
+    try {
+      const result = await projectsApi.reopenStage(id, stage);
+      const updatedProject = convertProjectDetailToProject(result);
+
+      set((state) => ({
+        projects: state.projects.map((p) => (p.id === id ? updatedProject : p)),
+      }));
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to reopen stage' });
     }
   },
 
