@@ -5,7 +5,7 @@ import { ProjectBoard } from './components/ProjectBoard';
 import { ProjectDetail } from './components/ProjectDetail';
 import { AdminPage } from './components/AdminPage';
 import { LoginModal } from './components/LoginModal';
-import { isAuthenticated, isAdmin } from './services/api';
+import { authApi, clearAuthToken, isAuthenticated, isAdmin } from './services/api';
 
 // React Router v7 兼容配置
 const routerFuture: FutureConfig = {
@@ -21,11 +21,9 @@ function App() {
     const checkAuth = async () => {
       if (isAuthenticated()) {
         try {
-          const { authApi } = await import('./services/api');
           await authApi.getMe();
           setIsLoggedIn(true);
         } catch {
-          const { clearAuthToken } = await import('./services/api');
           clearAuthToken();
           setIsLoggedIn(false);
         }
@@ -41,7 +39,6 @@ function App() {
   };
 
   const handleLogout = async () => {
-    const { clearAuthToken, authApi } = await import('./services/api');
     try {
       await authApi.logout();
     } catch {

@@ -1,22 +1,27 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Send, ChevronRight, ChevronLeft, Maximize2, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useI18n } from '../i18n/hooks';
-import { aiService } from '../services/ai';
+import { aiService, aiApi, type StageStreamMeta } from '../services/ai';
 import { getUserId } from '../services/api';
 import { PET_OPTIONS } from './AIPetConfig.constants';
 import type { AIPetConfig } from '../types';
+import type { StageSnapshot } from '../services/api';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  syncPayload?: string;
+  nextQuestion?: string;
 }
 
 interface AIChatProps {
   stage: string;
+  projectId?: string;
   projectTitle?: string;
   onGenerateContent?: (content: string) => void;
+  onSyncRequest?: (content: string) => void;
   isCollapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
 }
@@ -48,7 +53,6 @@ const WELCOME_MESSAGES: Record<string, { zh: string; en: string }> = {
   },
 };
 
-// 快速操作按钮 - 宠物风格推荐
 const QUICK_ACTIONS: Record<string, { zh: string; emoji: string }[]> = {
   idea: [
     { zh: '目标用户是谁？', emoji: '👥' },
@@ -82,25 +86,55 @@ const QUICK_ACTIONS: Record<string, { zh: string; emoji: string }[]> = {
   ],
 };
 
-
-// Markdown styles for AI responses
 const markdownStyles = `
   prose-headings:text-brutal-text prose-headings:font-mono prose-headings:text-base
-  prose-p:text-brutal-text prose-p:text-sm
+  prose-p:text-brutal-text prose-p:text-sm prose-p:break-words
   prose-strong:text-brutal-accent prose-strong:font-bold
   prose-em:text-brutal-muted
-  prose-code:text-brutal-accent prose-code:bg-brutal-surface prose-code:px-1 prose-code:text-xs
-  prose-pre:bg-brutal-surface prose-pre:border prose-pre:border-brutal-border
+  prose-code:text-brutal-accent prose-code:bg-brutal-surface prose-code:px-1 prose-code:text-xs prose-code:break-all
+  prose-pre:bg-brutal-surface prose-pre:border prose-pre:border-brutal-border prose-pre:overflow-x-auto prose-pre:max-w-full
   prose-ul:text-brutal-text prose-ul:text-sm
   prose-ol:text-brutal-text prose-ol:text-sm
   prose-li:marker:text-brutal-accent
   prose-blockquote:border-l-2 prose-blockquote:border-brutal-accent prose-blockquote:text-brutal-muted
+  max-w-full break-words
 `;
+
+function buildSyncTextFromStructured(payload: StageStreamMeta['sync_payload_structured']): string {
+  if (!payload) return '';
+  const summary = (payload.summary || '').trim();
+  const items = Array.isArray(payload.items)
+    ? payload.items.map((item) => item.trim()).filter(Boolean)
+    : [];
+
+  const lines: string[] = [];
+  if (summary) lines.push(summary);
+  lines.push(...items.map((item) => `- ${item}`));
+
+  if (lines.length > 0) return lines.join('\n');
+  if (payload.raw && Object.keys(payload.raw).length > 0) {
+    return JSON.stringify(payload.raw, null, 2);
+  }
+  return '';
+}
+
+function extractNextQuestionFromContent(content: string): string {
+  const marker = '【下一轮问题】';
+  const index = content.indexOf(marker);
+  if (index === -1) return '';
+
+  const tail = content.slice(index + marker.length).trim();
+  if (!tail) return '';
+  const firstLine = tail.split('\n')[0]?.trim() || '';
+  return firstLine.replace(/^[-*\d.\s]+/, '').trim();
+}
 
 export function AIChat({
   stage,
+  projectId,
   projectTitle,
   onGenerateContent,
+  onSyncRequest,
   isCollapsed = false,
   onCollapsedChange,
 }: AIChatProps) {
@@ -110,8 +144,12 @@ export function AIChat({
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [petConfig, setPetConfig] = useState<AIPetConfig | null>(null);
+  const [stageSnapshot, setStageSnapshot] = useState<StageSnapshot | null>(null);
+  const [retryUsed, setRetryUsed] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const fullscreenInputRef = useRef<HTMLTextAreaElement>(null);
 
   const petConfigKey = `sparkbin_pet_config_${getUserId() || 'guest'}`;
 
@@ -123,11 +161,21 @@ export function AIChat({
     }
   }, [petConfigKey]);
 
+  // ESC 退出全屏
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isFullscreen]);
+
   const handleToggleCollapse = () => {
     onCollapsedChange?.(!isCollapsed);
   };
 
-  // 宠物外观 - 从常量配置中查找，避免硬编码遗漏
   const selectedPet = PET_OPTIONS.find((p) => p.id === petConfig?.type) || PET_OPTIONS[0];
   const petEmoji = selectedPet.emoji;
   const petName = petConfig?.name || selectedPet.name;
@@ -151,6 +199,28 @@ export function AIChat({
       ]);
     }
   }, [stage, language, petName, messages.length]);
+
+  useEffect(() => {
+    if (!projectId) {
+      setStageSnapshot(null);
+      return;
+    }
+    let cancelled = false;
+    aiApi.getStageContext(projectId, stage as StageSnapshot['stage_key'])
+      .then((snapshot) => {
+        if (!cancelled) {
+          setStageSnapshot(snapshot);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setStageSnapshot(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, stage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -188,13 +258,14 @@ export function AIChat({
     return msgs;
   };
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const sendMessage = async (messageText?: string) => {
+    const textToSend = (messageText ?? input).trim();
+    if (!textToSend || isThinking) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input,
+      content: textToSend,
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -206,15 +277,43 @@ export function AIChat({
       id: (Date.now() + 1).toString(),
       role: 'assistant',
       content: '',
+      syncPayload: '',
     };
     setMessages((prev) => [...prev, aiMessage]);
 
     try {
-      const kimiMessages = buildMessages(input);
+      const kimiMessages = buildMessages(textToSend);
       abortControllerRef.current = new AbortController();
 
       let fullContent = '';
-      for await (const chunk of aiService.chatCompletionStream(kimiMessages)) {
+      for await (const chunk of aiService.chatCompletionStream(kimiMessages, {
+        projectId,
+        stageKey: stage,
+        enableStageLoop: true,
+      }, {
+        onMeta: (meta: StageStreamMeta) => {
+          if (meta.stage_snapshot) {
+            setStageSnapshot(meta.stage_snapshot);
+          }
+          setRetryUsed(Boolean(meta.retry_used));
+          const structuredSyncText = buildSyncTextFromStructured(meta.sync_payload_structured);
+          const resolvedSyncText = structuredSyncText || meta.sync_payload || '';
+          if (resolvedSyncText) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === aiMessage.id ? { ...msg, syncPayload: resolvedSyncText } : msg
+              )
+            );
+          }
+          if (meta.next_question) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === aiMessage.id ? { ...msg, nextQuestion: meta.next_question } : msg
+              )
+            );
+          }
+        },
+      })) {
         fullContent += chunk;
         setMessages((prev) =>
           prev.map((msg) =>
@@ -223,8 +322,16 @@ export function AIChat({
         );
       }
 
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === aiMessage.id && !msg.nextQuestion
+            ? { ...msg, nextQuestion: extractNextQuestionFromContent(fullContent) }
+            : msg
+        )
+      );
+
       const generateKeywords = ['generate', 'create', 'write', 'draft', 'template', '生成', '创建', '写', '模板'];
-      if (generateKeywords.some((kw) => input.toLowerCase().includes(kw))) {
+      if (generateKeywords.some((kw) => textToSend.toLowerCase().includes(kw))) {
         onGenerateContent?.(fullContent);
       }
     } catch (err) {
@@ -245,6 +352,10 @@ export function AIChat({
     }
   };
 
+  const handleSend = async () => {
+    await sendMessage();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -256,9 +367,22 @@ export function AIChat({
     setInput(action);
   };
 
+  const handleSyncMessage = (content: string) => {
+    if (!content.trim()) return;
+    onSyncRequest?.(content);
+  };
+
+  const handleUseNextQuestion = async (question: string) => {
+    if (!question.trim()) return;
+    await sendMessage(question);
+  };
+
   const quickActions = QUICK_ACTIONS[stage] || [];
 
-  // 折叠状态 - 显示宠物图标
+  // 获取最后一条 AI 消息的上下文信息（用于全屏右侧面板）
+  const lastAiMessage = [...messages].reverse().find((m) => m.role === 'assistant' && m.id !== 'welcome');
+
+  // 折叠状态
   if (isCollapsed) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -278,6 +402,224 @@ export function AIChat({
     );
   }
 
+  // ========== 全屏模式 ==========
+  if (isFullscreen) {
+    return (
+      <div className="fixed inset-0 z-50 bg-brutal-bg flex">
+        {/* 左侧：对话区域 */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* 全屏头部 */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-brutal-border bg-brutal-surface flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-lg border-2"
+                style={{
+                  backgroundColor: petColor + '20',
+                  borderColor: petColor,
+                }}
+              >
+                {petEmoji}
+              </div>
+              <div>
+                <div className="font-mono text-sm font-bold">{petName}</div>
+                <div className="text-[10px] text-brutal-muted font-mono">{projectTitle || '未命名项目'} · {stage}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {stageSnapshot && (
+                <div className="flex items-center gap-2 mr-4">
+                  <div className="w-24 h-1.5 bg-brutal-border">
+                    <div
+                      className="h-full bg-brutal-accent transition-all"
+                      style={{ width: `${stageSnapshot.completion.score}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-brutal-accent font-mono">{stageSnapshot.completion.score}%</span>
+                </div>
+              )}
+              <button
+                onClick={() => setIsFullscreen(false)}
+                className="w-8 h-8 border border-brutal-border flex items-center justify-center hover:bg-brutal-accent hover:text-brutal-bg transition-colors"
+                title="退出全屏 (ESC)"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* 消息列表 */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 font-mono text-sm min-h-0">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
+              >
+                {message.role === 'assistant' && (
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-lg"
+                    style={{ backgroundColor: petColor + '30' }}
+                  >
+                    {petEmoji}
+                  </div>
+                )}
+                <div
+                  className={`max-w-[75%] p-4 text-sm rounded-2xl overflow-hidden ${
+                    message.role === 'user'
+                      ? 'bg-brutal-text text-brutal-bg rounded-br-none'
+                      : 'bg-brutal-surface border border-brutal-border rounded-bl-none'
+                  }`}
+                >
+                  {message.role === 'assistant' ? (
+                    <div className="space-y-2 min-w-0">
+                      {!message.content.trim() && message.id !== 'welcome' ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-brutal-accent">{petName}正在思考</span>
+                          <span className="flex gap-1">
+                            <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce" />
+                            <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce delay-75" />
+                            <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce delay-150" />
+                          </span>
+                        </div>
+                      ) : (
+                        <div className={`${markdownStyles} min-w-0`}>
+                          <ReactMarkdown>{message.content}</ReactMarkdown>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="whitespace-pre-wrap break-words">{message.content}</div>
+                  )}
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* 错误提示 */}
+          {error && (
+            <div className="mx-6 mb-2 p-2 border border-brutal-warning text-brutal-warning text-xs font-mono flex-shrink-0">
+              {error}
+            </div>
+          )}
+
+          {/* 输入区域 */}
+          <div className="p-4 border-t border-brutal-border flex-shrink-0 bg-brutal-surface">
+            <div className="flex gap-3 max-w-4xl mx-auto">
+              <textarea
+                ref={fullscreenInputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={`和${petName}聊天...`}
+                className="flex-1 p-3 bg-brutal-bg border border-brutal-border resize-none
+                           focus:border-brutal-accent transition-colors min-h-[60px] text-sm font-mono rounded"
+              />
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() || isThinking}
+                className="px-4 flex items-center justify-center rounded transition-colors"
+                style={{
+                  backgroundColor: petColor,
+                  opacity: !input.trim() || isThinking ? 0.5 : 1,
+                }}
+              >
+                <Send className="w-4 h-4 text-white" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 右侧：上下文面板 */}
+        <div className="w-80 border-l border-brutal-border bg-brutal-surface flex flex-col flex-shrink-0">
+          {/* 面板头部 */}
+          <div className="px-4 py-3 border-b border-brutal-border">
+            <span className="text-xs font-mono font-bold">对话上下文</span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* 阶段快照 */}
+            {stageSnapshot && (
+              <div className="border border-brutal-border bg-brutal-bg p-3">
+                <div className="text-[10px] text-brutal-muted font-mono uppercase mb-2">阶段完成度</div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-mono">{stageSnapshot.project_title}</span>
+                  <span className="text-xs font-mono text-brutal-accent">{stageSnapshot.completion.score}%</span>
+                </div>
+                <div className="w-full h-2 bg-brutal-border">
+                  <div
+                    className="h-full bg-brutal-accent transition-all"
+                    style={{ width: `${stageSnapshot.completion.score}%` }}
+                  />
+                </div>
+                {stageSnapshot.completion.missing_items.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {stageSnapshot.completion.missing_items.map((item, i) => (
+                      <div key={i} className="text-[10px] text-brutal-warning font-mono">• {item}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 最新可同步内容 */}
+            {lastAiMessage?.syncPayload && (
+              <div className="border border-brutal-border bg-brutal-bg p-3">
+                <div className="text-[10px] text-brutal-muted font-mono uppercase mb-2">可同步内容</div>
+                <pre className="text-[10px] font-mono text-brutal-text whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+                  {lastAiMessage.syncPayload}
+                </pre>
+                <button
+                  onClick={() => handleSyncMessage(lastAiMessage.syncPayload || lastAiMessage.content)}
+                  className="mt-2 w-full text-xs px-2 py-1.5 border border-brutal-accent text-brutal-accent hover:bg-brutal-accent/10 transition-colors"
+                >
+                  同步到项目
+                </button>
+              </div>
+            )}
+
+            {/* 下一轮问题 */}
+            {lastAiMessage?.nextQuestion && (
+              <div className="border border-brutal-border bg-brutal-bg p-3">
+                <div className="text-[10px] text-brutal-muted font-mono uppercase mb-2">下一轮问题</div>
+                <p className="text-xs font-mono text-brutal-text mb-2">{lastAiMessage.nextQuestion}</p>
+                <button
+                  onClick={() => void handleUseNextQuestion(lastAiMessage.nextQuestion || '')}
+                  disabled={isThinking}
+                  className="w-full text-xs px-2 py-1.5 bg-brutal-accent text-brutal-bg hover:bg-brutal-accent/90 transition-colors disabled:opacity-50"
+                >
+                  采用并发送
+                </button>
+              </div>
+            )}
+
+            {/* 快捷操作 */}
+            {quickActions.length > 0 && (
+              <div>
+                <div className="text-[10px] text-brutal-muted font-mono uppercase mb-2">快捷提问</div>
+                <div className="space-y-1.5">
+                  {quickActions.map((action) => (
+                    <button
+                      key={action.zh}
+                      onClick={() => {
+                        setInput(action.zh);
+                        fullscreenInputRef.current?.focus();
+                      }}
+                      className="w-full text-left text-xs px-2 py-1.5 border border-brutal-border hover:border-brutal-accent hover:bg-brutal-accent/10 transition-colors"
+                    >
+                      <span className="mr-1">{action.emoji}</span>
+                      <span>{action.zh}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ========== 侧边栏模式 ==========
   return (
     <div className="flex flex-col h-full bg-brutal-surface border-l border-brutal-border relative">
       {/* Collapse Button */}
@@ -290,26 +632,62 @@ export function AIChat({
         <ChevronRight className="w-4 h-4" />
       </button>
 
-      {/* Header - 宠物形象 */}
-      <div className="flex flex-col items-center p-4 border-b border-brutal-border bg-brutal-bg flex-shrink-0">
-        <div className="relative">
+      {/* Header - 宠物形象（水平紧凑布局） */}
+      <div className="flex items-center gap-3 px-3 py-2 border-b border-brutal-border bg-brutal-bg flex-shrink-0">
+        <div className="relative flex-shrink-0">
           <div
-            className="w-20 h-20 rounded-full flex items-center justify-center text-5xl border-4"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-xl border-2"
             style={{
               backgroundColor: petColor + '20',
               borderColor: petColor,
-              boxShadow: `0 4px 0 ${petColor}`,
             }}
           >
             {petEmoji}
           </div>
-          <span className="absolute -top-1 -right-1 text-xl">{personalityEmoji}</span>
+          <span className="absolute -top-0.5 -right-0.5 text-xs">{personalityEmoji}</span>
         </div>
-        <div className="mt-2 text-center">
-          <div className="font-mono text-sm font-bold">{petName}</div>
-          <div className="text-xs text-brutal-muted font-mono">你的AI小伙伴</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-sm font-bold">{petName}</span>
+            {projectId && (
+              <span className="text-[10px] text-brutal-accent font-mono px-1 py-0.5 border border-brutal-accent/30">
+                NATIVE
+              </span>
+            )}
+          </div>
+          {stageSnapshot && (
+            <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex-1 h-1 bg-brutal-border">
+                <div
+                  className="h-full bg-brutal-accent transition-all"
+                  style={{ width: `${stageSnapshot.completion.score}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-brutal-accent font-mono">{stageSnapshot.completion.score}%</span>
+            </div>
+          )}
         </div>
+        {/* 全屏按钮 */}
+        <button
+          onClick={() => setIsFullscreen(true)}
+          className="w-7 h-7 border border-brutal-border flex items-center justify-center hover:bg-brutal-accent hover:text-brutal-bg transition-colors flex-shrink-0"
+          title="全屏对话"
+        >
+          <Maximize2 className="w-3.5 h-3.5" />
+        </button>
       </div>
+      {stageSnapshot && stageSnapshot.completion.missing_items.length > 0 && (
+        <div className="px-3 py-1 border-b border-brutal-border bg-brutal-surface flex-shrink-0">
+          <div className="text-[10px] text-brutal-muted font-mono truncate">
+            缺口: {stageSnapshot.completion.missing_items.slice(0, 2).join(' / ')}
+          </div>
+          {retryUsed && (
+            <div className="text-[10px] text-brutal-warning font-mono">
+              本轮已执行格式修复重试
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 font-mono text-sm min-h-0">
@@ -327,40 +705,54 @@ export function AIChat({
               </div>
             )}
             <div
-              className={`max-w-[80%] p-3 text-sm rounded-2xl ${
+              className={`max-w-[80%] p-3 text-sm rounded-2xl overflow-hidden ${
                 message.role === 'user'
                   ? 'bg-brutal-text text-brutal-bg rounded-br-none'
                   : 'bg-brutal-bg border border-brutal-border rounded-bl-none'
               }`}
             >
               {message.role === 'assistant' ? (
-                <div className={markdownStyles}>
-                  <ReactMarkdown>{message.content || '...'}</ReactMarkdown>
+                <div className="space-y-2 min-w-0">
+                  {!message.content.trim() && message.id !== 'welcome' ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-brutal-accent">{petName}正在思考</span>
+                      <span className="flex gap-1">
+                        <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce" />
+                        <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce delay-75" />
+                        <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce delay-150" />
+                      </span>
+                    </div>
+                  ) : (
+                    <div className={`${markdownStyles} min-w-0`}>
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    </div>
+                  )}
+                  {message.id !== 'welcome' && message.content.trim() && (
+                    <div className="pt-1 border-t border-brutal-border/60 flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => handleSyncMessage(message.syncPayload || message.content)}
+                        className="text-xs px-2 py-1 border border-brutal-border hover:border-brutal-accent hover:text-brutal-accent transition-colors rounded"
+                      >
+                        同步到左侧
+                      </button>
+                      {message.nextQuestion && (
+                        <button
+                          onClick={() => void handleUseNextQuestion(message.nextQuestion || '')}
+                          disabled={isThinking}
+                          className="text-xs px-2 py-1 border border-brutal-accent text-brutal-accent hover:bg-brutal-accent/10 transition-colors rounded disabled:opacity-50"
+                        >
+                          采用下一轮问题
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="whitespace-pre-wrap">{message.content}</div>
+                <div className="whitespace-pre-wrap break-words">{message.content}</div>
               )}
             </div>
           </div>
         ))}
-        {isThinking && (
-          <div className="flex gap-2">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-lg"
-              style={{ backgroundColor: petColor + '30' }}
-            >
-              {petEmoji}
-            </div>
-            <div className="bg-brutal-bg border border-brutal-border p-3 rounded-2xl rounded-bl-none flex items-center gap-2">
-              <span className="text-brutal-accent">{petName}正在思考</span>
-              <span className="flex gap-1">
-                <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce" />
-                <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce delay-75" />
-                <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce delay-150" />
-              </span>
-            </div>
-          </div>
-        )}
         <div ref={messagesEndRef} />
       </div>
 

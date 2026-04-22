@@ -55,6 +55,13 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
     preferred_model = Column(Enum(AIProvider), nullable=True)  # 用户首选 AI 模型
+
+    # 订阅/支付状态（Stripe Test Mode）
+    subscription_status = Column(String(20), default="inactive", nullable=False)  # inactive / active / past_due / canceled
+    stripe_customer_id = Column(String(255), nullable=True)
+    stripe_subscription_id = Column(String(255), nullable=True)
+    current_tier_id = Column(String(50), nullable=True)  # 当前订阅的 pricing tier id
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

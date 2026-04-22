@@ -3,8 +3,10 @@ export type ProjectStatus = 'active' | 'paused' | 'archived';
 export type StageKey = 'idea' | 'validate' | 'prototype' | 'ship' | 'grow' | 'monetize';
 
 export interface PromoteTask {
+  id: string;
   text: string;
   done: boolean;
+  sortOrder: number;
 }
 
 export interface AISuggestions {
@@ -180,6 +182,27 @@ export interface MonetizeData {
   totalRevenue: number;
   paidUsers: number;
   funnel: FunnelMetrics;
+  testMode?: boolean; // 支付测试模式开关
+}
+
+// 支付相关类型
+export interface CheckoutItem {
+  name: string;
+  price: number;
+  period: 'month' | 'year' | 'lifetime';
+  tierId: string;
+}
+
+export interface CheckoutSession {
+  sessionUrl: string;
+  sessionId: string;
+}
+
+export interface SubscriptionStatus {
+  status: 'inactive' | 'active' | 'past_due' | 'canceled';
+  tierId: string | null;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
 }
 
 export interface Stages {

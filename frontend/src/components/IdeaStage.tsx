@@ -32,6 +32,7 @@ interface IdeaStageProps {
   project: Project;
   onUpdateContent: (content: string) => Promise<void>;
   isLocked: boolean;
+  onToggleLock?: () => void;
 }
 
 const AI_PET_CAT = `
@@ -173,7 +174,7 @@ function SortableNote({
   );
 }
 
-export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps) {
+export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock }: IdeaStageProps) {
   const { t } = useI18n();
   const [notes, setNotes] = useState<StickyNote[]>([]);
   const [editingNote, setEditingNote] = useState<string | null>(null);
@@ -297,7 +298,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
           <span className="font-mono text-sm">{t('stage.idea')}</span>
           <span className="text-xs text-brutal-muted">({notes.length} 个维度)</span>
         </div>
-        {!isLocked && (
+        {!isLocked ? (
           <div className="flex items-center gap-2">
             <button onClick={getAiSuggestion} disabled={isGenerating} className="btn-brutal h-9 flex items-center gap-2 text-xs">
               {isGenerating ? (
@@ -312,6 +313,14 @@ export function IdeaStage({ project, onUpdateContent, isLocked }: IdeaStageProps
               添加
             </button>
           </div>
+        ) : (
+          <button
+            onClick={onToggleLock}
+            className="btn-brutal h-9 flex items-center gap-2 text-xs text-brutal-warning border-brutal-warning"
+          >
+            <Edit2 className="w-3 h-3" />
+            重新打开编辑
+          </button>
         )}
       </div>
 

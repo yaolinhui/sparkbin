@@ -34,6 +34,7 @@ interface ValidateStageProps {
   project: Project;
   onUpdateContent: (content: string) => Promise<void>;
   isLocked: boolean;
+  onToggleLock?: () => void;
 }
 
 // AI 宠物 ASCII 形象
@@ -79,7 +80,7 @@ const TOOL_TYPES = {
   competitor: { label: '竞品', icon: Target, color: 'text-brutal-muted' },
 };
 
-export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateStageProps) {
+export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock }: ValidateStageProps) {
   const { t } = useI18n();
   const [data, setData] = useState<ValidationData>({ items: [], tools: [] });
   const [showAddItem, setShowAddItem] = useState(false);
@@ -428,6 +429,15 @@ export function ValidateStage({ project, onUpdateContent, isLocked }: ValidateSt
             )}
             AI 分析
           </button>
+          {isLocked && (
+            <button
+              onClick={onToggleLock}
+              className="btn-brutal h-9 flex items-center gap-2 text-xs text-brutal-warning border-brutal-warning"
+            >
+              <Edit3 className="w-3 h-3" />
+              重新打开编辑
+            </button>
+          )}
         </div>
       </div>
 

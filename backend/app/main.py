@@ -14,13 +14,37 @@ from .database import engine, SessionLocal
 from .models import Base
 from .auth import init_default_user
 from .services.ai_proxy import init_default_ai_configs
-from .routers import auth, projects, ai, admin
+from .routers import auth, projects, ai, admin, payments
+
+
+def _ensure_sqlite_columns():
+    """SQLite 兼容性：确保新增列存在（避免修改已有迁移文件）"""
+    if not str(engine.url).startswith("sqlite"):
+        return
+
+    from sqlalchemy import text, inspect
+    inspector = inspect(engine)
+    columns = {col["name"] for col in inspector.get_columns("users")}
+
+    with engine.connect() as conn:
+        if "subscription_status" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN subscription_status VARCHAR(20) DEFAULT 'inactive' NOT NULL"))
+        if "stripe_customer_id" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN stripe_customer_id VARCHAR(255)"))
+        if "stripe_subscription_id" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN stripe_subscription_id VARCHAR(255)"))
+        if "current_tier_id" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN current_tier_id VARCHAR(50)"))
+        conn.commit()
 
 
 def init_database():
     """初始化数据库表和默认数据"""
     # 创建所有表
     Base.metadata.create_all(bind=engine)
+
+    # SQLite 兼容性补丁：动态添加新列
+    _ensure_sqlite_columns()
 
     # 初始化默认数据
     db = SessionLocal()
@@ -62,6 +86,7 @@ app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(ai.router)
 app.include_router(admin.router)
+app.include_router(payments.router)
 
 
 @app.get("/")

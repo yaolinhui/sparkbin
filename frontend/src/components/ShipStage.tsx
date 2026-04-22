@@ -15,6 +15,7 @@ import {
   TrendingUp,
   Users,
   RefreshCw,
+  Edit3,
 } from 'lucide-react';
 import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
@@ -25,6 +26,7 @@ interface ShipStageProps {
   project: Project;
   onUpdateContent: (content: string) => Promise<void>;
   isLocked: boolean;
+  onToggleLock?: () => void;
 }
 
 const CHECKLIST_ITEMS = [
@@ -44,7 +46,7 @@ const PLATFORMS = [
   { key: 'wechat', label: '微信公众号', color: '#07c160', icon: '微' },
 ] as const;
 
-export function ShipStage({ project, onUpdateContent, isLocked }: ShipStageProps) {
+export function ShipStage({ project, onUpdateContent, isLocked, onToggleLock }: ShipStageProps) {
   const { t } = useI18n();
   const [data, setData] = useState<ShipData>({
     checklist: { domain: false, ssl: false, payment: false, analytics: false, socialMedia: false },
@@ -242,6 +244,15 @@ export function ShipStage({ project, onUpdateContent, isLocked }: ShipStageProps
           <span className="text-xs font-mono text-brutal-accent">
             准备度: {Math.round((checklistProgress / checklistTotal) * 100)}%
           </span>
+          {isLocked && (
+            <button
+              onClick={onToggleLock}
+              className="btn-brutal h-9 flex items-center gap-2 text-xs text-brutal-warning border-brutal-warning"
+            >
+              <Edit3 className="w-3 h-3" />
+              重新打开编辑
+            </button>
+          )}
         </div>
       </div>
 

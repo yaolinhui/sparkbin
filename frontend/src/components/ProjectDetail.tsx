@@ -7,6 +7,7 @@ import type { Project, Stage } from "../types";
 import { StageFlow } from './StageFlow';
 import { RichTextEditor } from './RichTextEditor';
 import { AIChat } from './AIChat';
+import { projectsApi } from '../services/api';
 import { IdeaStage } from './IdeaStage';
 import { ValidateStage } from './ValidateStage';
 import { PrototypeStage } from './PrototypeStage';
@@ -27,6 +28,291 @@ const STAGE_NUMBERS: Record<StageKey, string> = {
   ship: '04',
   grow: '05',
   monetize: '06',
+};
+
+interface IdeaSyncNote {
+  id: string;
+  title: string;
+  content: string;
+  color: 'default' | 'accent' | 'warning' | 'success';
+}
+
+interface ValidateSyncItem {
+  id: string;
+  title: string;
+  description: string;
+  status: 'pending' | 'in_progress' | 'validated' | 'failed';
+  createdAt: string;
+}
+
+interface PrototypeSyncFeature {
+  id: string;
+  name: string;
+  priority: 'P0' | 'P1' | 'P2';
+  status: 'todo' | 'doing' | 'done';
+  notes: string;
+  order: number;
+}
+
+interface ShipSyncFeedback {
+  id: string;
+  content: string;
+  rating: number;
+  source: string;
+  createdAt: string;
+}
+
+interface GrowSyncItem {
+  id: string;
+  title: string;
+  type: 'tutorial' | 'showcase' | 'story' | 'tech' | 'tips';
+  channel: 'xiaohongshu' | 'twitter' | 'jike' | 'v2ex' | 'blog' | 'producthunt';
+  scheduledDate: string;
+  status: 'draft' | 'scheduled' | 'published';
+  content: string;
+}
+
+interface MonetizeSyncTier {
+  id: string;
+  name: string;
+  price: number;
+  period: 'month' | 'year' | 'lifetime';
+  features: string[];
+  highlighted: boolean;
+}
+
+const parseJsonSafe = <T,>(raw: string, fallback: T): T => {
+  if (!raw || !raw.trim()) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+};
+
+const markdownToPlainText = (content: string): string =>
+  content
+    .replace(/\r/g, '')
+    .replace(/```[\s\S]*?```/g, (block) => block.replace(/```/g, '').trim())
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/^\s*\d+\.\s+/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .trim();
+
+const getSyncTitle = (content: string): string => {
+  const lines = content
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return 'AI 同步建议';
+  const firstLine = lines[0].replace(/[：:]+$/, '');
+  return firstLine.length > 24 ? `${firstLine.slice(0, 24)}...` : firstLine;
+};
+
+const formatRichTextBlock = (content: string): string =>
+  content
+    .split('\n')
+    .filter((line) => line.trim())
+    .map((line) =>
+      `<p>${line
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')}</p>`
+    )
+    .join('');
+
+const buildSyncedStageContent = (
+  stage: StageKey,
+  currentContent: string,
+  aiReply: string,
+  mode: 'append' | 'replace'
+): string => {
+  const cleanText = markdownToPlainText(aiReply).trim();
+  const syncText = cleanText || 'AI 同步建议';
+  const now = new Date().toISOString();
+  const today = now.split('T')[0];
+  const syncTitle = getSyncTitle(syncText);
+  const isReplace = mode === 'replace';
+
+  if (stage === 'idea') {
+    const existing = parseJsonSafe<IdeaSyncNote[]>(currentContent, []);
+    const safeExisting = Array.isArray(existing) ? existing : [];
+    const note: IdeaSyncNote = {
+      id: Date.now().toString(),
+      title: isReplace ? 'AI 同步摘要' : syncTitle,
+      content: syncText,
+      color: 'accent',
+    };
+    return JSON.stringify(isReplace ? [note] : [...safeExisting, note]);
+  }
+
+  if (stage === 'validate') {
+    const existing = parseJsonSafe<Record<string, unknown>>(currentContent, {});
+    const existingItems = Array.isArray(existing.items) ? (existing.items as ValidateSyncItem[]) : [];
+    const existingTools = Array.isArray(existing.tools) ? existing.tools : [];
+    const item: ValidateSyncItem = {
+      id: Date.now().toString(),
+      title: syncTitle,
+      description: syncText,
+      status: 'pending',
+      createdAt: now,
+    };
+    if (isReplace) {
+      return JSON.stringify({ items: [item], tools: [] });
+    }
+    return JSON.stringify({
+      ...existing,
+      items: [...existingItems, item],
+      tools: existingTools,
+    });
+  }
+
+  if (stage === 'prototype') {
+    const existing = parseJsonSafe<Record<string, unknown>>(currentContent, {});
+    const existingFeatures = Array.isArray(existing.features) ? (existing.features as PrototypeSyncFeature[]) : [];
+    const feature: PrototypeSyncFeature = {
+      id: Date.now().toString(),
+      name: syncTitle,
+      priority: 'P1',
+      status: 'todo',
+      notes: syncText,
+      order: isReplace ? 0 : existingFeatures.length,
+    };
+    const baseChecklist = {
+      domain: false,
+      ssl: false,
+      payment: false,
+      analytics: false,
+      feedback: false,
+    };
+    if (isReplace) {
+      return JSON.stringify({
+        selectedPlatform: 'web',
+        features: [feature],
+        releaseChecklist: baseChecklist,
+      });
+    }
+    return JSON.stringify({
+      ...existing,
+      features: [...existingFeatures, feature],
+      releaseChecklist:
+        existing.releaseChecklist && typeof existing.releaseChecklist === 'object'
+          ? existing.releaseChecklist
+          : baseChecklist,
+    });
+  }
+
+  if (stage === 'ship') {
+    const existing = parseJsonSafe<Record<string, unknown>>(currentContent, {});
+    const existingFeedbacks = Array.isArray(existing.feedbacks) ? (existing.feedbacks as ShipSyncFeedback[]) : [];
+    const feedback: ShipSyncFeedback = {
+      id: Date.now().toString(),
+      content: syncText,
+      rating: 5,
+      source: 'AI同步',
+      createdAt: now,
+    };
+    const baseShip = {
+      checklist: {
+        domain: false,
+        ssl: false,
+        payment: false,
+        analytics: false,
+        socialMedia: false,
+      },
+      platformBindings: [],
+      contents: [],
+      metrics: {
+        newUsers: 0,
+        activeUsers: 0,
+        feedbackCount: 0,
+        bugReports: 0,
+      },
+    };
+    if (isReplace) {
+      return JSON.stringify({
+        ...baseShip,
+        feedbacks: [feedback],
+      });
+    }
+    return JSON.stringify({
+      ...baseShip,
+      ...existing,
+      feedbacks: [...existingFeedbacks, feedback],
+    });
+  }
+
+  if (stage === 'grow') {
+    const existing = parseJsonSafe<Record<string, unknown>>(currentContent, {});
+    const existingCalendar = Array.isArray(existing.contentCalendar) ? (existing.contentCalendar as GrowSyncItem[]) : [];
+    const syncItem: GrowSyncItem = {
+      id: Date.now().toString(),
+      title: syncTitle,
+      type: 'tips',
+      channel: 'blog',
+      scheduledDate: today,
+      status: 'draft',
+      content: syncText,
+    };
+    if (isReplace) {
+      return JSON.stringify({
+        contentCalendar: [syncItem],
+        channelMetrics: [],
+      });
+    }
+    return JSON.stringify({
+      ...existing,
+      contentCalendar: [...existingCalendar, syncItem],
+      channelMetrics: Array.isArray(existing.channelMetrics) ? existing.channelMetrics : [],
+    });
+  }
+
+  if (stage === 'monetize') {
+    const existing = parseJsonSafe<Record<string, unknown>>(currentContent, {});
+    const existingTiers = Array.isArray(existing.pricingTiers) ? (existing.pricingTiers as MonetizeSyncTier[]) : [];
+    const tier: MonetizeSyncTier = {
+      id: Date.now().toString(),
+      name: isReplace ? 'AI 建议方案' : syncTitle,
+      price: 19,
+      period: 'month',
+      features: syncText.split('\n').map((line) => line.trim()).filter(Boolean).slice(0, 6),
+      highlighted: false,
+    };
+    const baseMonetize = {
+      strategy: 'freemium',
+      mrr: 0,
+      totalRevenue: 0,
+      paidUsers: 0,
+      funnel: {
+        visitors: 0,
+        signups: 0,
+        trials: 0,
+        paid: 0,
+      },
+      testMode: false,
+    };
+    if (isReplace) {
+      return JSON.stringify({
+        ...baseMonetize,
+        pricingTiers: [tier],
+      });
+    }
+    return JSON.stringify({
+      ...baseMonetize,
+      ...existing,
+      pricingTiers: [...existingTiers, tier],
+    });
+  }
+
+  const currentRichText = currentContent.trim();
+  const syncedBlock = formatRichTextBlock(syncText);
+  if (isReplace || !currentRichText) {
+    return syncedBlock || '<p>AI 同步建议</p>';
+  }
+  return `${currentRichText}${syncedBlock}`;
 };
 
 export function ProjectDetail({ onLogout }: ProjectDetailProps) {
@@ -51,6 +337,11 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncCandidate, setSyncCandidate] = useState('');
+  const [syncMode, setSyncMode] = useState<'append' | 'replace'>('append');
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [viewingStage, setViewingStage] = useState<StageKey | null>(null); // 正在查看的阶段（可切换）
   const [isAIChatCollapsed, setIsAIChatCollapsed] = useState(false); // AI 聊天折叠状态
   const [showBlueprint, setShowBlueprint] = useState(false); // 项目蓝图显示状态
@@ -67,49 +358,47 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       setFetchError(null);
 
       // 使用 projectsApi.get 获取完整详情（包含所有 stages）
-      import('../services/api').then(({ projectsApi }) => {
-        projectsApi.get(id)
-          .then((detail) => {
-            // 更新 store 中的项目数据
-            useProjectStore.setState((state) => ({
-              projects: [
-                ...state.projects.filter((p) => p.id !== id),
-                {
-                  id: detail.id,
-                  title: detail.title,
-                  painPoint: detail.pain_point,
-                  status: detail.status,
-                  currentStage: detail.current_stage,
-                  stages: detail.stages.reduce((acc, s) => {
-                    acc[s.stage_key] = {
-                      content: s.content,
-                      completedAt: s.completed_at,
-                      isLocked: s.is_locked,
-                    };
-                    return acc;
-                  }, {} as Record<string, Stage> as unknown as Project["stages"]),
-                  createdAt: detail.created_at,
-                  updatedAt: detail.updated_at,
-                },
-              ],
-            }));
-            setIsLoading(false);
-          })
-          .catch((err) => {
-            console.error('Failed to fetch project:', err);
-            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-            if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
-              setFetchError('无法连接到服务器，请检查后端是否已启动');
-            } else if (errorMessage.includes('404')) {
-              setFetchError('项目不存在');
-            } else if (errorMessage.includes('401')) {
-              setFetchError('登录已过期，请重新登录');
-            } else {
-              setFetchError(`加载失败: ${errorMessage}`);
-            }
-            setIsLoading(false);
-          });
-      });
+      projectsApi.get(id)
+        .then((detail) => {
+          // 更新 store 中的项目数据
+          useProjectStore.setState((state) => ({
+            projects: [
+              ...state.projects.filter((p) => p.id !== id),
+              {
+                id: detail.id,
+                title: detail.title,
+                painPoint: detail.pain_point,
+                status: detail.status,
+                currentStage: detail.current_stage,
+                stages: detail.stages.reduce((acc, s) => {
+                  acc[s.stage_key] = {
+                    content: s.content,
+                    completedAt: s.completed_at,
+                    isLocked: s.is_locked,
+                  };
+                  return acc;
+                }, {} as Record<string, Stage> as unknown as Project["stages"]),
+                createdAt: detail.created_at,
+                updatedAt: detail.updated_at,
+              },
+            ],
+          }));
+          setIsLoading(false);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch project:', err);
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+          if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+            setFetchError('无法连接到服务器，请检查后端是否已启动');
+          } else if (errorMessage.includes('404')) {
+            setFetchError('项目不存在');
+          } else if (errorMessage.includes('401')) {
+            setFetchError('登录已过期，请重新登录');
+          } else {
+            setFetchError(`加载失败: ${errorMessage}`);
+          }
+          setIsLoading(false);
+        });
     }
   }, [id, project]);
 
@@ -262,13 +551,48 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     }
   };
 
+  const openSyncModal = (content: string) => {
+    setSyncCandidate(content);
+    setSyncMode('append');
+    setSyncError(null);
+    setShowSyncModal(true);
+  };
+
+  const closeSyncModal = () => {
+    if (isSyncing) return;
+    setShowSyncModal(false);
+    setSyncCandidate('');
+    setSyncError(null);
+    setSyncMode('append');
+  };
+
+  const handleConfirmSync = async () => {
+    if (!syncCandidate.trim()) {
+      setSyncError('同步内容为空，无法写入左侧面板。');
+      return;
+    }
+
+    setIsSyncing(true);
+    setSyncError(null);
+
+    try {
+      const stageData = project.stages?.[validCurrentStage];
+      const currentContent = stageData?.content || '';
+      const nextContent = buildSyncedStageContent(validCurrentStage, currentContent, syncCandidate, syncMode);
+      await updateStageContent(project.id, validCurrentStage, nextContent);
+      setShowSyncModal(false);
+      setSyncCandidate('');
+      setSyncMode('append');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '同步失败，请稍后重试。';
+      setSyncError(message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleGenerateContent = async (content: string) => {
-    const stageData = project.stages?.[validCurrentStage];
-    const currentContent = stageData?.content || '';
-    const newContent = currentContent
-      ? `${currentContent}\n\n${content}`
-      : content;
-    await updateStageContent(project.id, validCurrentStage, newContent);
+    openSyncModal(content);
   };
 
   const renderStatusButton = () => {
@@ -536,8 +860,10 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
         >
           <AIChat
             stage={validCurrentStage}
+            projectId={project.id}
             projectTitle={project.title}
             onGenerateContent={handleGenerateContent}
+            onSyncRequest={openSyncModal}
             isCollapsed={isAIChatCollapsed}
             onCollapsedChange={setIsAIChatCollapsed}
           />
@@ -600,6 +926,84 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
               <div className="text-xs font-mono text-brutal-muted">
                 {'>'} AWAITING_USER_INPUT...
                 <span className="animate-blink">_</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sync Modal */}
+      {showSyncModal && (
+        <div className="fixed inset-0 bg-brutal-bg/90 flex items-center justify-center z-50 p-4">
+          <div className="border-2 border-brutal-accent bg-brutal-surface w-full max-w-2xl">
+            <div className="flex items-center justify-between p-4 border-b border-brutal-accent bg-brutal-bg">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-mono font-bold text-brutal-accent">SYNC TO LEFT PANEL</span>
+                <span className="text-xs font-mono text-brutal-muted">阶段: {currentStageLabel}</span>
+              </div>
+              <button
+                onClick={closeSyncModal}
+                disabled={isSyncing}
+                className="w-8 h-8 border border-brutal-border flex items-center justify-center hover:bg-brutal-text hover:text-brutal-bg transition-colors disabled:opacity-50"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm font-mono text-brutal-text">
+                {'>'} 将右侧 AI 回复同步到左侧当前阶段面板。
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setSyncMode('append')}
+                  className={`h-10 border font-mono text-sm transition-colors ${
+                    syncMode === 'append'
+                      ? 'border-brutal-accent text-brutal-accent bg-brutal-accent/10'
+                      : 'border-brutal-border'
+                  }`}
+                >
+                  追加写入（推荐）
+                </button>
+                <button
+                  onClick={() => setSyncMode('replace')}
+                  className={`h-10 border font-mono text-sm transition-colors ${
+                    syncMode === 'replace'
+                      ? 'border-brutal-warning text-brutal-warning bg-brutal-warning/10'
+                      : 'border-brutal-border'
+                  }`}
+                >
+                  覆盖当前阶段
+                </button>
+              </div>
+
+              <div className="border border-brutal-border bg-brutal-bg p-3 max-h-64 overflow-y-auto">
+                <div className="text-xs text-brutal-muted font-mono mb-2">SYNC_PREVIEW</div>
+                <pre className="text-sm font-mono whitespace-pre-wrap break-words text-brutal-text">{syncCandidate}</pre>
+              </div>
+
+              {syncError && (
+                <div className="text-xs font-mono text-brutal-warning border border-brutal-warning/40 p-2 bg-brutal-warning/10">
+                  {syncError}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={closeSyncModal}
+                  disabled={isSyncing}
+                  className="flex-1 btn-brutal h-10 disabled:opacity-50"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleConfirmSync}
+                  disabled={isSyncing}
+                  className="flex-1 btn-brutal-primary h-10 disabled:opacity-50"
+                >
+                  {isSyncing ? '同步中...' : '确认同步'}
+                </button>
               </div>
             </div>
           </div>

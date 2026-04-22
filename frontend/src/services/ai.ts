@@ -8,6 +8,30 @@ export interface KimiMessage {
   content: string;
 }
 
+export interface StageChatContext {
+  projectId?: string;
+  stageKey?: string;
+  enableStageLoop?: boolean;
+}
+
+export interface StageStreamMeta {
+  stage_snapshot?: StageSnapshot | null;
+  sync_payload?: string;
+  sync_payload_structured?: {
+    summary?: string;
+    items?: string[];
+    stage_key?: string;
+    sync_mode?: 'append' | 'replace' | string;
+    raw?: Record<string, unknown>;
+  };
+  next_question?: string;
+  retry_used?: boolean;
+}
+
+export interface StageChatHandlers {
+  onMeta?: (meta: StageStreamMeta) => void;
+}
+
 export const AI_PROVIDER_NAMES: Record<AIProvider, string> = {
   deepseek: 'DeepSeek',
   kimi: 'Kimi',
@@ -16,7 +40,7 @@ export const AI_PROVIDER_NAMES: Record<AIProvider, string> = {
 };
 
 // API 交互接口 - 从 api.ts 导入
-import { authApi, aiApi as originalAiApi } from './api';
+import { authApi, aiApi as originalAiApi, getAuthToken, type StageSnapshot } from './api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -64,8 +88,9 @@ class AIService {
   // 流式聊天 - 通过 SSE 连接到后端
   async *chatCompletionStream(
     messages: KimiMessage[],
+    context?: StageChatContext,
+    handlers?: StageChatHandlers,
   ): AsyncGenerator<string, void, unknown> {
-    const { getAuthToken } = await import('./api');
     const token = getAuthToken();
 
     // 始终使用最新的 provider（从 localStorage 读取）
@@ -81,6 +106,9 @@ class AIService {
         provider,
         messages,
         stream: true,
+        project_id: context?.projectId || null,
+        stage_key: context?.stageKey || null,
+        enable_stage_loop: context?.enableStageLoop ?? true,
       }),
     });
 
@@ -135,21 +163,25 @@ class AIService {
               throw new Error(chunk.error);
             }
 
-            // 处理流式响应格式 (delta)
-            const delta = chunk.choices?.[0]?.delta;
-            if (delta) {
-              const content = delta.content || '';
-              if (content) {
-                receivedAnyContent = true;
-                yield content;
+            if (!chunk.meta) {
+              // 处理流式响应格式 (delta)
+              const delta = chunk.choices?.[0]?.delta;
+              if (delta) {
+                const content = delta.content || '';
+                if (content) {
+                  receivedAnyContent = true;
+                  yield content;
+                }
               }
-            }
 
-            // 处理非流式格式 (message) - 某些提供商可能返回这种格式
-            const message = chunk.choices?.[0]?.message;
-            if (message?.content) {
-              receivedAnyContent = true;
-              yield message.content;
+              // 处理非流式格式 (message) - 某些提供商可能返回这种格式
+              const message = chunk.choices?.[0]?.message;
+              if (message?.content) {
+                receivedAnyContent = true;
+                yield message.content;
+              }
+            } else {
+              handlers?.onMeta?.(chunk.meta as StageStreamMeta);
             }
           } catch (e) {
             // 如果是我们抛出的错误，重新抛出
@@ -172,10 +204,14 @@ class AIService {
               if (chunk.error) {
                 throw new Error(chunk.error);
               }
-              const content = chunk.choices?.[0]?.delta?.content || chunk.choices?.[0]?.message?.content || '';
-              if (content) {
-                receivedAnyContent = true;
-                yield content;
+              if (chunk.meta) {
+                handlers?.onMeta?.(chunk.meta as StageStreamMeta);
+              } else {
+                const content = chunk.choices?.[0]?.delta?.content || chunk.choices?.[0]?.message?.content || '';
+                if (content) {
+                  receivedAnyContent = true;
+                  yield content;
+                }
               }
             } catch (e) {
               // 忽略解析错误

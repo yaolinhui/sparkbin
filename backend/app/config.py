@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     github_repo: str = ""
     github_file_path: str = "data/projects.json"
 
+    # Stripe 支付配置（测试模式）
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_publishable_key: str = ""  # 前端展示用，可选
+    app_url: str = "http://localhost:5173"  # 支付回调基础地址
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

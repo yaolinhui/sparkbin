@@ -33,6 +33,10 @@ class UserInfo(BaseModel):
     id: UUID
     username: str
     preferred_model: Optional[AIProvider] = None
+    subscription_status: str = "inactive"
+    stripe_customer_id: Optional[str] = None
+    stripe_subscription_id: Optional[str] = None
+    current_tier_id: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -161,6 +165,9 @@ class AIChatRequest(BaseModel):
     provider: AIProvider
     messages: List[dict]  # [{"role": "user", "content": "..."}, ...]
     stream: bool = True
+    project_id: Optional[UUID] = None
+    stage_key: Optional[StageKey] = None
+    enable_stage_loop: bool = True
 
 
 class AIPromoteSuggestRequest(BaseModel):
@@ -169,6 +176,32 @@ class AIPromoteSuggestRequest(BaseModel):
     pain_point: str
     project_description: str
     project_id: Optional[UUID] = None  # 可选，用于保存建议
+
+
+# ========== 支付 ==========
+class CheckoutItem(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    price: float = Field(..., ge=0)  # 美元，支持小数（如 9.99）
+    period: str = Field(default="month", pattern="^(month|year|lifetime)$")
+    tier_id: str = Field(..., min_length=1)
+
+
+class CreateCheckoutRequest(BaseModel):
+    items: List[CheckoutItem]
+    success_url: str
+    cancel_url: str
+
+
+class CheckoutSessionResponse(BaseModel):
+    session_url: str
+    session_id: str
+
+
+class SubscriptionStatusResponse(BaseModel):
+    status: str = "inactive"
+    tier_id: Optional[str] = None
+    stripe_customer_id: Optional[str] = None
+    stripe_subscription_id: Optional[str] = None
 
 
 # ========== 数据导出 ==========

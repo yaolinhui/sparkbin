@@ -49,7 +49,7 @@ def create_checkout_session(
         price_data: Dict[str, Any] = {
             "currency": "usd",
             "product_data": {"name": item.name},
-            "unit_amount": item.price * 100,  # Stripe 使用美分
+            "unit_amount": int(item.price * 100),  # Stripe 使用美分
         }
 
         if item.period in ("month", "year"):

@@ -26,6 +26,10 @@ DEFAULT_CONFIGS = {
     AIProvider.DOUBAO: {
         "base_url": "https://ark.cn-beijing.volces.com/api/v3",
         "model": "doubao-lite-4k"
+    },
+    AIProvider.OPENAI: {
+        "base_url": "https://api.openai.com/v1",
+        "model": "gpt-4"
     }
 }
 
@@ -361,7 +365,7 @@ def init_default_ai_configs(db: Session):
     encryption = get_encryption_manager()
     empty_key = encryption.encrypt("")  # 加密空字符串
 
-    for provider in [AIProvider.DEEPSEEK, AIProvider.KIMI, AIProvider.DOUBAO]:
+    for provider in [AIProvider.DEEPSEEK, AIProvider.KIMI, AIProvider.DOUBAO, AIProvider.OPENAI]:
         existing = db.query(AIConfig).filter(AIConfig.provider == provider).first()
         if not existing:
             default = DEFAULT_CONFIGS[provider]

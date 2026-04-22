@@ -43,8 +43,10 @@ function convertProjectDetailToProject(detail: ProjectDetail): Project {
       stages[stage.stage_key] = {
         ...baseStage,
         tasks: detail.promote_tasks.map((t) => ({
+          id: t.id,
           text: t.text,
           done: t.done,
+          sortOrder: t.sort_order,
         })),
         aiSuggestions: detail.promote_suggestions[0] || { channels: [], templates: [] },
       };
@@ -217,23 +219,10 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
 
   addPromoteTask: async (id: string, text: string) => {
     try {
-      await projectsApi.addTask(id, text);
+      const result = await projectsApi.addTask(id, text);
+      const updatedProject = convertProjectDetailToProject(result);
       set((state) => ({
-        projects: state.projects.map((p) =>
-          p.id === id
-            ? {
-                ...p,
-                stages: {
-                  ...p.stages,
-                  monetize: {
-                    ...p.stages.monetize,
-                    tasks: [...(p.stages.monetize.tasks || []), { text, done: false }],
-                  },
-                },
-                updatedAt: new Date().toISOString(),
-              }
-            : p
-        ),
+        projects: state.projects.map((p) => (p.id === id ? updatedProject : p)),
       }));
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to add task' });
@@ -248,30 +237,15 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
     const task = tasks[taskIndex];
     if (!task) return;
 
-    // 这里需要 task ID，但前端只有 index
-    // 暂时跳过，等需要时再实现
+    await get().updatePromoteTask(id, task.id, !task.done);
   },
 
   updatePromoteTask: async (id: string, taskId: string, done: boolean) => {
     try {
-      await projectsApi.updateTask(id, taskId, { done });
+      const result = await projectsApi.updateTask(id, taskId, { done });
+      const updatedProject = convertProjectDetailToProject(result);
       set((state) => ({
-        projects: state.projects.map((p) =>
-          p.id === id
-            ? {
-                ...p,
-                stages: {
-                  ...p.stages,
-                  monetize: {
-                    ...p.stages.monetize,
-                    tasks: (p.stages.monetize.tasks || []).map((t, i) =>
-                      i.toString() === taskId ? { ...t, done } : t
-                    ),
-                  },
-                },
-              }
-            : p
-        ),
+        projects: state.projects.map((p) => (p.id === id ? updatedProject : p)),
       }));
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to update task' });
@@ -280,22 +254,10 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
 
   deletePromoteTask: async (id: string, taskId: string) => {
     try {
-      await projectsApi.deleteTask(id, taskId);
+      const result = await projectsApi.deleteTask(id, taskId);
+      const updatedProject = convertProjectDetailToProject(result);
       set((state) => ({
-        projects: state.projects.map((p) =>
-          p.id === id
-            ? {
-                ...p,
-                stages: {
-                  ...p.stages,
-                  monetize: {
-                    ...p.stages.monetize,
-                    tasks: (p.stages.monetize.tasks || []).filter((_, i) => i.toString() !== taskId),
-                  },
-                },
-              }
-            : p
-        ),
+        projects: state.projects.map((p) => (p.id === id ? updatedProject : p)),
       }));
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to delete task' });

@@ -1,23 +1,70 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import Any, Dict, List
 import json
 import logging
+from uuid import UUID
 
 from ..database import get_db
 from ..auth import get_current_user
-from ..models import User, AIProvider, AIConfig, AICallLog
+from ..models import User, AIProvider, AIConfig, AICallLog, Project, Stage, StageKey
 from ..schemas import (
     AIProviderInfo, AIConfigUpdate, AIChatRequest,
     AIPromoteSuggestRequest, PromoteSuggestionInfo, BaseResponse
 )
 from ..services.ai_proxy import AIProxyService
+from ..services.stage_context import (
+    build_stage_snapshot,
+    build_stage_native_system_prompt,
+    validate_stage_native_response,
+    extract_sync_payload,
+    extract_sync_payload_structured,
+    extract_next_round_question,
+)
 from ..services.logger import OperationLogger
 from ..encryption import get_encryption_manager
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 logger = logging.getLogger(__name__)
+
+
+def _extract_content_from_sse_chunks(chunks: List[str]) -> str:
+    content_parts: List[str] = []
+    for chunk in chunks:
+        for line in chunk.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith("data: "):
+                continue
+
+            payload = stripped[6:]
+            if payload == "[DONE]":
+                continue
+
+            try:
+                data = json.loads(payload)
+            except json.JSONDecodeError:
+                continue
+
+            delta_content = data.get("choices", [{}])[0].get("delta", {}).get("content", "")
+            message_content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            text = delta_content or message_content
+            if text:
+                content_parts.append(text)
+
+    return "".join(content_parts).strip()
+
+
+async def _collect_sse_chunks(
+    ai_service: AIProxyService,
+    provider: AIProvider,
+    messages: List[Dict[str, str]]
+) -> List[str]:
+    chunks: List[str] = []
+    generator = ai_service.chat_completion(provider=provider, messages=messages, stream=True)
+    async for chunk in generator:
+        chunks.append(chunk)
+    return chunks
 
 
 @router.get("/ping")
@@ -35,7 +82,7 @@ def list_providers(
     config_map = {c.provider: c for c in configs}
 
     providers = []
-    for provider in [AIProvider.DEEPSEEK, AIProvider.KIMI, AIProvider.DOUBAO]:
+    for provider in [AIProvider.DEEPSEEK, AIProvider.KIMI, AIProvider.DOUBAO, AIProvider.OPENAI]:
         config = config_map.get(provider)
         providers.append(AIProviderInfo(
             provider=provider,
@@ -136,24 +183,89 @@ async def chat_completion(
     """
     ai_service = AIProxyService(db)
 
+    merged_messages = list(request.messages)
+    stage_snapshot = None
+
+    if request.project_id and request.stage_key:
+        project = db.query(Project).filter(
+            Project.id == request.project_id,
+            Project.user_id == current_user.id,
+            Project.deleted_at.is_(None)
+        ).first()
+
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found for AI context")
+
+        stage = db.query(Stage).filter(
+            Stage.project_id == request.project_id,
+            Stage.stage_key == request.stage_key
+        ).first()
+
+        if not stage:
+            raise HTTPException(status_code=404, detail="Stage not found for AI context")
+
+        stage_snapshot = build_stage_snapshot(project, stage)
+        merged_messages = [
+            {
+                "role": "system",
+                "content": build_stage_native_system_prompt(stage_snapshot, request.enable_stage_loop),
+            },
+            *merged_messages,
+        ]
+
     async def event_generator():
-        chunk_count = 0
         try:
-            # Get the generator
-            gen = ai_service.chat_completion(
-                provider=request.provider,
-                messages=request.messages,
-                stream=True
-            )
-            async for chunk in gen:
-                chunk_count += 1
+            selected_chunks = await _collect_sse_chunks(ai_service, request.provider, merged_messages)
+            selected_text = _extract_content_from_sse_chunks(selected_chunks)
+            retry_used = False
+
+            if stage_snapshot and selected_text:
+                validation = validate_stage_native_response(selected_text, request.enable_stage_loop)
+                if not validation["valid"]:
+                    retry_used = True
+                    repair_messages = [
+                        *merged_messages,
+                        {
+                            "role": "system",
+                            "content": (
+                                "你的上一条回答格式不完整。"
+                                f"缺失章节: {json.dumps(validation['missing_sections'], ensure_ascii=False)}。"
+                                "请严格按指定章节完整重答，不要省略。"
+                            ),
+                        },
+                    ]
+                    retry_chunks = await _collect_sse_chunks(ai_service, request.provider, repair_messages)
+                    retry_text = _extract_content_from_sse_chunks(retry_chunks)
+                    retry_validation = validate_stage_native_response(retry_text, request.enable_stage_loop)
+                    if retry_validation["valid"] and retry_text:
+                        selected_chunks = retry_chunks
+                        selected_text = retry_text
+
+            sync_payload = extract_sync_payload(selected_text) if selected_text else ""
+            sync_payload_structured = extract_sync_payload_structured(selected_text) if selected_text else {}
+            next_question = extract_next_round_question(selected_text) if selected_text else ""
+            meta_event: Dict[str, Any] = {
+                "meta": {
+                    "stage_snapshot": stage_snapshot,
+                    "sync_payload": sync_payload,
+                    "sync_payload_structured": sync_payload_structured,
+                    "next_question": next_question,
+                    "retry_used": retry_used,
+                }
+            }
+            yield f"data: {json.dumps(meta_event, ensure_ascii=False)}\n\n"
+
+            for chunk in selected_chunks:
                 yield chunk
+
+            if not selected_chunks or selected_chunks[-1].strip() != "data: [DONE]":
+                yield "data: [DONE]\n\n"
         except Exception as e:
             import sys
             error_type = type(e).__name__
             error_msg = str(e) or f"({error_type})"
-            error_data = json.dumps({"error": f"{error_type}: {error_msg} (chunks={chunk_count})"})
-            sys.stderr.write(f"DEBUG: Caught {error_type}: {error_msg} (chunks={chunk_count})\\n")
+            error_data = json.dumps({"error": f"{error_type}: {error_msg}"})
+            sys.stderr.write(f"DEBUG: Caught {error_type}: {error_msg}\\n")
             yield f"data: {error_data}\n\n"
             yield "data: [DONE]\n\n"
 
@@ -161,6 +273,39 @@ async def chat_completion(
         event_generator(),
         media_type="text/event-stream"
     )
+
+
+@router.get("/stage-context/{project_id}/{stage_key}")
+def get_stage_context(
+    project_id: str,
+    stage_key: StageKey,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取指定项目阶段的上下文快照（完成度+缺口）"""
+    try:
+        project_uuid = UUID(project_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid project id") from exc
+
+    project = db.query(Project).filter(
+        Project.id == project_uuid,
+        Project.user_id == current_user.id,
+        Project.deleted_at.is_(None)
+    ).first()
+
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    stage = db.query(Stage).filter(
+        Stage.project_id == project.id,
+        Stage.stage_key == stage_key
+    ).first()
+
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage not found")
+
+    return build_stage_snapshot(project, stage)
 
 
 @router.post("/promote-suggest", response_model=PromoteSuggestionInfo)

@@ -58,6 +58,52 @@ export function getUserId(): string | null {
   return userId;
 }
 
+function extractErrorMessage(responseText: string, statusCode: number): string {
+  if (!responseText.trim()) {
+    return `HTTP ${statusCode}`;
+  }
+
+  try {
+    const parsed = JSON.parse(responseText) as {
+      message?: string;
+      detail?: string | { msg?: string }[] | { message?: string };
+      error?: string;
+    };
+
+    if (typeof parsed.detail === 'string' && parsed.detail.trim()) {
+      return parsed.detail;
+    }
+
+    if (Array.isArray(parsed.detail) && parsed.detail.length > 0) {
+      return parsed.detail
+        .map((item) => item?.msg?.trim())
+        .filter((item): item is string => Boolean(item))
+        .join('; ') || `HTTP ${statusCode}`;
+    }
+
+    const detailObject =
+      parsed.detail && !Array.isArray(parsed.detail) && typeof parsed.detail === 'object'
+        ? parsed.detail
+        : null;
+
+    if (typeof detailObject?.message === 'string' && detailObject.message.trim()) {
+      return detailObject.message;
+    }
+
+    if (typeof parsed.message === 'string' && parsed.message.trim()) {
+      return parsed.message;
+    }
+
+    if (typeof parsed.error === 'string' && parsed.error.trim()) {
+      return parsed.error;
+    }
+  } catch {
+    // 非 JSON 错误体直接回退为原始文本
+  }
+
+  return responseText.trim() || `HTTP ${statusCode}`;
+}
+
 // 通用请求函数
 async function request<T>(
   endpoint: string,
@@ -86,8 +132,8 @@ async function request<T>(
   }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    const responseText = await response.text();
+    throw new Error(extractErrorMessage(responseText, response.status));
   }
 
   // 处理空响应
@@ -120,7 +166,17 @@ export const authApi = {
     request('/auth/logout', { method: 'POST' }),
 
   getMe: () =>
-    request<{ id: string; username: string; created_at: string }>('/auth/me'),
+    request<{
+      id: string;
+      username: string;
+      role: string;
+      preferred_model: AIProvider | null;
+      subscription_status: string;
+      stripe_customer_id: string | null;
+      stripe_subscription_id: string | null;
+      current_tier_id: string | null;
+      created_at: string;
+    }>('/auth/me'),
 
   changePassword: (oldPassword: string, newPassword: string) =>
     request('/auth/change-password', {
@@ -216,6 +272,11 @@ export const projectsApi = {
       method: 'POST',
     }),
 
+  reopenStage: (id: string, stage: string) =>
+    request<ProjectDetail>(`/projects/${id}/stages/${stage}/reopen`, {
+      method: 'POST',
+    }),
+
   // 推广任务
   addTask: (id: string, text: string) =>
     request<ProjectDetail>(`/projects/${id}/tasks`, {
@@ -254,6 +315,23 @@ export interface AIConfig {
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
+}
+
+export interface StageSnapshot {
+  project_id: string;
+  project_title: string;
+  project_pain_point: string;
+  current_stage: Stage['stage_key'];
+  stage_key: Stage['stage_key'];
+  stage_locked: boolean;
+  completion: {
+    score: number;
+    missing_items: string[];
+  };
+  content: {
+    raw: string;
+    normalized: unknown;
+  };
 }
 
 export const aiApi = {
@@ -320,6 +398,45 @@ export const aiApi = {
       status: string;
       created_at: string;
     }[]>(`/ai/call-logs?limit=${limit}`),
+
+  // 获取阶段上下文快照（完成度/缺口）
+  getStageContext: (projectId: string, stageKey: Stage['stage_key']) =>
+    request<StageSnapshot>(`/ai/stage-context/${projectId}/${stageKey}`),
+};
+
+// ===== 支付 API =====
+export interface CheckoutItem {
+  name: string;
+  price: number;
+  period: 'month' | 'year' | 'lifetime';
+  tier_id: string;
+}
+
+export interface CheckoutSessionResponse {
+  session_url: string;
+  session_id: string;
+}
+
+export interface SubscriptionStatusResponse {
+  status: string;
+  tier_id: string | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+}
+
+export const paymentsApi = {
+  createCheckoutSession: (data: {
+    items: CheckoutItem[];
+    success_url: string;
+    cancel_url: string;
+  }) =>
+    request<CheckoutSessionResponse>('/payments/create-checkout-session', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getSubscriptionStatus: () =>
+    request<SubscriptionStatusResponse>('/payments/subscription-status'),
 };
 
 // ===== 管理 API =====
