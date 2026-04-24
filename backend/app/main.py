@@ -35,6 +35,10 @@ def _ensure_sqlite_columns():
             conn.execute(text("ALTER TABLE users ADD COLUMN stripe_subscription_id VARCHAR(255)"))
         if "current_tier_id" not in columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN current_tier_id VARCHAR(50)"))
+        if "pet_config" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN pet_config JSON DEFAULT '{}'"))
+        if "theme_preference" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN theme_preference VARCHAR(20) DEFAULT 'dark'"))
         conn.commit()
 
 

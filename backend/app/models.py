@@ -62,6 +62,12 @@ class User(Base):
     stripe_subscription_id = Column(String(255), nullable=True)
     current_tier_id = Column(String(50), nullable=True)  # 当前订阅的 pricing tier id
 
+    # AI 宠物配置（JSON 格式持久化）
+    pet_config = Column(JSON, default=dict, nullable=True)
+
+    # 主题偏好
+    theme_preference = Column(String(20), default="dark", nullable=True)  # dark / light
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

@@ -29,6 +29,14 @@ class ChangePasswordRequest(BaseModel):
 
 
 # ========== 用户 ==========
+class PetConfig(BaseModel):
+    """AI 宠物配置"""
+    type: str = "cat"  # cat | robot | panda | fox
+    name: str = ""
+    personality: str = "gentle"  # gentle | rational | zen | sharp
+    verbosity: str = "moderate"  # quiet | moderate | chatty
+
+
 class UserInfo(BaseModel):
     id: UUID
     username: str
@@ -37,6 +45,8 @@ class UserInfo(BaseModel):
     stripe_customer_id: Optional[str] = None
     stripe_subscription_id: Optional[str] = None
     current_tier_id: Optional[str] = None
+    pet_config: Optional[PetConfig] = None
+    theme_preference: Optional[str] = "dark"
     created_at: datetime
 
     class Config:
@@ -45,6 +55,19 @@ class UserInfo(BaseModel):
 
 class PreferredModelUpdate(BaseModel):
     provider: Optional[AIProvider] = None
+
+
+class PetConfigUpdate(BaseModel):
+    """更新 AI 宠物配置"""
+    type: Optional[str] = None
+    name: Optional[str] = None
+    personality: Optional[str] = None
+    verbosity: Optional[str] = None
+
+
+class ThemePreferenceUpdate(BaseModel):
+    """更新主题偏好"""
+    theme: str = "dark"  # dark | light
 
 
 # ========== 阶段 ==========

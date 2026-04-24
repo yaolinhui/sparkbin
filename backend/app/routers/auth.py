@@ -5,7 +5,10 @@ from pydantic import BaseModel
 from ..database import get_db
 from ..auth import verify_password, create_access_token, get_current_user, hash_password
 from ..models import User
-from ..schemas import LoginRequest, LoginResponse, ChangePasswordRequest, BaseResponse, PreferredModelUpdate
+from ..schemas import (
+    LoginRequest, LoginResponse, ChangePasswordRequest, BaseResponse,
+    PreferredModelUpdate, PetConfigUpdate, ThemePreferenceUpdate
+)
 from ..models import AIProvider
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -63,6 +66,8 @@ def get_me(current_user: User = Depends(get_current_user)):
         "stripe_customer_id": current_user.stripe_customer_id,
         "stripe_subscription_id": current_user.stripe_subscription_id,
         "current_tier_id": current_user.current_tier_id,
+        "pet_config": current_user.pet_config,
+        "theme_preference": current_user.theme_preference or "dark",
         "created_at": current_user.created_at
     }
 
@@ -87,4 +92,52 @@ def update_preferred_model(
 
     provider_name = request.provider.value if request.provider else "None"
     return BaseResponse(message=f"首选模型已更新为: {provider_name}")
+
+
+@router.put("/me/pet-config", response_model=BaseResponse)
+def update_pet_config(
+    request: PetConfigUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """更新 AI 宠物配置"""
+    new_config = dict(current_user.pet_config) if current_user.pet_config else {
+        "type": "cat",
+        "name": "",
+        "personality": "gentle",
+        "verbosity": "moderate"
+    }
+
+    if request.type is not None:
+        new_config["type"] = request.type
+    if request.name is not None:
+        new_config["name"] = request.name
+    if request.personality is not None:
+        new_config["personality"] = request.personality
+    if request.verbosity is not None:
+        new_config["verbosity"] = request.verbosity
+
+    current_user.pet_config = new_config
+    db.commit()
+    return BaseResponse(message="宠物配置已更新")
+
+
+@router.get("/theme")
+def get_theme_preference(current_user: User = Depends(get_current_user)):
+    """获取用户主题偏好"""
+    return {
+        "theme": current_user.theme_preference or "dark"
+    }
+
+
+@router.put("/theme", response_model=BaseResponse)
+def update_theme_preference(
+    request: ThemePreferenceUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """更新主题偏好"""
+    current_user.theme_preference = request.theme
+    db.commit()
+    return BaseResponse(message=f"主题偏好已更新为: {request.theme}")
 
