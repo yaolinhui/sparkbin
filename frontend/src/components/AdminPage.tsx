@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Server, Key, FileText, Shield, Check, AlertCircle, Cpu } from 'lucide-react';
+import { ThemeSwitcher } from './ThemeSwitcher';
 import { aiApi, adminApi, type AIProvider, type AIConfig } from '../services/api';
 // i18n reserved for future use
 
@@ -188,6 +189,7 @@ export function AdminPage({ onLogout }: AdminPageProps) {
               <h1 className="text-lg font-bold">系统管理</h1>
             </div>
           </div>
+          <ThemeSwitcher />
           <button
             onClick={onLogout}
             className="btn-brutal h-9 flex items-center gap-2 border-brutal-warning text-brutal-warning"

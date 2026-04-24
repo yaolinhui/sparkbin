@@ -9,6 +9,7 @@ export function ThemeSwitcher() {
       onClick={toggleTheme}
       className="flex items-center gap-2 px-3 py-2 border border-brutal-border bg-brutal-surface
                  hover:border-brutal-text transition-colors"
+      aria-label="Toggle theme"
       title={isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
     >
       {isLight ? (
