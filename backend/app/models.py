@@ -83,6 +83,7 @@ class Project(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     title = Column(String(255), nullable=False)
     pain_point = Column(Text, default="")
+    original_idea = Column(Text, default="", nullable=False)
     status = Column(Enum(ProjectStatus), default=ProjectStatus.ACTIVE, nullable=False)
     current_stage = Column(Enum(StageKey), default=StageKey.IDEA, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

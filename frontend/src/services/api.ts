@@ -236,6 +236,7 @@ export interface Project {
   id: string;
   title: string;
   pain_point: string;
+  original_idea: string;
   status: 'active' | 'paused' | 'archived';
   current_stage: Stage['stage_key'];
   created_at: string;
@@ -243,6 +244,7 @@ export interface Project {
 }
 
 export interface ProjectDetail extends Project {
+  original_idea: string;
   stages: Stage[];
   promote_tasks: PromoteTask[];
   promote_suggestions: {
@@ -260,7 +262,7 @@ export const projectsApi = {
   get: (id: string) =>
     request<ProjectDetail>(`/projects/${id}`),
 
-  create: (data: { title: string; pain_point: string }) =>
+  create: (data: { title: string; pain_point: string; original_idea?: string }) =>
     request<ProjectDetail>('/projects', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -422,6 +424,19 @@ export const aiApi = {
   // 获取阶段上下文快照（完成度/缺口）
   getStageContext: (projectId: string, stageKey: Stage['stage_key']) =>
     request<StageSnapshot>(`/ai/stage-context/${projectId}/${stageKey}`),
+
+  // 生成想法阶段便利贴建议
+  suggestIdeaNotes: (data: {
+    project_id?: string;
+    title: string;
+    pain_point: string;
+    original_idea: string;
+    current_notes: { title: string; content: string }[];
+  }) =>
+    request<{ notes: { title: string; content: string }[] }>('/ai/idea-suggest', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 // ===== 支付 API =====

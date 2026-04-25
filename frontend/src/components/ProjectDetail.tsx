@@ -369,6 +369,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 id: detail.id,
                 title: detail.title,
                 painPoint: detail.pain_point,
+                originalIdea: detail.original_idea || '',
                 status: detail.status,
                 currentStage: detail.current_stage,
                 stages: detail.stages.reduce((acc, s) => {

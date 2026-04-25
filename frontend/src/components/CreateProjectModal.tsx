@@ -30,6 +30,7 @@ const AI_PET_CAT = `
 export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps) {
   const { t } = useI18n();
   const [painPoint, setPainPoint] = useState('');
+  const [originalIdea, setOriginalIdea] = useState('');
   const [title, setTitle] = useState('');
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -71,6 +72,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
     setIsOptimizing(true);
     setError(null);
+    setOriginalIdea(painPoint); // 保存用户原始输入
 
     try {
       // 调用 AI 分析用户输入，生成理解维度
@@ -193,9 +195,10 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const handleCreate = async () => {
     if (!title.trim()) return;
 
-    const project = await createProject(title, painPoint);
+    const project = await createProject(title, painPoint, originalIdea);
     if (project) {
       setPainPoint('');
+      setOriginalIdea('');
       setTitle('');
       setDimensions([]);
       setStep(1);
@@ -208,6 +211,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
   const handleClose = () => {
     setPainPoint('');
+    setOriginalIdea('');
     setTitle('');
     setDimensions([]);
     setStep(1);

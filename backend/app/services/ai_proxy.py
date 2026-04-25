@@ -360,6 +360,134 @@ class AIProxyService:
             self.db.commit()
 
 
+    async def generate_idea_suggestions(
+        self,
+        provider: AIProvider,
+        title: str,
+        pain_point: str,
+        original_idea: str,
+        current_notes: List[Dict[str, str]]
+    ) -> List[Dict[str, str]]:
+        """
+        生成想法阶段便利贴建议
+        返回：[{"title": "...", "content": "..."}, ...]
+        """
+        config = self.get_active_config(provider)
+        api_key = self.decrypt_api_key(config)
+
+        notes_text = "\n".join(
+            f"- {note['title']}: {note['content']}" for note in current_notes
+        )
+
+        prompt = f"""你是一个资深产品顾问，擅长帮助创业者完善产品想法。
+
+用户原始想法：{original_idea or pain_point}
+当前痛点描述：{pain_point}
+项目标题：{title}
+
+当前便利贴内容：
+{notes_text}
+
+请根据用户的原始想法，优化并填充以下 5 个维度的内容。必须返回 JSON 格式，不要包含其他内容：
+{{
+    "notes": [
+        {{"title": "核心痛点", "content": "..."}},
+        {{"title": "目标用户", "content": "..."}},
+        {{"title": "使用场景", "content": "..."}},
+        {{"title": "解决方案", "content": "..."}},
+        {{"title": "差异化价值", "content": "..."}}
+    ]
+}}
+
+要求：
+1. 忠实于用户原始意图，不要过度发挥
+2. 每个维度 1-3 句话，简洁有力
+3. 内容 actionable，符合 Vibe 开发理念（快速验证、不完美也发布）
+4. 如果某个维度用户已经填写了实质性内容（不是占位符），请保留其核心意思并优化表达"""
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": config.default_model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False
+        }
+
+        prompt_tokens = len(prompt) // 4
+        completion_tokens = 0
+        status = "success"
+        error_msg = ""
+
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    f"{config.base_url}/chat/completions",
+                    headers=headers,
+                    json=payload
+                )
+
+                if response.status_code != 200:
+                    status = "error"
+                    error_msg = f"HTTP {response.status_code}: {response.text}"
+                    raise HTTPException(
+                        status_code=response.status_code,
+                        detail=f"AI API error: {response.text}"
+                    )
+
+                result = response.json()
+                content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                completion_tokens = len(content) // 4
+
+                # 清理可能的 markdown 代码块
+                if "```json" in content:
+                    content = content.split("```json")[1].split("```")[0]
+                elif "```" in content:
+                    content = content.split("```")[1].split("```")[0]
+
+                parsed = json.loads(content.strip())
+                notes = parsed.get("notes", [])
+
+                # 确保返回的 notes 包含必需的字段
+                validated_notes = []
+                for note in notes:
+                    if "title" in note and "content" in note:
+                        validated_notes.append({
+                            "title": note["title"],
+                            "content": note["content"]
+                        })
+
+                return validated_notes
+
+        except json.JSONDecodeError:
+            logger.error(f"Failed to parse AI response as JSON: {content[:200]}")
+            return []
+        except Exception as e:
+            import sys
+            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+            status = "error"
+            error_msg = str(e) or f"{provider.value} API 调用失败"
+            raise HTTPException(
+                status_code=503,
+                detail=f"AI 服务暂时不可用: {error_msg}"
+            )
+        finally:
+            log = AICallLog(
+                provider=provider,
+                model=config.default_model,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                status=status,
+                error_msg=error_msg[:500]
+            )
+            self.db.add(log)
+            self.db.commit()
+
+
 def init_default_ai_configs(db: Session):
     """初始化默认 AI 配置（空 API Key，需要用户去配置）"""
     encryption = get_encryption_manager()

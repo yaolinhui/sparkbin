@@ -24,21 +24,29 @@ def _ensure_sqlite_columns():
 
     from sqlalchemy import text, inspect
     inspector = inspect(engine)
-    columns = {col["name"] for col in inspector.get_columns("users")}
 
+    # users 表
+    user_columns = {col["name"] for col in inspector.get_columns("users")}
     with engine.connect() as conn:
-        if "subscription_status" not in columns:
+        if "subscription_status" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN subscription_status VARCHAR(20) DEFAULT 'inactive' NOT NULL"))
-        if "stripe_customer_id" not in columns:
+        if "stripe_customer_id" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN stripe_customer_id VARCHAR(255)"))
-        if "stripe_subscription_id" not in columns:
+        if "stripe_subscription_id" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN stripe_subscription_id VARCHAR(255)"))
-        if "current_tier_id" not in columns:
+        if "current_tier_id" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN current_tier_id VARCHAR(50)"))
-        if "pet_config" not in columns:
+        if "pet_config" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN pet_config JSON DEFAULT '{}'"))
-        if "theme_preference" not in columns:
+        if "theme_preference" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN theme_preference VARCHAR(20) DEFAULT 'dark'"))
+        conn.commit()
+
+    # projects 表
+    project_columns = {col["name"] for col in inspector.get_columns("projects")}
+    with engine.connect() as conn:
+        if "original_idea" not in project_columns:
+            conn.execute(text("ALTER TABLE projects ADD COLUMN original_idea TEXT DEFAULT ''"))
         conn.commit()
 
 

@@ -218,6 +218,7 @@ export interface Project {
   id: string;
   title: string;
   painPoint: string;
+  originalIdea: string;
   status: ProjectStatus;
   currentStage: StageKey;
   stages: Stages;

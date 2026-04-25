@@ -22,6 +22,7 @@ def _project_to_detail(project: Project) -> ProjectDetail:
         id=project.id,
         title=project.title,
         pain_point=project.pain_point,
+        original_idea=project.original_idea,
         status=project.status,
         current_stage=project.current_stage,
         created_at=project.created_at,
@@ -94,7 +95,8 @@ def create_project(
     project = Project(
         user_id=current_user.id,
         title=request.title,
-        pain_point=request.pain_point
+        pain_point=request.pain_point,
+        original_idea=request.original_idea
     )
     db.add(project)
     db.flush()  # 获取 project.id
@@ -165,6 +167,7 @@ def update_project(
     old_values = {
         "title": project.title,
         "pain_point": project.pain_point,
+        "original_idea": project.original_idea,
         "status": project.status.value,
         "current_stage": project.current_stage.value
     }
@@ -174,6 +177,8 @@ def update_project(
         project.title = request.title
     if request.pain_point is not None:
         project.pain_point = request.pain_point
+    if request.original_idea is not None:
+        project.original_idea = request.original_idea
     if request.status is not None:
         project.status = request.status
     if request.current_stage is not None:
@@ -192,6 +197,7 @@ def update_project(
         {
             "title": project.title,
             "pain_point": project.pain_point,
+            "original_idea": project.original_idea,
             "status": project.status.value,
             "current_stage": project.current_stage.value
         }

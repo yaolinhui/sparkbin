@@ -11,7 +11,8 @@ from ..auth import get_current_user
 from ..models import User, AIProvider, AIConfig, AICallLog, Project, Stage, StageKey
 from ..schemas import (
     AIProviderInfo, AIConfigUpdate, AIChatRequest,
-    AIPromoteSuggestRequest, PromoteSuggestionInfo, BaseResponse
+    AIPromoteSuggestRequest, PromoteSuggestionInfo, BaseResponse,
+    IdeaSuggestRequest, IdeaSuggestResponse
 )
 from ..services.ai_proxy import AIProxyService
 from ..services.stage_context import (
@@ -345,6 +346,29 @@ async def generate_promote_suggestions(
         templates=suggestions["templates"],
         created_at=suggestion.created_at if hasattr(suggestion, 'created_at') else __import__('datetime').datetime.utcnow()
     )
+
+
+@router.post("/idea-suggest", response_model=IdeaSuggestResponse)
+async def generate_idea_suggestions(
+    request: IdeaSuggestRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """生成想法阶段便利贴建议"""
+    ai_service = AIProxyService(db)
+
+    # 使用用户首选模型，如果没有则默认使用 kimi
+    provider = current_user.preferred_model or AIProvider.KIMI
+
+    suggestions = await ai_service.generate_idea_suggestions(
+        provider=provider,
+        title=request.title,
+        pain_point=request.pain_point,
+        original_idea=request.original_idea,
+        current_notes=[{"title": n.title, "content": n.content} for n in request.current_notes]
+    )
+
+    return IdeaSuggestResponse(notes=suggestions)
 
 
 @router.get("/call-logs")

@@ -129,6 +129,7 @@ class PromoteSuggestionInfo(BaseModel):
 class ProjectBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     pain_point: str = ""
+    original_idea: str = ""
 
 
 class ProjectCreate(ProjectBase):
@@ -138,6 +139,7 @@ class ProjectCreate(ProjectBase):
 class ProjectUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     pain_point: Optional[str] = None
+    original_idea: Optional[str] = None
     status: Optional[ProjectStatus] = None
     current_stage: Optional[StageKey] = None
 
@@ -199,6 +201,23 @@ class AIPromoteSuggestRequest(BaseModel):
     pain_point: str
     project_description: str
     project_id: Optional[UUID] = None  # 可选，用于保存建议
+
+
+class NoteSuggestion(BaseModel):
+    title: str
+    content: str
+
+
+class IdeaSuggestRequest(BaseModel):
+    project_id: Optional[UUID] = None
+    title: str
+    pain_point: str
+    original_idea: str = ""
+    current_notes: List[NoteSuggestion]
+
+
+class IdeaSuggestResponse(BaseModel):
+    notes: List[NoteSuggestion]
 
 
 # ========== 支付 ==========

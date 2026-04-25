@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Edit2, Check, Plus, X, Lightbulb, GripVertical } from 'lucide-react';
 import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
+import { useToast } from '../hooks/useToast';
+import { IdeaSuggestModal } from './IdeaSuggestModal';
 import type { Project } from '../types';
 import {
   DndContext,
@@ -34,14 +36,6 @@ interface IdeaStageProps {
   isLocked: boolean;
   onToggleLock?: () => void;
 }
-
-const AI_PET_CAT = `
-    /_/\
-   ( o.o )
-    > ^ <
-   /|   |\
-  (_|   |_)
-`;
 
 // 颜色配置
 const NOTE_COLORS: Record<string, string> = {
@@ -180,8 +174,11 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock }: 
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [editTitle, setEditTitle] = useState('');
-  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [suggestedNotes, setSuggestedNotes] = useState<{ title: string; content: string }[] | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -278,16 +275,71 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock }: 
     await saveNotes(newNotes);
   };
 
+  const DEFAULT_PLACEHOLDERS = [
+    '描述你想解决的核心问题...',
+    '谁会使用这个产品？',
+    '用户在什么情况下会用？',
+    '简述核心功能...',
+    '与现有方案相比，你的优势是什么？',
+    '点击编辑...',
+  ];
+
+  const isPlaceholder = (content: string): boolean => {
+    return DEFAULT_PLACEHOLDERS.some((p) => content.includes(p));
+  };
+
   const getAiSuggestion = async () => {
     setIsGenerating(true);
+    setModalError(null);
+    setSuggestedNotes(null);
+    setModalOpen(true);
     try {
-      const suggestion = await aiService.generateIdeaSuggestion(project.title, project.painPoint, notes);
-      setAiSuggestion(suggestion);
+      const suggestions = await aiService.generateIdeaSuggestion(
+        project.id,
+        project.title,
+        project.painPoint,
+        project.originalIdea || project.painPoint,
+        notes.map((n) => ({ title: n.title, content: n.content }))
+      );
+      setSuggestedNotes(suggestions);
     } catch (error) {
-      console.error('Failed to get AI suggestion:', error);
+      const message = error instanceof Error ? error.message : '获取 AI 建议失败';
+      setModalError(message);
+      showToast(message, 'error');
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleMerge = () => {
+    if (!suggestedNotes) return;
+    const newNotes = notes.map((note, index) => {
+      const suggestion = suggestedNotes[index];
+      if (!suggestion) return note;
+      if (isPlaceholder(note.content)) {
+        return { ...note, content: suggestion.content };
+      }
+      return note;
+    });
+    setNotes(newNotes);
+    saveNotes(newNotes);
+    setModalOpen(false);
+    setSuggestedNotes(null);
+    showToast('AI 建议已智能合并到便利贴', 'success');
+  };
+
+  const handleOverwrite = () => {
+    if (!suggestedNotes) return;
+    const newNotes = notes.map((note, index) => {
+      const suggestion = suggestedNotes[index];
+      if (!suggestion) return note;
+      return { ...note, content: suggestion.content };
+    });
+    setNotes(newNotes);
+    saveNotes(newNotes);
+    setModalOpen(false);
+    setSuggestedNotes(null);
+    showToast('AI 建议已覆盖全部便利贴', 'success');
   };
 
   return (
@@ -323,20 +375,6 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock }: 
           </button>
         )}
       </div>
-
-      {aiSuggestion && (
-        <div className="p-4 border-b border-brutal-border">
-          <div className="flex items-start gap-4">
-            <pre className="text-xs text-brutal-accent font-mono leading-none flex-shrink-0">{AI_PET_CAT}</pre>
-            <div className="flex-1">
-              <p className="text-sm font-mono text-brutal-text whitespace-pre-line">{aiSuggestion}</p>
-              <button onClick={() => setAiSuggestion(null)} className="text-xs text-brutal-muted hover:text-brutal-text mt-2">
-                [关闭]
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="flex-1 overflow-y-auto flex flex-col">
         <div className="p-6 flex-1 flex flex-col">
@@ -375,6 +413,21 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock }: 
           <p className="text-xs text-brutal-muted font-mono">💡 提示：拖拽便利贴可排序，点击编辑图标修改内容</p>
         </div>
       </div>
+
+      <IdeaSuggestModal
+        isOpen={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setSuggestedNotes(null);
+          setModalError(null);
+        }}
+        currentNotes={notes.map((n) => ({ title: n.title, content: n.content }))}
+        suggestedNotes={suggestedNotes}
+        isLoading={isGenerating}
+        error={modalError}
+        onMerge={handleMerge}
+        onOverwrite={handleOverwrite}
+      />
     </div>
   );
 }
