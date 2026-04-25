@@ -357,8 +357,8 @@ async def generate_idea_suggestions(
     """生成想法阶段便利贴建议"""
     ai_service = AIProxyService(db)
 
-    # 使用用户首选模型，如果没有则默认使用 kimi
-    provider = current_user.preferred_model or AIProvider.KIMI
+    # 使用用户首选模型，如果没有则默认使用 DeepSeek
+    provider = current_user.preferred_model or AIProvider.DEEPSEEK
 
     suggestions = await ai_service.generate_idea_suggestions(
         provider=provider,
