@@ -391,8 +391,32 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
 
     const sourceColumn = getColumnIdFromStatus(activeItem.status);
     if (sourceColumn !== targetColumn) {
+      // 跨列拖拽：更新状态
       const newStatus = getStatusFromColumnId(targetColumn);
       await updateStatus(activeId, newStatus);
+    } else {
+      // 同列内排序或拖到空白区域
+      if (overId === activeId) return;
+
+      let targetItemId = overId;
+      if (['pending', 'in_progress', 'validated'].includes(overId)) {
+        // 拖到列空白区域：以该列最后一张卡片为目标
+        const columnItems = data.items.filter((i) => getColumnIdFromStatus(i.status) === overId);
+        const lastItem = columnItems[columnItems.length - 1];
+        if (!lastItem || lastItem.id === activeId) return;
+        targetItemId = lastItem.id;
+      }
+
+      const oldIndex = data.items.findIndex((i) => i.id === activeId);
+      const newIndex = data.items.findIndex((i) => i.id === targetItemId);
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+
+      const newItems = [...data.items];
+      newItems.splice(oldIndex, 1);
+      newItems.splice(newIndex, 0, activeItem);
+      const newData = { ...data, items: newItems };
+      setData(newData);
+      await saveData(newData);
     }
   };
 
@@ -958,7 +982,7 @@ function DraggableValidationCard({
       style={style}
       {...listeners}
       {...attributes}
-      className={`${isDragging ? 'opacity-50' : ''} ${isLocked ? '' : 'cursor-grab active:cursor-grabbing'}`}
+      className={`${isDragging ? 'opacity-60 ring-2 ring-brutal-accent shadow-lg' : ''} ${isLocked ? '' : 'cursor-grab active:cursor-grabbing'}`}
     >
       {children}
     </div>

@@ -9,6 +9,19 @@ test.describe('主题切换', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
+
+    // 尝试登录（如果未登录）
+    const usernameInput = page.locator('input[type="text"]').first();
+    await usernameInput.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+
+    const hasLoginForm = await usernameInput.isVisible().catch(() => false);
+    if (hasLoginForm) {
+      await usernameInput.fill('admin');
+      await page.locator('input[type="password"]').first().fill('admin');
+      await page.locator('button').filter({ hasText: /登录|Login|Sign/i }).first().click();
+      await page.waitForResponse(resp => resp.url().includes('/auth/login'), { timeout: 10000 });
+      await page.waitForLoadState('networkidle');
+    }
   });
 
   test('页面应默认使用深色主题', async ({ page }) => {

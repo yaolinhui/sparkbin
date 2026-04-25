@@ -58,6 +58,7 @@ export function ShipStage({ project, onUpdateContent, isLocked, onToggleLock }: 
   const [generatingContent, setGeneratingContent] = useState<string | null>(null);
   const [showAddFeedback, setShowAddFeedback] = useState(false);
   const [editingMetrics, setEditingMetrics] = useState(false);
+  const [conversionMessage, setConversionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // 表单状态
   const [newFeedback, setNewFeedback] = useState({ content: '', rating: 5, source: '' });
@@ -178,8 +179,10 @@ export function ShipStage({ project, onUpdateContent, isLocked, onToggleLock }: 
 
   // 闭环反馈：将用户反馈转为原型阶段的功能项
   const [convertingFeedbackId, setConvertingFeedbackId] = useState<string | null>(null);
+
   const convertFeedbackToFeature = async (feedback: UserFeedback) => {
     setConvertingFeedbackId(feedback.id);
+    setConversionMessage(null);
     try {
       const prototypeStage = project.stages?.prototype;
       let prototypeData: PrototypeData = {
@@ -220,10 +223,12 @@ export function ShipStage({ project, onUpdateContent, isLocked, onToggleLock }: 
       };
 
       await useProjectStore.getState().updateStageContent(project.id, 'prototype', JSON.stringify(updatedPrototypeData));
-      alert(`已将该反馈转为原型阶段的功能项：${newFeature.name}`);
+      setConversionMessage({ type: 'success', text: `已将该反馈转为原型阶段的功能项：${newFeature.name}` });
+      setTimeout(() => setConversionMessage(null), 3000);
     } catch (error) {
       console.error('Failed to convert feedback:', error);
-      alert('流转失败，请重试');
+      setConversionMessage({ type: 'error', text: '流转失败，请重试' });
+      setTimeout(() => setConversionMessage(null), 3000);
     } finally {
       setConvertingFeedbackId(null);
     }
@@ -472,6 +477,15 @@ export function ShipStage({ project, onUpdateContent, isLocked, onToggleLock }: 
                 </button>
               )}
             </div>
+            {conversionMessage && (
+              <div className={`px-4 py-2 border-b text-xs font-mono ${
+                conversionMessage.type === 'success'
+                  ? 'border-brutal-success bg-brutal-success/10 text-brutal-success'
+                  : 'border-brutal-error bg-brutal-error/10 text-brutal-error'
+              }`}>
+                {conversionMessage.text}
+              </div>
+            )}
             <div className="p-4 space-y-3 max-h-64 overflow-y-auto">
               {data.feedbacks.length === 0 ? (
                 <p className="text-xs font-mono text-brutal-muted text-center py-4">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Pause, Play, Archive, LogOut, ChevronUp, Menu, GitGraph, Trash2 } from 'lucide-react';
+import { ThemeSwitcher } from './ThemeSwitcher';
 import { useProjectStore } from '../stores/projectStore';
 import { useI18n, useStatusLabel, useStageLabel } from '../i18n/hooks';
 import type { Project, Stage } from "../types";
@@ -683,6 +684,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
+                <ThemeSwitcher />
                 <button
                   onClick={onLogout}
                   className="btn-brutal h-9 flex items-center gap-2 border-brutal-warning text-brutal-warning"
@@ -770,6 +772,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
+                <ThemeSwitcher />
               </div>
             </div>
           </div>
