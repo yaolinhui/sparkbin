@@ -14,8 +14,8 @@ interface IdeaSuggestModalProps {
   suggestedNotes: NoteSuggestion[] | null;
   isLoading: boolean;
   error: string | null;
-  onMerge: () => void;
-  onOverwrite: () => void;
+  onMerge: () => Promise<void>;
+  onOverwrite: () => Promise<void>;
 }
 
 const AI_PET_CAT = `
@@ -52,6 +52,7 @@ export function IdeaSuggestModal({
   const { t } = useI18n();
   const [selectedMode, setSelectedMode] = useState<'merge' | 'overwrite' | null>(null);
   const [editedSuggestions, setEditedSuggestions] = useState<NoteSuggestion[]>([]);
+  const [isApplying, setIsApplying] = useState(false);
 
   useEffect(() => {
     if (suggestedNotes) {
@@ -75,12 +76,17 @@ export function IdeaSuggestModal({
     );
   };
 
-  const handleApply = () => {
-    if (!selectedMode) return;
-    if (selectedMode === 'merge') {
-      onMerge();
-    } else {
-      onOverwrite();
+  const handleApply = async () => {
+    if (!selectedMode || isApplying) return;
+    setIsApplying(true);
+    try {
+      if (selectedMode === 'merge') {
+        await onMerge();
+      } else {
+        await onOverwrite();
+      }
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -263,14 +269,18 @@ export function IdeaSuggestModal({
           {!isLoading && suggestedNotes && (
             <button
               onClick={handleApply}
-              disabled={!selectedMode}
+              disabled={!selectedMode || isApplying}
               className={`btn-brutal-primary h-9 px-4 text-xs flex items-center gap-2 ${
-                !selectedMode ? 'opacity-50 cursor-not-allowed' : ''
+                !selectedMode || isApplying ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
-              <Check className="w-3 h-3" />
-              应用建议
-              <ArrowRight className="w-3 h-3" />
+              {isApplying ? (
+                <div className="w-3 h-3 border border-brutal-bg border-t-transparent animate-spin" />
+              ) : (
+                <Check className="w-3 h-3" />
+              )}
+              {isApplying ? '保存中...' : '应用建议'}
+              {!isApplying && <ArrowRight className="w-3 h-3" />}
             </button>
           )}
         </div>

@@ -311,7 +311,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock }: 
     }
   };
 
-  const handleMerge = () => {
+  const handleMerge = async () => {
     if (!suggestedNotes) return;
     const newNotes = notes.map((note, index) => {
       const suggestion = suggestedNotes[index];
@@ -322,13 +322,13 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock }: 
       return note;
     });
     setNotes(newNotes);
-    saveNotes(newNotes);
+    await saveNotes(newNotes);
     setModalOpen(false);
     setSuggestedNotes(null);
     showToast('AI 建议已智能合并到便利贴', 'success');
   };
 
-  const handleOverwrite = () => {
+  const handleOverwrite = async () => {
     if (!suggestedNotes) return;
     const newNotes = notes.map((note, index) => {
       const suggestion = suggestedNotes[index];
@@ -336,7 +336,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock }: 
       return { ...note, content: suggestion.content };
     });
     setNotes(newNotes);
-    saveNotes(newNotes);
+    await saveNotes(newNotes);
     setModalOpen(false);
     setSuggestedNotes(null);
     showToast('AI 建议已覆盖全部便利贴', 'success');

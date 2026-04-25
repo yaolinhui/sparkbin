@@ -1,6 +1,8 @@
 import httpx
 import json
 import ssl
+import hashlib
+import time
 from typing import AsyncGenerator, List, Dict, Any
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
@@ -11,6 +13,10 @@ from ..encryption import get_encryption_manager
 
 # 配置日志
 logger = logging.getLogger(__name__)
+
+# 简单内存缓存：{(provider, cache_key): (timestamp, result)}
+_idea_suggestion_cache: Dict[tuple, tuple] = {}
+_CACHE_TTL = 3600  # 1 小时
 
 
 # 默认配置
@@ -372,6 +378,16 @@ class AIProxyService:
         生成想法阶段便利贴建议
         返回：[{"title": "...", "content": "..."}, ...]
         """
+        # 检查缓存
+        cache_input = f"{provider.value}:{title}:{pain_point}:{original_idea}:{json.dumps(current_notes, sort_keys=True)}"
+        cache_key = hashlib.md5(cache_input.encode()).hexdigest()
+        cache_entry = _idea_suggestion_cache.get((provider.value, cache_key))
+        if cache_entry:
+            cached_at, cached_result = cache_entry
+            if time.time() - cached_at < _CACHE_TTL:
+                logger.info(f"Idea suggestion cache hit for {provider.value}")
+                return cached_result
+
         config = self.get_active_config(provider)
         api_key = self.decrypt_api_key(config)
 
@@ -399,11 +415,12 @@ class AIProxyService:
     ]
 }}
 
-要求：
+要求（严格遵循）：
 1. 忠实于用户原始意图，不要过度发挥
-2. 每个维度 1-3 句话，简洁有力
+2. 每个维度严格限制在 1-2 句话，每句话不超过 30 字，总字数不超过 250 字
 3. 内容 actionable，符合 Vibe 开发理念（快速验证、不完美也发布）
-4. 如果某个维度用户已经填写了实质性内容（不是占位符），请保留其核心意思并优化表达"""
+4. 如果某个维度用户已经填写了实质性内容（不是占位符），请保留其核心意思并优化表达
+5. 用中文回复"""
 
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -413,7 +430,9 @@ class AIProxyService:
         payload = {
             "model": config.default_model,
             "messages": [{"role": "user", "content": prompt}],
-            "stream": False
+            "stream": False,
+            "max_tokens": 350,
+            "temperature": 0.5
         }
 
         prompt_tokens = len(prompt) // 4
@@ -459,6 +478,8 @@ class AIProxyService:
                             "content": note["content"]
                         })
 
+                # 写入缓存
+                _idea_suggestion_cache[(provider.value, cache_key)] = (time.time(), validated_notes)
                 return validated_notes
 
         except json.JSONDecodeError:
