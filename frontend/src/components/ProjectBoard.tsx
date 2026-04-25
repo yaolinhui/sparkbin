@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Github, Terminal, LogOut, Server, Settings, Cat, ChevronDown, ChevronRight } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
-import { isAdmin, getUserId } from '../services/api';
+import { isAdmin, getUserId, authApi, isAuthenticated } from '../services/api';
 import { useI18n } from '../i18n/hooks';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectModal } from './CreateProjectModal';
@@ -98,7 +98,27 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   useEffect(() => {
     fetchProjects();
     checkAIConfig(); // 检查 AI 配置状态
-  }, [fetchProjects, checkAIConfig]);
+
+    // 如果已登录，从后端加载宠物配置
+    if (isAuthenticated()) {
+      authApi.getMe()
+        .then((data) => {
+          if (data.pet_config) {
+            const config: AIPetConfigType = {
+              type: data.pet_config.type as AIPetConfigType['type'],
+              name: data.pet_config.name,
+              personality: data.pet_config.personality as AIPetConfigType['personality'],
+              verbosity: data.pet_config.verbosity as AIPetConfigType['verbosity'],
+            };
+            setPetConfig(config);
+            localStorage.setItem(petConfigKey, JSON.stringify(config));
+          }
+        })
+        .catch(() => {
+          // 失败时保持 localStorage 的值
+        });
+    }
+  }, [fetchProjects, checkAIConfig, petConfigKey]);
 
   // Stats
   const { activeProjects, archivedProjects, pausedProjects } = useMemo(() => {
@@ -528,6 +548,12 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
           onSave={(config: AIPetConfigType) => {
             setPetConfig(config);
             localStorage.setItem(petConfigKey, JSON.stringify(config));
+            // 同步到后端
+            if (isAuthenticated()) {
+              authApi.updatePetConfig(config).catch(() => {
+                // 静默失败，localStorage 已保存
+              });
+            }
           }}
           onClose={() => setIsPetConfigOpen(false)}
         />

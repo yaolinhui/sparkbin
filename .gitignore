@@ -29,10 +29,23 @@ yarn-debug.log*
 yarn-error.log*
 logs/
 *.log
+backend.log
+backend_debug.log
+backend_error.log
+*_run.err
+*_run.out
 
 # Testing
 coverage/
 .nyc_output/
+playwright-report/
+test-results/
+
+# Build artifacts
+dist-bundle.html
+
+# Claude Code local settings (may contain sensitive data)
+.claude/settings.local.json
 
 # Python (backend)
 __pycache__/

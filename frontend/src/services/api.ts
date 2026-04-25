@@ -175,6 +175,8 @@ export const authApi = {
       stripe_customer_id: string | null;
       stripe_subscription_id: string | null;
       current_tier_id: string | null;
+      pet_config: { type: string; name: string; personality: string; verbosity: string } | null;
+      theme_preference: string | null;
       created_at: string;
     }>('/auth/me'),
 
@@ -193,6 +195,24 @@ export const authApi = {
     request<{ message: string }>('/auth/preferred-model', {
       method: 'PUT',
       body: JSON.stringify({ provider }),
+    }),
+
+  // 获取主题偏好
+  getTheme: () =>
+    request<{ theme: string }>('/auth/theme'),
+
+  // 设置主题偏好
+  setTheme: (theme: string) =>
+    request<{ message: string }>('/auth/theme', {
+      method: 'PUT',
+      body: JSON.stringify({ theme }),
+    }),
+
+  // 更新宠物配置
+  updatePetConfig: (config: { type?: string; name?: string; personality?: string; verbosity?: string }) =>
+    request<{ message: string }>('/auth/me/pet-config', {
+      method: 'PUT',
+      body: JSON.stringify(config),
     }),
 };
 

@@ -3,6 +3,7 @@ import type { Theme } from './context';
 
 export { type Theme, type ThemeContextType, ThemeContext } from './context';
 import { ThemeContext } from './context';
+import { authApi, isAuthenticated } from '../services/api';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
@@ -15,6 +16,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setThemeState(newTheme);
     localStorage.setItem('sparkbin-theme', newTheme);
     document.documentElement.setAttribute('data-theme', newTheme);
+    // 如果已登录，同步到后端
+    if (isAuthenticated()) {
+      authApi.setTheme(newTheme).catch(() => {
+        // 静默失败，localStorage 已保存
+      });
+    }
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -26,6 +33,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // 从后端同步主题偏好（如果已登录）
+  useEffect(() => {
+    if (!isAuthenticated()) return;
+    authApi.getMe()
+      .then((data) => {
+        const serverTheme = data.theme_preference;
+        if (serverTheme === 'light' || serverTheme === 'dark') {
+          setThemeState(serverTheme);
+          localStorage.setItem('sparkbin-theme', serverTheme);
+          document.documentElement.setAttribute('data-theme', serverTheme);
+        }
+      })
+      .catch(() => {
+        // 失败时保持 localStorage 的值
+      });
+  }, []);
 
   return (
     <ThemeContext.Provider

@@ -3,7 +3,7 @@ import { Send, ChevronRight, ChevronLeft, Maximize2, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useI18n } from '../i18n/hooks';
 import { aiService, aiApi, type StageStreamMeta } from '../services/ai';
-import { getUserId } from '../services/api';
+import { getUserId, authApi, isAuthenticated } from '../services/api';
 import { PET_OPTIONS } from './AIPetConfig.constants';
 import type { AIPetConfig } from '../types';
 import type { StageSnapshot } from '../services/api';
@@ -153,11 +153,38 @@ export function AIChat({
 
   const petConfigKey = `sparkbin_pet_config_${getUserId() || 'guest'}`;
 
-  // 加载宠物配置
+  // 加载宠物配置（优先从后端获取，回退到 localStorage）
   useEffect(() => {
-    const saved = localStorage.getItem(petConfigKey);
-    if (saved) {
-      setPetConfig(JSON.parse(saved));
+    if (isAuthenticated()) {
+      authApi.getMe()
+        .then((data) => {
+          if (data.pet_config) {
+            const config: AIPetConfig = {
+              type: data.pet_config.type as AIPetConfig['type'],
+              name: data.pet_config.name,
+              personality: data.pet_config.personality as AIPetConfig['personality'],
+              verbosity: data.pet_config.verbosity as AIPetConfig['verbosity'],
+            };
+            setPetConfig(config);
+            localStorage.setItem(petConfigKey, JSON.stringify(config));
+          } else {
+            const saved = localStorage.getItem(petConfigKey);
+            if (saved) {
+              setPetConfig(JSON.parse(saved));
+            }
+          }
+        })
+        .catch(() => {
+          const saved = localStorage.getItem(petConfigKey);
+          if (saved) {
+            setPetConfig(JSON.parse(saved));
+          }
+        });
+    } else {
+      const saved = localStorage.getItem(petConfigKey);
+      if (saved) {
+        setPetConfig(JSON.parse(saved));
+      }
     }
   }, [petConfigKey]);
 
