@@ -611,7 +611,7 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
           {/* DragOverlay：通过 portal 渲染在 DOM 最外层，避免被父容器 overflow 裁剪 */}
           <DragOverlay>
             {activeId ? (
-              <div className="opacity-90 ring-2 ring-brutal-accent shadow-lg cursor-grabbing">
+              <div className="ring-2 ring-brutal-accent shadow-lg cursor-grabbing">
                 {(() => {
                   const item = data.items.find((i) => i.id === activeId);
                   if (!item) return null;
@@ -1014,7 +1014,7 @@ function DraggableValidationCard({
       style={style}
       {...listeners}
       {...attributes}
-      className={`${isDragging ? 'opacity-60 ring-2 ring-brutal-accent shadow-lg' : ''} ${isLocked ? '' : 'cursor-grab active:cursor-grabbing'}`}
+      className={`${isDragging ? 'opacity-0' : ''} ${isLocked ? '' : 'cursor-grab active:cursor-grabbing'}`}
     >
       {children}
     </div>
