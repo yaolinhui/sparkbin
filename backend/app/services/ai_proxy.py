@@ -366,28 +366,16 @@ class AIProxyService:
             self.db.commit()
 
 
-    async def generate_idea_suggestions(
+    async def _generate_idea_suggestions_single(
         self,
         provider: AIProvider,
         title: str,
         pain_point: str,
         original_idea: str,
-        current_notes: List[Dict[str, str]]
+        current_notes: List[Dict[str, str]],
+        cache_key: str
     ) -> List[Dict[str, str]]:
-        """
-        生成想法阶段便利贴建议
-        返回：[{"title": "...", "content": "..."}, ...]
-        """
-        # 检查缓存
-        cache_input = f"{provider.value}:{title}:{pain_point}:{original_idea}:{json.dumps(current_notes, sort_keys=True)}"
-        cache_key = hashlib.md5(cache_input.encode()).hexdigest()
-        cache_entry = _idea_suggestion_cache.get((provider.value, cache_key))
-        if cache_entry:
-            cached_at, cached_result = cache_entry
-            if time.time() - cached_at < _CACHE_TTL:
-                logger.info(f"Idea suggestion cache hit for {provider.value}")
-                return cached_result
-
+        """调用单个 provider 生成想法建议（内部方法）"""
         config = self.get_active_config(provider)
         api_key = self.decrypt_api_key(config)
 
@@ -478,8 +466,8 @@ class AIProxyService:
                             "content": note["content"]
                         })
 
-                # 写入缓存
-                _idea_suggestion_cache[(provider.value, cache_key)] = (time.time(), validated_notes)
+                # 写入缓存（使用与 provider 无关的缓存键）
+                _idea_suggestion_cache[cache_key] = (time.time(), validated_notes)
                 return validated_notes
 
         except json.JSONDecodeError:
@@ -507,6 +495,55 @@ class AIProxyService:
             )
             self.db.add(log)
             self.db.commit()
+
+    async def generate_idea_suggestions(
+        self,
+        provider: AIProvider,
+        title: str,
+        pain_point: str,
+        original_idea: str,
+        current_notes: List[Dict[str, str]]
+    ) -> List[Dict[str, str]]:
+        """
+        生成想法阶段便利贴建议，支持 provider fallback
+        返回：[{"title": "...", "content": "..."}, ...]
+        """
+        # 使用与 provider 无关的缓存键，所有 provider 共享结果
+        cache_input = f"{title}:{pain_point}:{original_idea}:{json.dumps(current_notes, sort_keys=True)}"
+        cache_key = hashlib.md5(cache_input.encode()).hexdigest()
+        cache_entry = _idea_suggestion_cache.get(cache_key)
+        if cache_entry:
+            cached_at, cached_result = cache_entry
+            if time.time() - cached_at < _CACHE_TTL:
+                logger.info("Idea suggestion cache hit")
+                return cached_result
+
+        # 构建 fallback 链：首选 -> DEEPSEEK -> KIMI -> DOUBAO -> OPENAI
+        providers_to_try = [provider]
+        for p in [AIProvider.DEEPSEEK, AIProvider.KIMI, AIProvider.DOUBAO, AIProvider.OPENAI]:
+            if p not in providers_to_try:
+                providers_to_try.append(p)
+
+        last_error = ""
+        for p in providers_to_try:
+            try:
+                return await self._generate_idea_suggestions_single(
+                    p, title, pain_point, original_idea, current_notes, cache_key
+                )
+            except HTTPException as e:
+                last_error = e.detail
+                logger.warning(f"Provider {p.value} failed: {e.detail}, trying fallback...")
+                continue
+            except Exception as e:
+                last_error = str(e) or f"{p.value} API 调用失败"
+                logger.warning(f"Provider {p.value} failed unexpectedly: {last_error}, trying fallback...")
+                continue
+
+        # 所有 provider 都失败
+        raise HTTPException(
+            status_code=503,
+            detail=f"AI 服务暂时不可用，已尝试所有模型。最后错误: {last_error}"
+        )
 
 
 def init_default_ai_configs(db: Session):

@@ -20,12 +20,14 @@ import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
 import {
   DndContext,
+  DragOverlay,
   useDraggable,
   useDroppable,
   PointerSensor,
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent,
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import type { Project, ValidationItem, ValidationTool, ValidationData } from '../types';
@@ -90,6 +92,7 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
   const [generatingTool, setGeneratingTool] = useState<string | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   // 表单状态
   const [newItemTitle, setNewItemTitle] = useState('');
@@ -369,8 +372,14 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
     return 'validated';
   };
 
+  // 处理拖拽开始
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
   // 处理拖拽结束
   const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveId(null);
     const { active, over } = event;
     if (!over || isLocked) return;
 
@@ -521,7 +530,7 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Kanban Board */}
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div className="flex-1 flex gap-4 p-6 overflow-x-auto min-h-0">
             {/* Pending Column */}
             <DroppableKanbanColumn
@@ -598,6 +607,28 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
               ))}
             </DroppableKanbanColumn>
           </div>
+
+          {/* DragOverlay：通过 portal 渲染在 DOM 最外层，避免被父容器 overflow 裁剪 */}
+          <DragOverlay>
+            {activeId ? (
+              <div className="opacity-90 ring-2 ring-brutal-accent shadow-lg cursor-grabbing">
+                {(() => {
+                  const item = data.items.find((i) => i.id === activeId);
+                  if (!item) return null;
+                  return (
+                    <ValidationCard
+                      item={item}
+                      isLocked={isLocked}
+                      onStart={() => updateStatus(item.id, 'in_progress')}
+                      onRecord={() => openResultModal(item)}
+                      onEdit={() => startEdit(item)}
+                      onDelete={() => deleteItem(item.id)}
+                    />
+                  );
+                })()}
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
 
         {/* Tools Panel */}
@@ -971,7 +1002,8 @@ function DraggableValidationCard({
 
   const style = transform
     ? {
-        transform: CSS.Translate.toString(transform),
+        transform: CSS.Transform.toString(transform),
+        transition: 'transform 0.15s ease',
         zIndex: 50,
       }
     : undefined;

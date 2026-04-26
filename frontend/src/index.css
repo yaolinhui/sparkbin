@@ -1,5 +1,8 @@
-/* Import JetBrains Mono - must be before @tailwind */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* JetBrains Mono 自托管字体 - 替代 Google Fonts CDN */
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/600.css';
+@import '@fontsource/jetbrains-mono/700.css';
 
 @tailwind base;
 @tailwind components;
