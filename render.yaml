@@ -1,0 +1,42 @@
+# Render.com Blueprint for SparkBin
+# 导入方式：Dashboard → Blueprints → New Blueprint → 选择此仓库
+
+services:
+  # 后端 API 服务
+  - type: web
+    name: sparkbin-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite:///./sparkbin_prod.db
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: API_PORT
+        value: 10000
+      - key: CORS_ORIGINS
+        value: https://sparkbin.vercel.app,https://sparkbin-web.onrender.com
+      - key: APP_URL
+        value: https://sparkbin.vercel.app
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+  # 前端静态站点
+  - type: static
+    name: sparkbin-web
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://sparkbin-api.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
