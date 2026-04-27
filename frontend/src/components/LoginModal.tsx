@@ -10,6 +10,19 @@ interface LoginModalProps {
 
 type Tab = 'login' | 'register' | 'forgot';
 
+function calculatePasswordStrength(password: string): { score: number; label: '弱' | '中' | '强'; colorClass: string } {
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) score++;
+
+  if (score <= 2) return { score, label: '弱', colorClass: 'bg-[var(--brutal-error)]' };
+  if (score <= 4) return { score, label: '中', colorClass: 'bg-[var(--brutal-warning)]' };
+  return { score, label: '强', colorClass: 'bg-[var(--brutal-success)]' };
+}
+
 export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
   const [tab, setTab] = useState<Tab>('login');
 
@@ -103,6 +116,8 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     window.location.href = authApi.getOAuthUrl(provider);
   };
 
+  const regStrength = calculatePasswordStrength(regPassword);
+
   const tabButton = (t: Tab, label: string) => (
     <button
       type="button"
@@ -152,8 +167,8 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
 
         {/* Error */}
         {error && (
-          <div className="px-6 pt-4">
-            <div className="p-3 border-2 border-brutal-warning bg-brutal-warning/10 flex items-center gap-2">
+          <div className="px-6 pt-4 animate-slide-down">
+            <div className="p-3 border-2 border-brutal-warning bg-brutal-warning/10 flex items-center gap-2 animate-shake">
               <AlertCircle className="w-4 h-4 text-brutal-warning flex-shrink-0" />
               <span className="text-sm font-mono text-brutal-warning">{error}</span>
             </div>
@@ -163,7 +178,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
         {/* Login Tab */}
         {tab === 'login' && (
           <>
-            <form onSubmit={handleLogin} className="p-6 space-y-4">
+            <form onSubmit={handleLogin} className="p-6 space-y-4 animate-fade-in-slide">
               <div>
                 <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
                   Username
@@ -224,7 +239,8 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                            border-2 border-brutal-accent
                            hover:bg-brutal-bg hover:text-brutal-accent
                            disabled:opacity-50 disabled:cursor-not-allowed
-                           transition-colors flex items-center justify-center gap-2"
+                           transition-colors flex items-center justify-center gap-2
+                           active:translate-x-[2px] active:translate-y-[2px]"
               >
                 {isLoading ? (
                   <>
@@ -254,7 +270,8 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                 className="w-full py-3 bg-brutal-bg text-brutal-text font-mono font-bold
                            border-2 border-brutal-border
                            hover:border-brutal-accent hover:text-brutal-accent
-                           transition-colors flex items-center justify-center gap-2"
+                           transition-colors flex items-center justify-center gap-2
+                           active:translate-x-[2px] active:translate-y-[2px]"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -270,7 +287,8 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                 className="w-full py-3 bg-brutal-bg text-brutal-text font-mono font-bold
                            border-2 border-brutal-border
                            hover:border-brutal-accent hover:text-brutal-accent
-                           transition-colors flex items-center justify-center gap-2"
+                           transition-colors flex items-center justify-center gap-2
+                           active:translate-x-[2px] active:translate-y-[2px]"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
@@ -283,7 +301,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
 
         {/* Register Tab */}
         {tab === 'register' && (
-          <form onSubmit={handleRegister} className="p-6 space-y-4">
+          <form onSubmit={handleRegister} className="p-6 space-y-4 animate-fade-in-slide">
             <div>
               <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">用户名</label>
               <div className="relative">
@@ -326,7 +344,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                   onChange={(e) => setRegPassword(e.target.value)}
                   className="w-full pl-10 pr-10 py-3 border border-brutal-border bg-brutal-bg
                              focus:border-brutal-accent focus:outline-none font-mono text-sm"
-                  placeholder="至少 8 位，含大小写+数字"
+                  placeholder="至少 8 位，含大小写+数字+特殊符号（如 !@#$%）"
                   disabled={isLoading}
                 />
                 <button
@@ -338,6 +356,25 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {/* Password Strength Bar */}
+              {regPassword && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-[var(--brutal-border)]">
+                      <div
+                        className={`h-full transition-all duration-150 ${regStrength.colorClass}`}
+                        style={{ width: `${(regStrength.score / 5) * 100}%` }}
+                      />
+                    </div>
+                    <span className={`text-xs font-mono ${regStrength.label === '弱' ? 'text-[var(--brutal-error)]' : regStrength.label === '中' ? 'text-[var(--brutal-warning)]' : 'text-[var(--brutal-success)]'}`}>
+                      {regStrength.label}
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-mono text-brutal-muted">
+                    长度/大写/小写/数字/特殊符号 — 满足 {regStrength.score}/5 项
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>
@@ -360,7 +397,8 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                          border-2 border-brutal-accent
                          hover:bg-brutal-bg hover:text-brutal-accent
                          disabled:opacity-50 disabled:cursor-not-allowed
-                         transition-colors flex items-center justify-center gap-2"
+                         transition-colors flex items-center justify-center gap-2
+                         active:translate-x-[2px] active:translate-y-[2px]"
             >
               {isLoading ? (
                 <>
@@ -376,7 +414,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
 
         {/* Forgot Password Tab */}
         {tab === 'forgot' && (
-          <div className="p-6 space-y-4">
+          <div className="p-6 space-y-4 animate-fade-in-slide">
             {forgotSent ? (
               <div className="text-center py-4">
                 <p className="text-sm font-mono text-brutal-success mb-4">
@@ -386,7 +424,8 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                   type="button"
                   onClick={() => { switchTab('login'); setForgotSent(false); setForgotEmail(''); }}
                   className="px-6 py-2 bg-brutal-accent text-brutal-bg font-mono font-bold
-                             border-2 border-brutal-accent hover:bg-brutal-bg hover:text-brutal-accent transition-colors"
+                             border-2 border-brutal-accent hover:bg-brutal-bg hover:text-brutal-accent transition-colors
+                             active:translate-x-[2px] active:translate-y-[2px]"
                 >
                   返回登录
                 </button>
@@ -416,7 +455,8 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                              border-2 border-brutal-accent
                              hover:bg-brutal-bg hover:text-brutal-accent
                              disabled:opacity-50 disabled:cursor-not-allowed
-                             transition-colors flex items-center justify-center gap-2"
+                             transition-colors flex items-center justify-center gap-2
+                             active:translate-x-[2px] active:translate-y-[2px]"
                 >
                   {isLoading ? (
                     <>

@@ -429,6 +429,37 @@ input:focus, textarea:focus {
   animation: pulse-slow 2.5s ease-in-out infinite;
 }
 
+/* Login modal functional micro-animations */
+@keyframes fade-in-slide {
+  from { opacity: 0; transform: translateX(4px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.animate-fade-in-slide {
+  animation: fade-in-slide 80ms ease-out forwards;
+}
+
+.animate-slide-down {
+  animation: slide-down 120ms ease-out forwards;
+}
+
+.animate-shake {
+  animation: shake 300ms ease-in-out;
+}
+
 /* ============================================
    REACT FLOW - Theme aware
    ============================================ */

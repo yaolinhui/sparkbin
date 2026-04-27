@@ -189,6 +189,12 @@ async function request<T>(
   });
 
   if (response.status === 401) {
+    // 登录/注册的 401 是正常业务错误，不走 refresh 逻辑
+    if (endpoint === '/auth/login' || endpoint === '/auth/register') {
+      const responseText = await response.text();
+      throw new Error(extractErrorMessage(responseText, 401));
+    }
+
     // 尝试用 refresh token 刷新 access token
     const refreshed = await refreshAccessToken();
     if (refreshed) {

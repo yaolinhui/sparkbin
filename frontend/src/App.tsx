@@ -8,6 +8,7 @@ import { LoginModal } from './components/LoginModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { LandingPage } from './components/LandingPage';
 import {
   authApi, clearAuthToken, isAuthenticated, setCachedRole, setCachedUserId, setOnUnauthorized,
   setRefreshToken, startTokenRefreshTimer, stopTokenRefreshTimer, setAuthToken,
@@ -162,25 +163,7 @@ function AppRoutes() {
             onLogin={handleLogin}
             onClose={() => setShowLogin(false)}
           />
-          {!showLogin && (
-            <div className="min-h-screen bg-brutal-bg flex flex-col items-center justify-center p-4">
-              <div className="border-2 border-brutal-border bg-brutal-surface p-8 max-w-md w-full text-center">
-                <h1 className="text-2xl font-mono font-bold text-brutal-text mb-4">SPARKBIN</h1>
-                <p className="text-sm font-mono text-brutal-muted mb-6">
-                  你需要登录才能继续使用。
-                </p>
-                <button
-                  onClick={() => setShowLogin(true)}
-                  className="w-full py-3 bg-brutal-accent text-brutal-bg font-mono font-bold
-                             border-2 border-brutal-accent
-                             hover:bg-brutal-bg hover:text-brutal-accent
-                             transition-colors"
-                >
-                  LOGIN
-                </button>
-              </div>
-            </div>
-          )}
+          {!showLogin && <LandingPage onEnter={() => setShowLogin(true)} />}
         </>
       )}
 
