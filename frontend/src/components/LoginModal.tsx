@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Lock, User, AlertCircle, Loader2, X, Eye, EyeOff } from 'lucide-react';
-import { authApi, setAuthToken } from '../services/api';
+import { authApi, setAuthToken, setRefreshToken } from '../services/api';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -25,6 +25,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     try {
       const response = await authApi.login({ username, password });
       setAuthToken(response.access_token);
+      setRefreshToken(response.refresh_token);
       onLogin();
     } catch (err) {
       setError(err instanceof Error ? err.message : '登录失败');

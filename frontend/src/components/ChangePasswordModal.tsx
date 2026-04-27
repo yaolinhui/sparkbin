@@ -32,8 +32,20 @@ export function ChangePasswordModal({ isOpen, isForced = false, onSuccess, onClo
       setError('两次输入的新密码不一致');
       return;
     }
-    if (newPassword.length < 6) {
-      setError('新密码至少需要 6 个字符');
+    if (newPassword.length < 8) {
+      setError('新密码至少需要 8 个字符');
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      setError('新密码需要包含至少 1 个大写字母');
+      return;
+    }
+    if (!/[a-z]/.test(newPassword)) {
+      setError('新密码需要包含至少 1 个小写字母');
+      return;
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      setError('新密码需要包含至少 1 个数字');
       return;
     }
 

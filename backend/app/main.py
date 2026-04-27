@@ -100,6 +100,13 @@ def _ensure_sqlite_columns():
             conn.execute(text("ALTER TABLE projects ADD COLUMN original_idea TEXT DEFAULT ''"))
         conn.commit()
 
+    # ai_call_logs 表
+    ai_log_columns = {col["name"] for col in inspector.get_columns("ai_call_logs")}
+    with engine.connect() as conn:
+        if "user_id" not in ai_log_columns:
+            conn.execute(text("ALTER TABLE ai_call_logs ADD COLUMN user_id VARCHAR(36)"))
+        conn.commit()
+
 
 def init_database():
     """初始化数据库表和默认数据"""

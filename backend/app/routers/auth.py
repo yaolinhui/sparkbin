@@ -7,13 +7,16 @@ from ..auth import (
     get_current_user, hash_password,
     check_login_rate_limit, record_login_failure, validate_password_complexity,
 )
-from ..models import User, LoginAuditLog
+from ..models import User, LoginAuditLog, Project, AICallLog
 from ..schemas import (
     LoginRequest, LoginResponse, ChangePasswordRequest, BaseResponse,
     PreferredModelUpdate, PetConfigUpdate, ThemePreferenceUpdate,
     TokenPairResponse, RefreshTokenRequest,
 )
 from ..models import AIProvider
+from ..config import get_settings
+from sqlalchemy import func
+from datetime import datetime
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

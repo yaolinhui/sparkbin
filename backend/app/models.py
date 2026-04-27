@@ -158,6 +158,7 @@ class AICallLog(Base):
     __tablename__ = "ai_call_logs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     provider = Column(Enum(AIProvider), nullable=False)
     model = Column(String(100), nullable=False)
     prompt_tokens = Column(Integer, default=0)
@@ -165,6 +166,8 @@ class AICallLog(Base):
     status = Column(String(20), default="success")  # success / error
     error_msg = Column(Text, default="")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User")
 
 
 # 登录审计日志表

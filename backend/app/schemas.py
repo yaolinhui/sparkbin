@@ -47,6 +47,13 @@ class PetConfig(BaseModel):
     verbosity: str = "moderate"  # quiet | moderate | chatty
 
 
+class UserQuotaInfo(BaseModel):
+    ai_calls_used_this_month: int
+    ai_calls_limit: int
+    projects_used: int
+    projects_limit: Optional[int] = None
+
+
 class UserInfo(BaseModel):
     id: UUID
     username: str
@@ -57,6 +64,8 @@ class UserInfo(BaseModel):
     current_tier_id: Optional[str] = None
     pet_config: Optional[PetConfig] = None
     theme_preference: Optional[str] = "dark"
+    require_password_change: bool = False
+    quota: UserQuotaInfo
     created_at: datetime
 
     class Config:
