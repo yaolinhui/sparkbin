@@ -12,24 +12,8 @@ let refreshTimerId: ReturnType<typeof setInterval> | null = null;
 export function setAuthToken(token: string) {
   authToken = token;
   localStorage.setItem('sparkbin_token', token);
-  // 从 JWT 中解析角色和用户 ID
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3 || !parts[1]) throw new Error('Invalid token');
-    const payload = JSON.parse(atob(parts[1]!));
-    userRole = payload.role || 'user';
-    userId = payload.sub || payload.user_id || null;
-    localStorage.setItem('sparkbin_role', userRole || 'user');
-    if (userId) {
-      localStorage.setItem('sparkbin_user_id', userId);
-    } else {
-      localStorage.removeItem('sparkbin_user_id');
-    }
-  } catch {
-    userRole = 'user';
-    userId = null;
-    localStorage.removeItem('sparkbin_user_id');
-  }
+  // 不再从 JWT 中客户端解析角色（防止客户端篡改）
+  // 角色统一由 /auth/me 接口返回并写入 userRole
 }
 
 export function clearAuthToken() {
@@ -41,6 +25,26 @@ export function clearAuthToken() {
   localStorage.removeItem('sparkbin_refresh_token');
   localStorage.removeItem('sparkbin_role');
   localStorage.removeItem('sparkbin_user_id');
+}
+
+/** 设置用户角色（仅应由 /auth/me 调用后写入） */
+export function setCachedRole(role: string | null) {
+  userRole = role;
+  if (role) {
+    localStorage.setItem('sparkbin_role', role);
+  } else {
+    localStorage.removeItem('sparkbin_role');
+  }
+}
+
+/** 设置用户 ID（仅应由 /auth/me 调用后写入） */
+export function setCachedUserId(id: string | null) {
+  userId = id;
+  if (id) {
+    localStorage.setItem('sparkbin_user_id', id);
+  } else {
+    localStorage.removeItem('sparkbin_user_id');
+  }
 }
 
 export function setRefreshToken(token: string) {
@@ -111,15 +115,6 @@ export function getUserRole(): string {
 
 export function getUserId(): string | null {
   return userId;
-}
-
-export function setCachedRole(role: string | null) {
-  userRole = role;
-  if (role) {
-    localStorage.setItem('sparkbin_role', role);
-  } else {
-    localStorage.removeItem('sparkbin_role');
-  }
 }
 
 export function setOnUnauthorized(callback: (() => void) | null) {
@@ -288,8 +283,6 @@ export const authApi = {
       role: string;
       preferred_model: AIProvider | null;
       subscription_status: string;
-      stripe_customer_id: string | null;
-      stripe_subscription_id: string | null;
       current_tier_id: string | null;
       pet_config: { type: string; name: string; personality: string; verbosity: string } | null;
       theme_preference: string | null;
@@ -596,8 +589,6 @@ export interface CheckoutSessionResponse {
 export interface SubscriptionStatusResponse {
   status: string;
   tier_id: string | null;
-  stripe_customer_id: string | null;
-  stripe_subscription_id: string | null;
 }
 
 export const paymentsApi = {

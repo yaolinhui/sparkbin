@@ -9,7 +9,7 @@ import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import {
-  authApi, clearAuthToken, isAuthenticated, setCachedRole, setOnUnauthorized,
+  authApi, clearAuthToken, isAuthenticated, setCachedRole, setCachedUserId, setOnUnauthorized,
   setRefreshToken, startTokenRefreshTimer, stopTokenRefreshTimer, setAuthToken,
 } from './services/api';
 
@@ -50,6 +50,7 @@ function AppRoutes() {
   useEffect(() => {
     setOnUnauthorized(() => {
       setCachedRole(null);
+      setCachedUserId(null);
       setUserRole(null);
       setIsLoggedIn(false);
       setShowLogin(true);
@@ -60,6 +61,7 @@ function AppRoutes() {
         try {
           const me = await authApi.getMe();
           setCachedRole(me.role);
+          setCachedUserId(me.id);
           setUserRole(me.role);
           if (me.require_password_change) {
             setRequirePasswordChange(true);
@@ -96,6 +98,7 @@ function AppRoutes() {
       }
       const me = await authApi.getMe();
       setCachedRole(me.role);
+      setCachedUserId(me.id);
       setUserRole(me.role);
       setIsLoggedIn(true);
       setShowLogin(false);
@@ -117,6 +120,7 @@ function AppRoutes() {
     clearAuthToken();
     stopTokenRefreshTimer();
     setCachedRole(null);
+    setCachedUserId(null);
     setUserRole(null);
     setIsLoggedIn(false);
     setShowLogin(true);

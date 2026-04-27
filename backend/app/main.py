@@ -1,4 +1,5 @@
 import logging
+import json
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -19,6 +20,25 @@ from .models import Base
 from .auth import init_default_user
 from .services.ai_proxy import init_default_ai_configs
 from .routers import auth, projects, ai, admin, payments
+
+
+class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+    """限制请求体大小（默认 10MB）"""
+
+    def __init__(self, app, max_size: int = 10 * 1024 * 1024):
+        super().__init__(app)
+        self.max_size = max_size
+
+    async def dispatch(self, request: Request, call_next):
+        if request.method in ("POST", "PUT", "PATCH"):
+            body = await request.body()
+            if len(body) > self.max_size:
+                return Response(
+                    content=json.dumps({"detail": "请求体超过最大限制（10MB）"}),
+                    status_code=413,
+                    media_type="application/json"
+                )
+        return await call_next(request)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -154,6 +174,9 @@ app.add_middleware(
 # 安全响应头中间件
 app.add_middleware(SecurityHeadersMiddleware)
 
+# 请求体大小限制中间件（防止超大请求攻击）
+app.add_middleware(RequestSizeLimitMiddleware)
+
 # 可信 Host 中间件（防止 Host Header 攻击）
 app.add_middleware(
     TrustedHostMiddleware,
@@ -188,5 +211,6 @@ if __name__ == "__main__":
         "app.main:app",
         host="0.0.0.0",
         port=settings.api_port,
-        reload=True
+        reload=True,
+        h11_max_request_size=10 * 1024 * 1024,  # 10MB
     )

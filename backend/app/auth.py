@@ -1,4 +1,6 @@
 import os
+import hashlib
+import re
 from datetime import datetime, timedelta
 from typing import Optional
 from collections import deque
@@ -60,21 +62,29 @@ def record_login_failure(request: Request) -> None:
     _login_attempts[client_ip].append(datetime.utcnow().timestamp())
 
 
+def _prehash_password(password: str) -> bytes:
+    """使用 SHA-256 预哈希密码，规避 bcrypt 72 字节截断限制"""
+    return hashlib.sha256(password.encode('utf-8')).hexdigest().encode('utf-8')
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """验证密码"""
+    """验证密码（支持 SHA-256+_bcrypt 新方式及直接 bcrypt 旧方式兼容）"""
     try:
-        password_bytes = plain_password.encode('utf-8')[:72]
         hashed_bytes = hashed_password.encode('utf-8')
-        return bcrypt.checkpw(password_bytes, hashed_bytes)
+        # 先尝试新方式：SHA-256 预哈希 + bcrypt
+        if bcrypt.checkpw(_prehash_password(plain_password), hashed_bytes):
+            return True
+        # 回退旧方式：直接截断 bcrypt（兼容历史用户）
+        return bcrypt.checkpw(plain_password.encode('utf-8')[:72], hashed_bytes)
     except Exception:
         return False
 
 
 def hash_password(password: str) -> str:
-    """哈希密码"""
-    password_bytes = password.encode('utf-8')[:72]
+    """哈希密码（SHA-256 预哈希 + bcrypt）"""
+    prehashed = _prehash_password(password)
     salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password_bytes, salt)
+    hashed = bcrypt.hashpw(prehashed, salt)
     return hashed.decode('utf-8')
 
 
@@ -151,6 +161,7 @@ def validate_password_complexity(password: str) -> tuple[bool, str]:
     - 包含至少 1 个大写字母
     - 包含至少 1 个小写字母
     - 包含至少 1 个数字
+    - 包含至少 1 个特殊字符
     """
     if len(password) < 8:
         return False, "密码至少需要 8 个字符"
@@ -160,6 +171,8 @@ def validate_password_complexity(password: str) -> tuple[bool, str]:
         return False, "密码需要包含至少 1 个小写字母"
     if not any(c.isdigit() for c in password):
         return False, "密码需要包含至少 1 个数字"
+    if not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]', password):
+        return False, "密码需要包含至少 1 个特殊字符（如 !@#$%^&*）"
     return True, ""
 
 
