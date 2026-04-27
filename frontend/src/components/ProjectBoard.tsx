@@ -1,13 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Github, Terminal, LogOut, Server, Settings, Cat, ChevronDown, ChevronRight, Lock } from 'lucide-react';
+import { Plus, Terminal, LogOut, Server, Settings, Cat, ChevronDown, ChevronRight, Lock } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
 import { isAdmin, getUserId, authApi, isAuthenticated } from '../services/api';
 import { useI18n } from '../i18n/hooks';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectModal } from './CreateProjectModal';
-import { GitHubConfigModal } from './GitHubConfigModal';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { ModelSelector } from './ModelSelector';
@@ -84,7 +83,6 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   const checkAIConfig = useAIStore((state) => state.checkConfiguration);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isPetConfigOpen, setIsPetConfigOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [showPetBubble, setShowPetBubble] = useState(false);
@@ -298,13 +296,6 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                   </button>
                 )}
                 <ModelSelector />
-                <button
-                  onClick={() => setIsConfigModalOpen(true)}
-                  className="btn-brutal h-9 flex items-center gap-2"
-                  title="GitHub Backup"
-                >
-                  <Github className="w-4 h-4" />
-                </button>
                 <button
                   onClick={() => setIsChangePasswordOpen(true)}
                   className="btn-brutal h-9 flex items-center gap-2"
@@ -577,10 +568,6 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
       <CreateProjectModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-      />
-      <GitHubConfigModal
-        isOpen={isConfigModalOpen}
-        onClose={() => setIsConfigModalOpen(false)}
       />
       <ChangePasswordModal
         isOpen={isChangePasswordOpen}

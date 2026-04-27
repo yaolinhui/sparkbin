@@ -550,10 +550,14 @@ export function PrototypeStage({ project, onUpdateContent, isLocked, onToggleLoc
                       disabled={isLocked}
                       className="sr-only"
                     />
-                    <div className={`w-4 h-4 border flex items-center justify-center ${
+                    <div className={`w-4 h-4 border flex items-center justify-center text-brutal-bg ${
                       checked ? 'bg-brutal-success border-brutal-success' : 'border-brutal-muted'
                     }`}>
-                      {checked && <Check className="w-3 h-3 text-white" />}
+                      {checked && (
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M1 5L4 8L9 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square"/>
+                        </svg>
+                      )}
                     </div>
                     <span className="text-xs font-mono">
                       {key === 'domain' && '域名配置'}

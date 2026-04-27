@@ -1,19 +1,15 @@
 import { create } from 'zustand';
-import type { Project, ProjectStatus, StageKey, GitHubConfig, Stage, PromoteStage } from '../types';
+import type { Project, ProjectStatus, StageKey, Stage, PromoteStage } from '../types';
 import { projectsApi, type ProjectDetail } from '../services/api';
 
 interface ProjectState {
   projects: Project[];
-  githubConfig: GitHubConfig | null;
   isLoading: boolean;
   lastSyncAt: string | null;
   error: string | null;
 }
 
 interface ProjectActions {
-  setGitHubConfig: (config: GitHubConfig) => void;
-  loadFromGitHub: () => Promise<void>;
-  saveToGitHub: () => Promise<void>;
   fetchProjects: () => Promise<void>;
   createProject: (title: string, painPoint: string, originalIdea?: string) => Promise<Project | null>;
   updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
@@ -70,14 +66,9 @@ function convertProjectDetailToProject(detail: ProjectDetail): Project {
 
 export const useProjectStore = create<ProjectState & ProjectActions>()((set, get) => ({
   projects: [],
-  githubConfig: null,
   isLoading: false,
   lastSyncAt: null,
   error: null,
-
-  setGitHubConfig: (config: GitHubConfig) => {
-    set({ githubConfig: config });
-  },
 
   fetchProjects: async () => {
     set({ isLoading: true, error: null });
@@ -102,16 +93,6 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
         isLoading: false,
       });
     }
-  },
-
-  loadFromGitHub: async () => {
-    // 保留向后兼容，但主要使用后端数据
-    await get().fetchProjects();
-  },
-
-  saveToGitHub: async () => {
-    // 数据已保存到后端，这里只更新同步时间
-    set({ lastSyncAt: new Date().toISOString() });
   },
 
   createProject: async (title: string, painPoint: string, originalIdea?: string) => {

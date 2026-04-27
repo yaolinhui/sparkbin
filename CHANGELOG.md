@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AI pet configuration persistence (stored in database)
 - Login audit logging
 
+### Removed
+- Legacy GitHub backup sync feature (frontend PAT storage was a security risk in multi-user scenarios; will be replaced by backend-proxied project-level repo binding in future)
+- `GitHubConfigModal`, `github.ts`, and `GitHubConfig` type from first-version localStorage architecture
+
 ### Security
 - Rate limiting on login endpoints (5 attempts per 5 minutes per IP)
 - RBAC enforcement on `/admin/*` routes

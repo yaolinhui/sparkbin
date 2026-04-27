@@ -226,13 +226,6 @@ export interface Project {
   updatedAt: string;
 }
 
-export interface GitHubConfig {
-  token: string;
-  owner: string;
-  repo: string;
-  filePath: string;
-}
-
 // AI 宠物配置
 export interface AIPetConfig {
   type: 'cat' | 'robot' | 'panda' | 'fox';

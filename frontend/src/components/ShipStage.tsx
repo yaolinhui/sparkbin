@@ -316,9 +316,16 @@ export function ShipStage({ project, onUpdateContent, isLocked, onToggleLock, on
                   disabled={isLocked}
                   className="sr-only"
                 />
-                <Icon className={`w-6 h-6 ${
-                  data.checklist[key as keyof typeof data.checklist] ? 'text-brutal-success' : 'text-brutal-muted'
-                }`} />
+                <div className="relative">
+                  <Icon className={`w-6 h-6 ${
+                    data.checklist[key as keyof typeof data.checklist] ? 'text-brutal-success' : 'text-brutal-muted'
+                  }`} />
+                  {data.checklist[key as keyof typeof data.checklist] && (
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-brutal-success flex items-center justify-center">
+                      <Check className="w-2 h-2 text-brutal-bg" strokeWidth={3} />
+                    </div>
+                  )}
+                </div>
                 <span className="text-xs font-mono text-center">{label}</span>
               </label>
             ))}
