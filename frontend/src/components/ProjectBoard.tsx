@@ -231,7 +231,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   };
 
   return (
-    <div className="min-h-screen bg-brutal-bg text-brutal-text font-mono">
+    <div className="min-h-[100dvh] flex flex-col bg-brutal-bg text-brutal-text font-mono">
       {/* Header - Terminal Style */}
       <header className="border-b border-brutal-border bg-brutal-surface">
         <div className="px-6 py-4">
@@ -364,7 +364,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
       )}
 
       {/* Main Content */}
-      <main className="p-6">
+      <main className="flex-1 flex flex-col p-6">
         {/* Backend Mode Badge */}
         <div className="mb-4 p-2 border border-brutal-accent bg-brutal-accent/5 text-xs font-mono flex items-center gap-2">
           <Server className="w-3 h-3 text-brutal-accent" />

@@ -15,7 +15,7 @@ const STAGES = [
 
 export function LandingPage({ onEnter }: LandingPageProps) {
   return (
-    <div className="min-h-screen bg-brutal-bg flex flex-col items-center justify-center p-4">
+    <div className="min-h-[100dvh] bg-brutal-bg flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-2xl">
         {/* Brand */}
         <div className="border-2 border-brutal-border bg-brutal-surface p-8 text-center mb-6">

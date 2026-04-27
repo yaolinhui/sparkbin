@@ -31,7 +31,7 @@ export function MonthView({ currentDate, onDateChange, contents, onSelectDate }:
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex-1 min-h-0 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-brutal-border bg-brutal-surface/50">
         <button

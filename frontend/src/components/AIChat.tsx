@@ -419,7 +419,7 @@ export function AIChat({
   // 折叠状态
   if (isCollapsed) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center">
         <button
           onClick={handleToggleCollapse}
           className="flex flex-col items-center gap-2 px-2 py-4 bg-brutal-surface border border-brutal-border
@@ -662,7 +662,7 @@ export function AIChat({
 
   // ========== 侧边栏模式 ==========
   return (
-    <div className="flex flex-col h-full bg-brutal-surface border-l border-brutal-border relative">
+    <div className="flex flex-col flex-1 min-h-0 bg-brutal-surface border-l border-brutal-border relative">
       {/* Collapse Button */}
       <button
         onClick={handleToggleCollapse}

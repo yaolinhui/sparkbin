@@ -9,8 +9,8 @@ const PROVIDER_INFO: Record<AIProvider, { name: string; desc: string; defaultUrl
   deepseek: {
     name: 'DeepSeek',
     desc: 'DeepSeek Chat API',
-    defaultUrl: 'https://api.deepseek.com/v1',
-    defaultModel: 'deepseek-chat',
+    defaultUrl: 'https://api.deepseek.com',
+    defaultModel: 'deepseek-v4-flash',
   },
   kimi: {
     name: 'Kimi (Moonshot)',
@@ -131,9 +131,8 @@ export function AdminPage({ onLogout }: AdminPageProps) {
 
   const handleTest = async () => {
     const config = configs[selectedProvider];
-    // 检查是否有已启用的配置（后端会读取已保存的 API Key）
-    if (!config.is_active) {
-      setMessage({ type: 'error', text: '请先输入 API Key 并保存配置' });
+    if (!config.api_key) {
+      setMessage({ type: 'error', text: '请输入 API Key' });
       return;
     }
 
@@ -141,7 +140,12 @@ export function AdminPage({ onLogout }: AdminPageProps) {
     setMessage({ type: 'success', text: '正在测试连接...' });
 
     try {
-      const result = await aiApi.testConnection(selectedProvider);
+      // 使用当前表单值做预览测试，不需要先保存
+      const result = await aiApi.testConnection(selectedProvider, {
+        base_url: config.base_url,
+        api_key: config.api_key,
+        default_model: config.default_model,
+      });
       if (result.success) {
         setMessage({ type: 'success', text: `✓ ${result.message || '连接成功'}` });
       } else {
@@ -172,7 +176,7 @@ export function AdminPage({ onLogout }: AdminPageProps) {
   const currentConfig = configs[selectedProvider];
 
   return (
-    <div className="min-h-screen bg-brutal-bg text-brutal-text font-mono">
+    <div className="min-h-[100dvh] bg-brutal-bg text-brutal-text font-mono">
       {/* Header */}
       <header className="border-b border-brutal-border bg-brutal-surface">
         <div className="px-6 py-4 flex items-center justify-between">
@@ -199,7 +203,7 @@ export function AdminPage({ onLogout }: AdminPageProps) {
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-73px)]">
+      <div className="flex h-[calc(100dvh-73px)]">
         {/* Sidebar */}
         <aside className="w-64 border-r border-brutal-border bg-brutal-surface">
           <nav className="p-4 space-y-2">

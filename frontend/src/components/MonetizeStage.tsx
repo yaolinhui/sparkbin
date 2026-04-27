@@ -310,7 +310,7 @@ export function MonetizeStage({ project, onUpdateContent, isLocked, onToggleLock
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden min-h-0">
-        <div className="h-full overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6">
           {/* Test Mode Banner */}
           {data.testMode && (
             <div className="border-2 border-brutal-accent bg-brutal-accent/5 p-4 space-y-4">

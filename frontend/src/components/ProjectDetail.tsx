@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pause, Play, Archive, LogOut, ChevronUp, Menu, GitGraph, Trash2, Pencil } from 'lucide-react';
-import { ThemeSwitcher } from './ThemeSwitcher';
+import { ArrowLeft, Pause, Play, Archive, LogOut, MoreVertical, Sun, Moon, GitGraph, Trash2, Pencil } from 'lucide-react';
+import { useTheme } from '../theme/hooks';
 import { useProjectStore } from '../stores/projectStore';
 import { useI18n, useStatusLabel, useStageLabel } from '../i18n/hooks';
 import type { Project, Stage } from "../types";
@@ -21,15 +21,6 @@ import { type StageKey, type ProjectStatus } from '../types';
 interface ProjectDetailProps {
   onLogout: () => void;
 }
-
-const STAGE_NUMBERS: Record<StageKey, string> = {
-  idea: '01',
-  validate: '02',
-  prototype: '03',
-  ship: '04',
-  grow: '05',
-  monetize: '06',
-};
 
 interface IdeaSyncNote {
   id: string;
@@ -332,7 +323,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
   const [isCompleting, setIsCompleting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [isHeaderExpanded, setIsHeaderExpanded] = useState(false); // 头部折叠状态
+  const [showMoreMenu, setShowMoreMenu] = useState(false); // 更多菜单显示状态
   const [isLoading, setIsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -352,6 +343,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const pendingNavRef = useRef<(() => void) | null>(null);
   const dirtyEditorsRef = useRef<Set<string>>(new Set());
+  const forceProceedRef = useRef<boolean>(false);
 
   const markDirty = useCallback((key: string, dirty: boolean) => {
     if (dirty) {
@@ -360,6 +352,8 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       dirtyEditorsRef.current.delete(key);
     }
   }, []);
+
+  const { toggleTheme, isLight } = useTheme();
 
   const handleBackClick = () => {
     if (dirtyEditorsRef.current.size > 0 || isEditingTitle) {
@@ -380,6 +374,20 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     setShowLeaveConfirm(false);
     pendingNavRef.current = null;
   };
+
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+    if (showMoreMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showMoreMenu]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -529,17 +537,146 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     await updateStageContent(project.id, validCurrentStage, content);
   };
 
+  /**
+   * 检查阶段内容是否包含用户实质填写的内容。
+   * 各阶段存储格式不同（JSON 数组/对象），需要按阶段解析并验证。
+   */
+  const isStageContentMeaningful = (stage: StageKey, content: string): boolean => {
+    const trimmed = content.trim();
+    if (!trimmed || trimmed === '<p></p>') return false;
+
+    // idea: 便利贴阶段，检查是否有非占位符、非 painPoint 自动填入的实质内容
+    if (stage === 'idea') {
+      try {
+        const notes = JSON.parse(trimmed) as Array<{ content?: string }>;
+        if (!Array.isArray(notes) || notes.length === 0) return false;
+        const placeholders = [
+          '描述你想解决的核心问题...',
+          '谁会使用这个产品？',
+          '用户在什么情况下会用？',
+          '简述核心功能...',
+          '与现有方案相比，你的优势是什么？',
+          '点击编辑...',
+        ];
+        const painPointTrimmed = project.painPoint.trim();
+        return notes.some((note) => {
+          const noteContent = note.content?.trim() ?? '';
+          if (!noteContent) return false;
+          // painPoint 自动填入第一个 note，不算用户主动填写的内容
+          if (noteContent === painPointTrimmed) return false;
+          // 排除占位符文本
+          return !placeholders.some((p) => noteContent.includes(p));
+        });
+      } catch {
+        return false;
+      }
+    }
+
+    // validate: 验证阶段，检查是否有已验证/失败/进行中的项，或已有决策
+    if (stage === 'validate') {
+      try {
+        const data = JSON.parse(trimmed) as {
+          items?: Array<{ status?: string }>;
+          decision?: string;
+        };
+        const items = Array.isArray(data.items) ? data.items : [];
+        if (items.length === 0) return false;
+        return (
+          items.some((item) => item.status !== 'pending') || !!data.decision
+        );
+      } catch {
+        return false;
+      }
+    }
+
+    // prototype: 原型阶段，检查是否选择了平台或至少有一个功能
+    if (stage === 'prototype') {
+      try {
+        const data = JSON.parse(trimmed) as {
+          features?: unknown[];
+          selectedPlatform?: string;
+        };
+        const features = Array.isArray(data.features) ? data.features : [];
+        return features.length > 0 || !!data.selectedPlatform;
+      } catch {
+        return false;
+      }
+    }
+
+    // ship: 发布阶段，检查是否有勾选检查项、绑定平台、发布内容、用户反馈或上线地址
+    if (stage === 'ship') {
+      try {
+        const data = JSON.parse(trimmed) as {
+          checklist?: Record<string, boolean>;
+          platformBindings?: unknown[];
+          contents?: unknown[];
+          feedbacks?: unknown[];
+          launchUrl?: string;
+        };
+        const hasChecked = Object.values(data.checklist || {}).some((v) => v === true);
+        return (
+          hasChecked ||
+          (Array.isArray(data.platformBindings) && data.platformBindings.length > 0) ||
+          (Array.isArray(data.contents) && data.contents.length > 0) ||
+          (Array.isArray(data.feedbacks) && data.feedbacks.length > 0) ||
+          !!data.launchUrl
+        );
+      } catch {
+        return false;
+      }
+    }
+
+    // grow: 增长阶段，检查是否有内容日历条目
+    if (stage === 'grow') {
+      try {
+        const data = JSON.parse(trimmed) as { contentCalendar?: unknown[] };
+        return Array.isArray(data.contentCalendar) && data.contentCalendar.length > 0;
+      } catch {
+        return false;
+      }
+    }
+
+    // monetize: 变现阶段，检查是否有自定义定价、收入数据或漏斗数据
+    if (stage === 'monetize') {
+      try {
+        const data = JSON.parse(trimmed) as {
+          pricingTiers?: unknown[];
+          mrr?: number;
+          totalRevenue?: number;
+          paidUsers?: number;
+          funnel?: { visitors?: number; signups?: number; trials?: number; paid?: number };
+        };
+        const tiers = Array.isArray(data.pricingTiers) ? data.pricingTiers : [];
+        const hasCustomTiers = tiers.length > 3;
+        const hasRevenue = (data.mrr ?? 0) > 0 || (data.totalRevenue ?? 0) > 0 || (data.paidUsers ?? 0) > 0;
+        const funnel = data.funnel || {};
+        const hasFunnel =
+          (funnel.visitors ?? 0) > 0 ||
+          (funnel.signups ?? 0) > 0 ||
+          (funnel.trials ?? 0) > 0 ||
+          (funnel.paid ?? 0) > 0;
+        return hasCustomTiers || hasRevenue || hasFunnel;
+      } catch {
+        return false;
+      }
+    }
+
+    // 默认（富文本阶段）：只要内容非空即视为有意义
+    return true;
+  };
+
   const handleCompleteStage = async () => {
     if (isCurrentStageLocked || !currentStageData) return;
 
     const currentContent = currentStageData?.content || '';
-    const isContentEmpty = !currentContent || currentContent.trim() === '' || currentContent === '<p></p>';
+    const hasMeaningfulContent = isStageContentMeaningful(validCurrentStage, currentContent);
 
-    if (isContentEmpty && !showConfirmModal) {
+    if (!hasMeaningfulContent && !showConfirmModal && !forceProceedRef.current) {
       setShowConfirmModal(true);
       return;
     }
 
+    forceProceedRef.current = false;
     setIsCompleting(true);
     await completeStage(project.id, validCurrentStage);
     setIsCompleting(false);
@@ -552,6 +689,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   };
 
   const handleConfirmProceed = () => {
+    forceProceedRef.current = true;
     setShowConfirmModal(false);
     setTimeout(() => handleCompleteStage(), 0);
   };
@@ -709,188 +847,139 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
   return (
     <div className="h-[100dvh] flex flex-col overflow-hidden bg-brutal-bg text-brutal-text font-mono">
-      {/* Header - 可折叠 */}
+      {/* Header - 固定显示核心项目信息 */}
       <div className="border-b border-brutal-border bg-brutal-surface">
-        {isHeaderExpanded ? (
-          // 展开状态 - 显示完整信息
-          <div className="px-6 py-4">
-            {/* Top row: Back button + Title + Actions */}
-            <div className="flex items-center justify-between gap-4 mb-2">
-              <div className="flex items-center gap-4 flex-1 min-w-0">
+        <div className="px-6 py-4">
+          {/* Top row: Back button + Title + Actions */}
+          <div className="flex items-center justify-between gap-4 mb-2">
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+              <button
+                onClick={handleBackClick}
+                className="flex items-center gap-2 text-brutal-muted hover:text-brutal-text transition-colors flex-shrink-0"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="text-sm">{t('nav.back')}</span>
+              </button>
+              {isEditingTitle ? (
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  onBlur={saveTitle}
+                  onKeyDown={handleTitleKeyDown}
+                  autoFocus
+                  className="text-xl font-mono font-bold bg-brutal-bg border border-brutal-accent px-2 py-1 flex-1 min-w-0 focus:outline-none"
+                />
+              ) : (
                 <button
-                  onClick={handleBackClick}
-                  className="flex items-center gap-2 text-brutal-muted hover:text-brutal-text transition-colors flex-shrink-0"
+                  onClick={startEditTitle}
+                  className="flex items-center gap-2 group flex-1 min-w-0 text-left"
+                  title="点击修改项目名称"
                 >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span className="text-sm">{t('nav.back')}</span>
+                  <h1 className="text-xl font-mono font-bold truncate">
+                    {project.title}
+                  </h1>
+                  <Pencil className="w-3 h-3 text-brutal-muted opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                 </button>
-                {isEditingTitle ? (
-                  <input
-                    type="text"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    onBlur={saveTitle}
-                    onKeyDown={handleTitleKeyDown}
-                    autoFocus
-                    className="text-xl font-mono font-bold bg-brutal-bg border border-brutal-accent px-2 py-1 flex-1 min-w-0 focus:outline-none"
-                  />
-                ) : (
-                  <button
-                    onClick={startEditTitle}
-                    className="flex items-center gap-2 group flex-1 min-w-0 text-left"
-                    title="点击修改项目名称"
-                  >
-                    <h1 className="text-xl font-mono font-bold truncate">
-                      {project.title}
-                    </h1>
-                    <Pencil className="w-3 h-3 text-brutal-muted opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  onClick={() => setShowBlueprint(true)}
-                  className="btn-brutal h-9 flex items-center gap-2 text-brutal-accent border-brutal-accent"
-                  title="项目蓝图"
-                >
-                  <GitGraph className="w-4 h-4" />
-                  <span className="hidden sm:inline text-xs">蓝图</span>
-                </button>
-                <button
-                  onClick={() => setIsHeaderExpanded(false)}
-                  className="btn-brutal h-9 p-2"
-                  title="折叠头部"
-                >
-                  <ChevronUp className="w-4 h-4" />
-                </button>
-                {renderStatusButton()}
-                {project.status !== 'archived' && (
-                  <button
-                    onClick={() => handleStatusChange('archived')}
-                    className="btn-brutal h-9 focus-visible:ring-2 focus-visible:ring-brutal-accent focus-visible:outline-none"
-                  >
-                    <Archive className="w-4 h-4" />
-                  </button>
-                )}
-                <button
-                  onClick={openDeleteModal}
-                  className="btn-brutal h-9 flex items-center gap-2 border-brutal-warning text-brutal-warning"
-                  title="删除项目"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <ThemeSwitcher />
-                <button
-                  onClick={onLogout}
-                  className="btn-brutal h-9 flex items-center gap-2"
-                  title="Logout"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </div>
+              )}
             </div>
-
-            {/* Second row: Project ID + Status + Description */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-brutal-muted">// {t('project.id')}</span>
-                <span className="text-xs text-brutal-accent font-mono">{project.id.slice(0, 8).toUpperCase()}</span>
-                <span className={`text-xs px-2 py-0.5 border ml-2 ${
-                  project.status === 'active' ? 'border-brutal-success text-brutal-success' :
-                  project.status === 'paused' ? 'border-brutal-warning text-brutal-warning' :
-                  'border-brutal-muted text-brutal-muted'
-                }`}>
-                  {statusLabel}
-                </span>
-              </div>
-            </div>
-
-            {/* Description */}
-            <p className="text-sm text-brutal-muted font-mono mt-2">{project.painPoint}</p>
-          </div>
-        ) : (
-          // 折叠状态 - 单行显示
-          <div className="px-6 py-3">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => setShowBlueprint(true)}
+                className="btn-brutal h-9 flex items-center gap-2 text-brutal-accent border-brutal-accent"
+                title="项目蓝图"
+              >
+                <GitGraph className="w-4 h-4" />
+                <span className="hidden sm:inline text-xs">蓝图</span>
+              </button>
+              {renderStatusButton()}
+              {project.status !== 'archived' && (
                 <button
-                  onClick={handleBackClick}
-                  className="flex items-center gap-1 text-brutal-muted hover:text-brutal-text transition-colors flex-shrink-0"
+                  onClick={() => handleStatusChange('archived')}
+                  className="btn-brutal h-9 focus-visible:ring-2 focus-visible:ring-brutal-accent focus-visible:outline-none"
+                  title="归档项目"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <Archive className="w-4 h-4" />
                 </button>
-                {/* 当前阶段高亮显示 */}
-                <div className="flex items-center gap-2 border border-brutal-accent px-2 py-1">
-                  <span className="text-xs font-mono text-brutal-accent">
-                    {STAGE_NUMBERS[validCurrentStage]}
-                  </span>
-                  <span className="text-xs font-mono text-brutal-accent">
-                    {currentStageLabel}
-                  </span>
-                </div>
-                {isEditingTitle ? (
-                  <input
-                    type="text"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    onBlur={saveTitle}
-                    onKeyDown={handleTitleKeyDown}
-                    autoFocus
-                    className="text-base font-mono font-bold bg-brutal-bg border border-brutal-accent px-2 py-0.5 flex-1 min-w-0 focus:outline-none"
-                  />
-                ) : (
-                  <button
-                    onClick={startEditTitle}
-                    className="flex items-center gap-2 group flex-1 min-w-0 text-left"
-                    title="点击修改项目名称"
+              )}
+              <div className="relative" ref={moreMenuRef}>
+                <button
+                  onClick={() => setShowMoreMenu((v) => !v)}
+                  className="btn-brutal h-9 p-2"
+                  title="更多选项"
+                  aria-expanded={showMoreMenu}
+                  aria-haspopup="menu"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                {showMoreMenu && (
+                  <div
+                    className="absolute right-0 top-full mt-1 border-2 border-brutal-border bg-brutal-surface shadow-lg min-w-[160px] z-50"
+                    role="menu"
                   >
-                    <h1 className="text-base font-mono font-bold truncate">
-                      {project.title}
-                    </h1>
-                    <Pencil className="w-3 h-3 text-brutal-muted opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                  </button>
+                    <button
+                      onClick={() => {
+                        toggleTheme();
+                        setShowMoreMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm font-mono text-brutal-text hover:bg-brutal-surface-hover transition-colors"
+                      role="menuitem"
+                    >
+                      {isLight ? (
+                        <>
+                          <Moon className="w-4 h-4" />
+                          <span>切换深色</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sun className="w-4 h-4" />
+                          <span>切换浅色</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        onLogout();
+                        setShowMoreMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm font-mono text-brutal-text hover:bg-brutal-surface-hover transition-colors"
+                      role="menuitem"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>退出登录</span>
+                    </button>
+                    <div className="border-t border-brutal-border my-1" />
+                    <button
+                      onClick={() => {
+                        openDeleteModal();
+                        setShowMoreMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm font-mono text-brutal-warning hover:bg-brutal-warning/10 transition-colors"
+                      role="menuitem"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>删除项目</span>
+                    </button>
+                  </div>
                 )}
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  onClick={() => setShowBlueprint(true)}
-                  className="btn-brutal h-9 p-2 text-brutal-accent border-brutal-accent"
-                  title="项目蓝图"
-                >
-                  <GitGraph className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setIsHeaderExpanded(true)}
-                  className="btn-brutal h-9 p-2"
-                  title="展开头部"
-                >
-                  <Menu className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleStatusChange(project.status === 'active' ? 'paused' : 'active')}
-                  className="btn-brutal h-9 p-2"
-                >
-                  {project.status === 'active' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                </button>
-                <button
-                  onClick={onLogout}
-                  className="btn-brutal h-9 p-2"
-                  title="Logout"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={openDeleteModal}
-                  className="btn-brutal h-9 p-2 border-brutal-warning text-brutal-warning"
-                  title="删除项目"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <ThemeSwitcher />
               </div>
             </div>
           </div>
-        )}
+
+          {/* Second row: Project ID + Status + Pain Point */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs text-brutal-muted">// {t('project.id')}</span>
+            <span className="text-xs text-brutal-accent font-mono">{project.id.slice(0, 8).toUpperCase()}</span>
+            <span className={`text-xs px-2 py-0.5 border ${
+              project.status === 'active' ? 'border-brutal-success text-brutal-success' :
+              project.status === 'paused' ? 'border-brutal-warning text-brutal-warning' :
+              'border-brutal-muted text-brutal-muted'
+            }`}>
+              {statusLabel}
+            </span>
+            <span className="text-sm text-brutal-muted font-mono truncate">{project.painPoint}</span>
+          </div>
+        </div>
       </div>
 
       {/* Stage Flow - 包含阶段跳转、进度和提交按钮 */}
@@ -958,7 +1047,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 onDirtyChange={(d) => markDirty('monetize', d)}
               />
             ) : currentStageData ? (
-              <div className="h-full p-6 overflow-y-auto">
+              <div className="flex-1 min-h-0 p-6 overflow-y-auto">
                 <RichTextEditor
                   content={currentStageData.content || ''}
                   onChange={handleContentChange}
@@ -977,7 +1066,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
         {/* Right: AI Chat - 根据折叠状态动态调整宽度 */}
         <div
-          className={`bg-brutal-bg transition-all duration-300 ease-in-out flex-shrink-0 h-full ${
+          className={`bg-brutal-bg transition-all duration-300 ease-in-out flex-shrink-0 self-stretch ${
             isAIChatCollapsed ? 'w-12' : 'w-full sm:w-[320px] md:w-[380px] lg:w-[420px] max-w-[420px]'
           }`}
         >
