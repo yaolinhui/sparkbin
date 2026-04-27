@@ -50,7 +50,7 @@ export function IdeaSuggestModal({
   onOverwrite,
 }: IdeaSuggestModalProps) {
   const { t } = useI18n();
-  const [selectedMode, setSelectedMode] = useState<'merge' | 'overwrite' | null>(null);
+  const [selectedMode, setSelectedMode] = useState<'merge' | 'overwrite'>('merge');
   const [editedSuggestions, setEditedSuggestions] = useState<NoteSuggestion[]>([]);
   const [isApplying, setIsApplying] = useState(false);
 
@@ -218,17 +218,25 @@ export function IdeaSuggestModal({
                   onClick={() => setSelectedMode('merge')}
                   className={`flex-1 p-3 border text-left transition-colors ${
                     selectedMode === 'merge'
-                      ? 'border-brutal-accent bg-brutal-accent/10'
+                      ? 'border-brutal-accent bg-brutal-accent/15'
                       : 'border-brutal-border hover:border-brutal-text'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <div
-                      className={`w-3 h-3 border ${
-                        selectedMode === 'merge' ? 'bg-brutal-accent border-brutal-accent' : 'border-brutal-border'
+                      className={`w-4 h-4 border flex items-center justify-center ${
+                        selectedMode === 'merge'
+                          ? 'bg-brutal-accent border-brutal-accent text-brutal-bg'
+                          : 'border-brutal-border'
                       }`}
-                    />
-                    <span className="text-sm font-mono font-bold">智能合并</span>
+                    >
+                      {selectedMode === 'merge' && (
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M1 5L4 8L9 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square"/>
+                        </svg>
+                      )}
+                    </div>
+                    <span className={`text-sm font-mono font-bold ${selectedMode === 'merge' ? 'text-brutal-accent' : ''}`}>智能合并</span>
                   </div>
                   <p className="text-xs font-mono text-brutal-muted">
                     只覆盖内容为占位符的便利贴，保留你已编辑的内容
@@ -239,17 +247,25 @@ export function IdeaSuggestModal({
                   onClick={() => setSelectedMode('overwrite')}
                   className={`flex-1 p-3 border text-left transition-colors ${
                     selectedMode === 'overwrite'
-                      ? 'border-brutal-accent bg-brutal-accent/10'
+                      ? 'border-brutal-accent bg-brutal-accent/15'
                       : 'border-brutal-border hover:border-brutal-text'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <div
-                      className={`w-3 h-3 border ${
-                        selectedMode === 'overwrite' ? 'bg-brutal-accent border-brutal-accent' : 'border-brutal-border'
+                      className={`w-4 h-4 border flex items-center justify-center ${
+                        selectedMode === 'overwrite'
+                          ? 'bg-brutal-accent border-brutal-accent text-brutal-bg'
+                          : 'border-brutal-border'
                       }`}
-                    />
-                    <span className="text-sm font-mono font-bold">全部覆盖</span>
+                    >
+                      {selectedMode === 'overwrite' && (
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M1 5L4 8L9 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square"/>
+                        </svg>
+                      )}
+                    </div>
+                    <span className={`text-sm font-mono font-bold ${selectedMode === 'overwrite' ? 'text-brutal-accent' : ''}`}>全部覆盖</span>
                   </div>
                   <p className="text-xs font-mono text-brutal-muted">
                     用 AI 建议替换所有便利贴内容（包括你已编辑的）
