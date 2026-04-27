@@ -37,6 +37,7 @@ interface ValidateStageProps {
   onUpdateContent: (content: string) => Promise<void>;
   isLocked: boolean;
   onToggleLock?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 // AI 宠物 ASCII 形象
@@ -82,13 +83,18 @@ const TOOL_TYPES = {
   competitor: { label: '竞品', icon: Target, color: 'text-brutal-muted' },
 };
 
-export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock }: ValidateStageProps) {
+export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock, onDirtyChange }: ValidateStageProps) {
   const { t } = useI18n();
   const [data, setData] = useState<ValidationData>({ items: [], tools: [] });
   const [showAddItem, setShowAddItem] = useState(false);
   const [showDecisionModal, setShowDecisionModal] = useState(false);
   const [showResultModal, setShowResultModal] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<string | null>(null);
+
+  useEffect(() => {
+    onDirtyChange?.(editingItem !== null || showAddItem);
+  }, [editingItem, showAddItem, onDirtyChange]);
+
   const [generatingTool, setGeneratingTool] = useState<string | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);

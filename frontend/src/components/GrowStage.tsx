@@ -21,6 +21,7 @@ interface GrowStageProps {
   onUpdateContent: (content: string) => Promise<void>;
   isLocked: boolean;
   onToggleLock?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 // AI 宠物 ASCII 形象
@@ -47,7 +48,7 @@ const CHANNELS: { key: ChannelKey; label: string; icon: string }[] = [
   { key: 'producthunt', label: 'ProductHunt', icon: 'P' },
 ];
 
-export function GrowStage({ project, onUpdateContent, isLocked, onToggleLock }: GrowStageProps) {
+export function GrowStage({ project, onUpdateContent, isLocked, onToggleLock, onDirtyChange }: GrowStageProps) {
   const { t } = useI18n();
   const [data, setData] = useState<GrowData>({
     contentCalendar: [],
@@ -57,6 +58,11 @@ export function GrowStage({ project, onUpdateContent, isLocked, onToggleLock }: 
   const [currentWeek, setCurrentWeek] = useState(0);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showAddContent, setShowAddContent] = useState(false);
+
+  useEffect(() => {
+    onDirtyChange?.(showAddContent);
+  }, [showAddContent, onDirtyChange]);
+
   const [generatingContent, setGeneratingContent] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);

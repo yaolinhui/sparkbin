@@ -30,6 +30,7 @@ interface PrototypeStageProps {
   onUpdateContent: (content: string) => Promise<void>;
   isLocked: boolean;
   onToggleLock?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 // AI 宠物 ASCII 形象
@@ -80,7 +81,7 @@ const DEFAULT_TEMPLATES: DesignTemplate[] = [
   },
 ];
 
-export function PrototypeStage({ project, onUpdateContent, isLocked, onToggleLock }: PrototypeStageProps) {
+export function PrototypeStage({ project, onUpdateContent, isLocked, onToggleLock, onDirtyChange }: PrototypeStageProps) {
   const { t } = useI18n();
   const [data, setData] = useState<PrototypeData>({
     features: [],
@@ -89,6 +90,11 @@ export function PrototypeStage({ project, onUpdateContent, isLocked, onToggleLoc
   const [currentStep, setCurrentStep] = useState<'platform' | 'template' | 'features'>('platform');
   const [generatingPrompt, setGeneratingPrompt] = useState(false);
   const [showAddFeature, setShowAddFeature] = useState(false);
+
+  useEffect(() => {
+    onDirtyChange?.(showAddFeature);
+  }, [showAddFeature, onDirtyChange]);
+
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [isGeneratingSuggestion, setIsGeneratingSuggestion] = useState(false);
 

@@ -27,6 +27,7 @@ interface MonetizeStageProps {
   onUpdateContent: (content: string) => Promise<void>;
   isLocked: boolean;
   onToggleLock?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 // AI 宠物 ASCII 形象
@@ -58,7 +59,7 @@ const TEST_CARDS = [
   { number: '5555 5555 5555 4444', brand: 'Mastercard', result: '成功支付' },
 ];
 
-export function MonetizeStage({ project, onUpdateContent, isLocked, onToggleLock }: MonetizeStageProps) {
+export function MonetizeStage({ project, onUpdateContent, isLocked, onToggleLock, onDirtyChange }: MonetizeStageProps) {
   const { t } = useI18n();
   const [data, setData] = useState<MonetizeData>({
     strategy: 'freemium',
@@ -70,6 +71,11 @@ export function MonetizeStage({ project, onUpdateContent, isLocked, onToggleLock
     testMode: false,
   });
   const [showAddTier, setShowAddTier] = useState(false);
+
+  useEffect(() => {
+    onDirtyChange?.(showAddTier);
+  }, [showAddTier, onDirtyChange]);
+
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);

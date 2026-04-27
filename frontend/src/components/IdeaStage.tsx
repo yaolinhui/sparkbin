@@ -35,6 +35,7 @@ interface IdeaStageProps {
   onUpdateContent: (content: string) => Promise<void>;
   isLocked: boolean;
   onToggleLock?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 // 颜色配置
@@ -168,10 +169,15 @@ function SortableNote({
   );
 }
 
-export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock }: IdeaStageProps) {
+export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, onDirtyChange }: IdeaStageProps) {
   const { t } = useI18n();
   const [notes, setNotes] = useState<StickyNote[]>([]);
   const [editingNote, setEditingNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    onDirtyChange?.(editingNote !== null);
+  }, [editingNote, onDirtyChange]);
+
   const [editContent, setEditContent] = useState('');
   const [editTitle, setEditTitle] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);

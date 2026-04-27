@@ -27,6 +27,7 @@ interface ShipStageProps {
   onUpdateContent: (content: string) => Promise<void>;
   isLocked: boolean;
   onToggleLock?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 const CHECKLIST_ITEMS = [
@@ -55,7 +56,7 @@ function getContrastText(hexColor: string): string {
   return luminance > 0.5 ? '#1a1a1a' : '#ffffff';
 }
 
-export function ShipStage({ project, onUpdateContent, isLocked, onToggleLock }: ShipStageProps) {
+export function ShipStage({ project, onUpdateContent, isLocked, onToggleLock, onDirtyChange }: ShipStageProps) {
   const { t } = useI18n();
   const [data, setData] = useState<ShipData>({
     checklist: { domain: false, ssl: false, payment: false, analytics: false, socialMedia: false },
@@ -66,6 +67,11 @@ export function ShipStage({ project, onUpdateContent, isLocked, onToggleLock }: 
   });
   const [generatingContent, setGeneratingContent] = useState<string | null>(null);
   const [showAddFeedback, setShowAddFeedback] = useState(false);
+
+  useEffect(() => {
+    onDirtyChange?.(showAddFeedback);
+  }, [showAddFeedback, onDirtyChange]);
+
   const [editingMetrics, setEditingMetrics] = useState(false);
   const [conversionMessage, setConversionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 

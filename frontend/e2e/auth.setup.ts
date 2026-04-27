@@ -12,12 +12,15 @@ setup('authenticate', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
 
-  // 如果显示未登录占位页，先点击 LOGIN 打开弹窗
-  const loginBtn = page.locator('button').filter({ hasText: 'LOGIN' });
-  if (await loginBtn.isVisible().catch(() => false)) {
-    await loginBtn.click();
+  // 如果显示未登录占位页，先点击"进入系统"打开登录弹窗
+  const enterBtn = page.locator('button').filter({ hasText: '进入系统' });
+  if (await enterBtn.isVisible().catch(() => false)) {
+    await enterBtn.click();
     await page.waitForTimeout(500);
   }
+
+  // 如果弹窗内有 LOGIN 按钮（登录表单已显示），无需再次点击
+  const loginBtn = page.locator('button').filter({ hasText: 'LOGIN' });
 
   // 等待登录表单出现
   const usernameInput = page.locator('input[type="text"]').first();
@@ -26,7 +29,15 @@ setup('authenticate', async ({ page }) => {
   const hasLoginForm = await usernameInput.isVisible().catch(() => false);
   if (!hasLoginForm) {
     // 已经登录了（可能从上次session复用），直接保存state
-    await page.context().storageState({ path: authFile });
+    const localStorageData = await page.evaluate(() => {
+      return {
+        token: localStorage.getItem('sparkbin_token') || '',
+        refreshToken: localStorage.getItem('sparkbin_refresh_token') || '',
+        role: localStorage.getItem('sparkbin_role') || '',
+        userId: localStorage.getItem('sparkbin_user_id') || '',
+      };
+    });
+    writeAuthState(localStorageData);
     return;
   }
 
@@ -69,7 +80,7 @@ setup('authenticate', async ({ page }) => {
     return token;
   }, { timeout: 10000 }).toBeTruthy();
 
-  // 手动构造包含 localStorage 的 storageState（Playwright 不会自动捕获 localStorage）
+  // 获取 localStorage 数据并保存到 storageState 文件
   const localStorageData = await page.evaluate(() => {
     return {
       token: localStorage.getItem('sparkbin_token') || '',
@@ -79,35 +90,29 @@ setup('authenticate', async ({ page }) => {
     };
   });
 
+  writeAuthState(localStorageData);
+});
+
+function writeAuthState(data: {
+  token: string;
+  refreshToken: string;
+  role: string;
+  userId: string;
+}) {
+  fs.mkdirSync('playwright/.auth', { recursive: true });
   const storageState = {
     cookies: [],
     origins: [
       {
         origin: 'http://localhost:5173',
         localStorage: [
-          { name: 'sparkbin_token', value: localStorageData.token },
-          { name: 'sparkbin_refresh_token', value: localStorageData.refreshToken },
-          { name: 'sparkbin_role', value: localStorageData.role },
-          { name: 'sparkbin_user_id', value: localStorageData.userId },
+          { name: 'sparkbin_token', value: data.token },
+          { name: 'sparkbin_refresh_token', value: data.refreshToken },
+          { name: 'sparkbin_role', value: data.role },
+          { name: 'sparkbin_user_id', value: data.userId },
         ],
       },
     ],
   };
-
-  const fs = await import('fs');
-  fs.mkdirSync('playwright/.auth', { recursive: true });
   fs.writeFileSync(authFile, JSON.stringify(storageState, null, 2));
-});
-
-setup.afterAll(async () => {
-  // Playwright 在 context 关闭时会自动覆盖 storageState 文件，
-  // 但由于 localStorage 未被自动捕获，我们需要在 afterAll 中重新写入
-  const fs = await import('fs');
-  if (!fs.existsSync(authFile)) return;
-
-  const content = JSON.parse(fs.readFileSync(authFile, 'utf-8'));
-  if (!content.origins || content.origins.length === 0 || !content.origins[0].localStorage) {
-    // 如果 Playwright 自动保存的文件没有 localStorage，则不做任何事
-    // （说明 Playwright 仍然没有捕获 localStorage，需要其他方案）
-  }
-});
+}

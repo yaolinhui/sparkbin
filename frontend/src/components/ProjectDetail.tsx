@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Pause, Play, Archive, LogOut, ChevronUp, Menu, GitGraph, Trash2, Pencil } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
@@ -349,6 +349,48 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const [showBlueprint, setShowBlueprint] = useState(false); // 项目蓝图显示状态
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState('');
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const pendingNavRef = useRef<(() => void) | null>(null);
+  const dirtyEditorsRef = useRef<Set<string>>(new Set());
+
+  const markDirty = useCallback((key: string, dirty: boolean) => {
+    if (dirty) {
+      dirtyEditorsRef.current.add(key);
+    } else {
+      dirtyEditorsRef.current.delete(key);
+    }
+  }, []);
+
+  const handleBackClick = () => {
+    if (dirtyEditorsRef.current.size > 0 || isEditingTitle) {
+      pendingNavRef.current = () => navigate('/');
+      setShowLeaveConfirm(true);
+    } else {
+      navigate('/');
+    }
+  };
+
+  const confirmLeave = () => {
+    setShowLeaveConfirm(false);
+    pendingNavRef.current?.();
+    pendingNavRef.current = null;
+  };
+
+  const cancelLeave = () => {
+    setShowLeaveConfirm(false);
+    pendingNavRef.current = null;
+  };
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (dirtyEditorsRef.current.size > 0 || isEditingTitle) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isEditingTitle]);
 
   // 如果没有项目数据或 stages 为空，获取完整项目详情
   useEffect(() => {
@@ -676,7 +718,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
             <div className="flex items-center justify-between gap-4 mb-2">
               <div className="flex items-center gap-4 flex-1 min-w-0">
                 <button
-                  onClick={() => navigate('/')}
+                  onClick={handleBackClick}
                   className="flex items-center gap-2 text-brutal-muted hover:text-brutal-text transition-colors flex-shrink-0"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -772,7 +814,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <button
-                  onClick={() => navigate('/')}
+                  onClick={handleBackClick}
                   className="flex items-center gap-1 text-brutal-muted hover:text-brutal-text transition-colors flex-shrink-0"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -873,6 +915,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 onUpdateContent={handleContentChange}
                 isLocked={isDisplayStageLocked}
                 onToggleLock={handleReopenStage}
+                onDirtyChange={(d) => markDirty('idea', d)}
               />
             ) : displayStage === 'validate' ? (
               <ValidateStage
@@ -880,6 +923,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 onUpdateContent={handleContentChange}
                 isLocked={isDisplayStageLocked}
                 onToggleLock={handleReopenStage}
+                onDirtyChange={(d) => markDirty('validate', d)}
               />
             ) : displayStage === 'prototype' ? (
               <PrototypeStage
@@ -887,6 +931,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 onUpdateContent={handleContentChange}
                 isLocked={isDisplayStageLocked}
                 onToggleLock={handleReopenStage}
+                onDirtyChange={(d) => markDirty('prototype', d)}
               />
             ) : displayStage === 'ship' ? (
               <ShipStage
@@ -894,6 +939,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 onUpdateContent={handleContentChange}
                 isLocked={isDisplayStageLocked}
                 onToggleLock={handleReopenStage}
+                onDirtyChange={(d) => markDirty('ship', d)}
               />
             ) : displayStage === 'grow' ? (
               <GrowStage
@@ -901,6 +947,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 onUpdateContent={handleContentChange}
                 isLocked={isDisplayStageLocked}
                 onToggleLock={handleReopenStage}
+                onDirtyChange={(d) => markDirty('grow', d)}
               />
             ) : displayStage === 'monetize' ? (
               <MonetizeStage
@@ -908,6 +955,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 onUpdateContent={handleContentChange}
                 isLocked={isDisplayStageLocked}
                 onToggleLock={handleReopenStage}
+                onDirtyChange={(d) => markDirty('monetize', d)}
               />
             ) : currentStageData ? (
               <div className="h-full p-6 overflow-y-auto">
@@ -1160,6 +1208,20 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
             setShowBlueprint(false);
           }}
         />
+      )}
+
+      {/* Leave Confirmation Modal */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
+          <div className="border-2 border-brutal-warning bg-brutal-surface p-6 max-w-md w-full mx-4">
+            <p className="text-brutal-warning font-mono text-sm mb-2">{'>'} WARNING</p>
+            <p className="text-brutal-text font-mono mb-6">当前有未保存的内容，确定要离开吗？</p>
+            <div className="flex gap-3">
+              <button onClick={cancelLeave} className="flex-1 btn-brutal h-9">继续编辑</button>
+              <button onClick={confirmLeave} className="flex-1 btn-brutal-primary h-9">确定离开</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
