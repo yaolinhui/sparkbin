@@ -16,9 +16,7 @@ def list_operation_logs(
     db: Session = Depends(get_db)
 ):
     """获取操作日志"""
-    logs = db.query(OperationLog).filter(
-        OperationLog.user_id == current_user.id
-    ).order_by(
+    logs = db.query(OperationLog).order_by(
         OperationLog.created_at.desc()
     ).limit(limit).all()
 

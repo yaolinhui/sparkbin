@@ -13,11 +13,14 @@ class EncryptionManager:
         # 确保密钥是有效的 Fernet 密钥（32 字节 base64）
         if len(key) < 32:
             # 如果密钥不够长，用 PBKDF2 派生
+            # 使用基于密钥的派生 salt（每个密钥不同，但确定性强）
+            import hashlib
+            derived_salt = hashlib.sha256(b'sparkbin_v2_' + key.encode()).digest()[:16]
             kdf = PBKDF2HMAC(
                 algorithm=hashes.SHA256(),
                 length=32,
-                salt=b'sparkbin_salt_2024',
-                iterations=100000,
+                salt=derived_salt,
+                iterations=600000,
             )
             key = base64.urlsafe_b64encode(kdf.derive(key.encode()))
         elif len(key) != 44:  # Fernet 密钥 base64 编码后是 44 字节

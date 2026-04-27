@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, ChevronRight, ChevronLeft, Maximize2, X } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { SafeMarkdown } from './SafeMarkdown';
 import { useI18n } from '../i18n/hooks';
 import { aiService, aiApi, type StageStreamMeta } from '../services/ai';
 import { getUserId, authApi, isAuthenticated } from '../services/api';
@@ -523,7 +523,7 @@ export function AIChat({
                         </div>
                       ) : (
                         <div className={`${markdownStyles} min-w-0`}>
-                          <ReactMarkdown>{message.content}</ReactMarkdown>
+                          <SafeMarkdown content={message.content} />
                         </div>
                       )}
                     </div>
@@ -770,7 +770,7 @@ export function AIChat({
                     </div>
                   ) : (
                     <div className={`${markdownStyles} min-w-0`}>
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                      <SafeMarkdown content={message.content} />
                     </div>
                   )}
                   {message.id !== 'welcome' && message.content.trim() && (

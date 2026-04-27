@@ -270,8 +270,6 @@ def get_me(
         "role": current_user.role.value,
         "preferred_model": current_user.preferred_model.value if current_user.preferred_model else None,
         "subscription_status": current_user.subscription_status or "inactive",
-        "stripe_customer_id": current_user.stripe_customer_id,
-        "stripe_subscription_id": current_user.stripe_subscription_id,
         "current_tier_id": current_user.current_tier_id,
         "pet_config": current_user.pet_config,
         "theme_preference": current_user.theme_preference or "dark",

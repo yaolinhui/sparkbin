@@ -229,10 +229,7 @@ def init_default_user(db: Session):
     db.commit()
 
     if settings.default_username == "admin" and settings.default_password == "admin":
-        import warnings
-        warnings.warn(
-            "SECURITY WARNING: Default user is using admin/admin. "
-            "Please change the default credentials via environment variables.",
-            RuntimeWarning,
-            stacklevel=2
+        raise ValueError(
+            "SECURITY ERROR: Default user is using admin/admin. "
+            "Please change the default credentials via environment variables before starting the application."
         )

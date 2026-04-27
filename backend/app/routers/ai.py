@@ -293,12 +293,8 @@ async def chat_completion(
 
             if not selected_chunks or selected_chunks[-1].strip() != "data: [DONE]":
                 yield "data: [DONE]\n\n"
-        except Exception as e:
-            import sys
-            error_type = type(e).__name__
-            error_msg = str(e) or f"({error_type})"
-            error_data = json.dumps({"error": f"{error_type}: {error_msg}"})
-            sys.stderr.write(f"DEBUG: Caught {error_type}: {error_msg}\\n")
+        except Exception:
+            error_data = json.dumps({"error": "AI 服务暂时不可用，请稍后重试"})
             yield f"data: {error_data}\n\n"
             yield "data: [DONE]\n\n"
 
@@ -412,7 +408,9 @@ def list_call_logs(
     db: Session = Depends(get_db)
 ):
     """获取 AI 调用日志"""
-    logs = db.query(AICallLog).order_by(
+    logs = db.query(AICallLog).filter(
+        AICallLog.user_id == current_user.id
+    ).order_by(
         AICallLog.created_at.desc()
     ).limit(limit).all()
 

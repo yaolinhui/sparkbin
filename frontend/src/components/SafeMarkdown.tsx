@@ -29,12 +29,7 @@ export function SafeMarkdown({ content, className }: SafeMarkdownProps): ReactNo
               target="_blank"
               rel="noopener noreferrer nofollow"
               onClick={() => {
-                // 可选：添加确认对话框处理外部链接
-                const href = props.href;
-                if (href && !href.startsWith('/') && !href.startsWith('#')) {
-                  // 外部链接，可以添加额外的安全检查
-                  console.log(`Opening external link: ${href}`);
-                }
+                // 外部链接处理（已移除调试日志）
               }}
             />
           );

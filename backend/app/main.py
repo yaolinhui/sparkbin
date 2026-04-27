@@ -57,10 +57,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         )
         response.headers["Content-Security-Policy"] = csp
 
-        # HSTS（仅在 HTTPS 环境下生效；开发环境可注释或设为 0）
-        # 此处设为 0 秒以避免开发环境强制 HTTPS 导致无法访问
-        # 生产环境部署时：改为 "max-age=31536000; includeSubDomains; preload"
-        response.headers["Strict-Transport-Security"] = "max-age=0"
+        # HSTS（通过环境变量控制，生产环境启用）
+        hsts_max_age = getattr(settings, 'hsts_max_age', 0)
+        if hsts_max_age and hsts_max_age > 0:
+            response.headers["Strict-Transport-Security"] = f"max-age={hsts_max_age}; includeSubDomains; preload"
 
         return response
 
@@ -147,12 +147,18 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 
 # 安全响应头中间件
 app.add_middleware(SecurityHeadersMiddleware)
+
+# 可信 Host 中间件（防止 Host Header 攻击）
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["*"] if settings.debug else ["sparkbin.dev", "*.sparkbin.dev", "localhost"],
+)
 
 # 注册路由
 app.include_router(auth.router)
