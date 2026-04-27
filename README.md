@@ -19,21 +19,25 @@ Most projects die because nobody wants them. SparkBin forces you to validate you
 
 ## Features
 
-- **AI Pet** — A customizable AI companion (cat/robot/panda/fox) that coaches you through each stage with personalized personality (gentle/rational/zen/sharp)
+- **AI Pet** — A customizable AI companion (10 pets, 4 personalities) that coaches you through each stage with context-aware dialogue. Config persists across sessions
 - **Structured Validation** — Kanban-style validation board with GO/NO-GO gates. No more "build first, validate never"
-- **Brutalist UI** — Zero border-radius, high contrast, JetBrains Mono typography. Designed for developers who are tired of soft SaaS aesthetics
-- **Built-in Monetization Playground** — Test your own pricing models with real Stripe checkout flows (test mode)
+- **Brutalist UI** — Zero border-radius, high contrast, JetBrains Mono typography. Dark/Light theme with system preference detection
+- **Built-in Monetization Playground** — Test pricing models with real Stripe checkout flows (test mode). MRR tracking and conversion funnel visualization
 - **GitHub Backup** — Sync project data to your own repository. Your data, your control
-- **Multi-language** — English and Chinese support
-- **Project Blueprint** — Health dashboard showing completion rates, blockers, overdue stages, and actionable next steps
+- **Multi-language** — English and Chinese (i18n with localStorage persistence)
+- **Project Blueprint** — Health dashboard showing completion rates, blockers, overdue stages, timeline comparison, and actionable next steps
+- **Multi-Auth** — Local JWT (with access/refresh token rotation), Google OAuth, GitHub OAuth, plus email registration with verification
+- **Feature Gating** — Free/Pro/Team tiers with configurable limits (projects count, AI calls per month)
 
 ## Tech Stack
 
-- **Backend**: Python 3.11+, FastAPI, SQLAlchemy, SQLite/PostgreSQL
-- **Frontend**: React 18, Vite, TypeScript, Tailwind CSS
+- **Backend**: Python 3.11+, FastAPI, SQLAlchemy 2.0, Alembic, SQLite/PostgreSQL
+- **Frontend**: React 18, Vite, TypeScript, Tailwind CSS, Zustand
 - **AI Proxy**: DeepSeek, Kimi, Doubao, OpenAI (unified backend proxy with encrypted key storage)
-- **Payments**: Stripe (optional, for Cloud version)
-- **Auth**: JWT with access/refresh token rotation, bcrypt, login audit logs, rate limiting
+- **Payments**: Stripe Test Mode (optional)
+- **Auth**: JWT with access/refresh token rotation, bcrypt, rate limiting, login audit logs
+- **OAuth**: Google, GitHub
+- **Email**: Resend (optional, for registration/verification)
 
 ## Quick Start
 
@@ -81,7 +85,28 @@ Self-hosted users have no limits — you bring your own AI API keys.
 
 ## Screenshots
 
-*TODO: Add screenshots of each stage*
+### Project Board
+Terminal-style dashboard showing all projects with status filters (Active / Paused / Archived), metrics bar, and AI pet companion.
+
+### Stage Editor — Idea Phase
+Sticky-note wall with drag-and-drop sorting. Five dimensions: pain point, target user, use case, solution, differentiation. Color-coded notes with AI suggestion integration.
+
+### Stage Editor — Validate Phase
+Three-column kanban board (Pending / In Progress / Validated) with GO/NO-GO decision gates. Validation tools: surveys, interviews, community posts, competitor analysis.
+
+### Stage Editor — Prototype Phase
+Platform selector (Web / iOS / Android / Desktop), feature list with P0/P1/P2 prioritization, design prompt generation via AI.
+
+### Stage Editor — Ship Phase
+Launch readiness checklist, multi-platform copy generation (Xiaohongshu, Twitter, ProductHunt, V2EX, Jike), user feedback collection with star ratings.
+
+### Stage Editor — Grow Phase
+Weekly / monthly content calendar, channel performance panel (6 channels with conversion tracking), AI-generated content titles.
+
+### Stage Editor — Monetize Phase
+MRR dashboard, pricing tier cards, conversion funnel visualization, Stripe Test Mode checkout simulation.
+
+> To add your own screenshots, run the app locally and capture each stage. Place images in `docs/assets/` and update the paths above.
 
 ## Contributing
 

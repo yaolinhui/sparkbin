@@ -27,12 +27,24 @@ npm install
 npm run dev
 ```
 
+### Running Tests
+
+```bash
+# E2E tests (Playwright)
+cd frontend
+npx playwright test
+
+# TypeScript type checking
+cd frontend && npx tsc --noEmit
+```
+
 ### Before Submitting a PR
 
-1. Ensure the backend starts without errors
+1. Ensure the backend starts without errors: `cd backend && python start.py`
 2. Ensure frontend TypeScript compiles: `cd frontend && npx tsc --noEmit`
-3. Test your changes manually in the browser
-4. Update documentation if your change affects setup or usage
+3. Run E2E tests if your change affects UI flows: `cd frontend && npx playwright test`
+4. Test your changes manually in the browser
+5. Update documentation if your change affects setup or usage
 
 ## Code Style
 
@@ -40,6 +52,9 @@ npm run dev
 - **Backend**: Type hints, dependency injection for DB sessions, Result pattern over try-catch where appropriate
 - **No hardcoded secrets**: All API keys, passwords, and tokens must come from environment variables
 - **No emojis in code**: Unless explicitly requested
+- **No default exports**: Use named exports for all components and functions
+- **Dependency size check**: When adding new frontend dependencies, check bundle size impact
+- **Database migrations**: Do not modify existing migration files. Create new migrations with `alembic revision --autogenerate -m "description"`
 
 ## Commit Message Style
 

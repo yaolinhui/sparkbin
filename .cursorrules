@@ -1,0 +1,31 @@
+# SparkBin — Cursor AI 规则
+
+## 项目速览
+- **类型**：React 18 + Vite + TypeScript 前端，FastAPI + SQLAlchemy 后端
+- **定位**：面向 Indie Hacker 的 6 阶段项目生命周期管理工具（Idea → Monetize）
+- **风格**：Brutalist UI（零圆角、JetBrains Mono、高对比度）
+- **AI 模式**：后端代理（API Key 加密存储在后端，前端不直接接触 AI 提供商）
+
+## 代码规范（强制）
+- 使用**命名导出**（`export function Xxx`），禁止默认导出
+- TypeScript 类型优先使用 `interface`，而非 `type`
+- 错误处理优先使用 `Result<T, E>` 模式
+- Tailwind 类名中禁止硬编码颜色值，使用 `brutal-*` 主题变量
+- 新增 npm 依赖前需评估 bundle size 影响
+
+## 绝对禁止
+- 未经用户明确授权，**禁止停止任何运行中的服务**（后端、前端 dev server、数据库）
+- 禁止在代码中写死 API keys，必须使用 env 变量
+- 禁止修改 `backend/alembic/versions/` 下的已有迁移文件
+- 禁止运行 `rm -rf` 或 `git push --force`
+
+## 文件操作优先级
+1. 修改代码前，先读取相关文件，理解上下文
+2. 优先编辑现有文件，避免创建新文件（除非功能全新）
+3. 修改后必须验证：`npm run build`（前端）和 `python start.py`（后端）能正常启动
+
+## 文档交叉引用
+- 架构决策 → `docs/01-架构决策记录.md`
+- 项目全景 → `docs/00-项目全景.md`
+- 任务历史 → `docs/tasks/`
+- 分析报告 → `docs/analyses/`

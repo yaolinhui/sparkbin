@@ -1,0 +1,66 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- OAuth 2.0 login support (Google and GitHub)
+- Email registration and verification flow
+- Password reset via email
+- Free/Pro/Team tier feature gating system
+- AI pet configuration persistence (stored in database)
+- Login audit logging
+
+### Security
+- Rate limiting on login endpoints (5 attempts per 5 minutes per IP)
+- RBAC enforcement on `/admin/*` routes
+- Dual token rotation (access token + refresh token)
+- Password complexity validation
+- Security response headers (CSP, HSTS, X-Frame-Options, Referrer-Policy)
+- Default SECRET_KEY and ENCRYPTION_KEY validation at startup
+
+## [0.2.0] - 2026-04-27
+
+### Added
+- Feature gating: Free/Pro/Team subscription tiers
+- OAuth login (Google, GitHub)
+- Email registration with verification
+- Password reset flow
+- Login audit logs
+- AI pet config persistence to database
+- Theme preference persistence
+
+### Changed
+- Refactored CreateProjectModal with three-step wizard
+- Enhanced AI suggestion modal with visual mode selection
+- Upgraded authentication to dual-token (access + refresh) rotation
+
+### Fixed
+- AI call log user_id type mismatch (string vs UUID)
+- Frontend UI contrast and layout issues
+- ValidateStage drag-and-drop ghosting artifacts
+- AI fallback response formatting
+
+## [0.1.0] - 2026-04-13
+
+### Added
+- Six-stage Vibe workflow: Idea -> Validate -> Prototype -> Ship -> Grow -> Monetize
+- AI chat with SSE streaming (DeepSeek, Kimi, Doubao, OpenAI proxy)
+- Stage-native AI response format (Facts / Gaps / Actions / Sync JSON)
+- Kanban-style validation board with GO/NO-GO decision gates
+- Prototype planning with P0/P1/P2 prioritization
+- Multi-platform launch copy generation (Xiaohongshu, Twitter, ProductHunt, etc.)
+- Content calendar with weekly/monthly views
+- Monetization playground with Stripe Test Mode checkout
+- Project Blueprint health dashboard
+- GitHub backup sync
+- Brutalist UI design system (zero border-radius, JetBrains Mono)
+- Dark/Light theme switching
+- i18n (Chinese and English)
+- JWT authentication with bcrypt
+- Admin dashboard with operation logs
+- Playwright E2E test suite
