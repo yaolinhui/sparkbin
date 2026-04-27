@@ -54,7 +54,7 @@ setup('authenticate', async ({ page }) => {
   // 检查是否登录失败（密码已被修改）
   const errorVisible = await page.locator('text=/Unauthorized|用户名或密码错误/i').first().isVisible().catch(() => false);
   if (errorVisible) {
-    await page.locator('input[type="password"]').first().fill('Admin123');
+    await page.locator('input[type="password"]').first().fill('Admin123!');
     await loginButton.click();
     await page.waitForResponse(resp => resp.url().includes('/auth/login'), { timeout: 10000 }).catch(() => {});
     await page.waitForLoadState('networkidle');
@@ -67,8 +67,8 @@ setup('authenticate', async ({ page }) => {
     const modal = page.locator('div.fixed').filter({ has: changePasswordHeading });
     const pwdInputs = modal.locator('input[type="password"]');
     await pwdInputs.nth(0).fill('admin');
-    await pwdInputs.nth(1).fill('Admin123');
-    await pwdInputs.nth(2).fill('Admin123');
+    await pwdInputs.nth(1).fill('Admin123!');
+    await pwdInputs.nth(2).fill('Admin123!');
     await modal.locator('button[type="submit"]').click();
     await page.waitForResponse(resp => resp.url().includes('/auth/change-password'), { timeout: 10000 }).catch(() => {});
     await expect(changePasswordHeading).not.toBeVisible({ timeout: 10000 });
