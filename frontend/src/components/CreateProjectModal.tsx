@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ArrowRight, Check, Edit2 } from 'lucide-react';
+import { X, ArrowRight, Check, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
 import { useI18n } from '../i18n/hooks';
@@ -41,6 +41,14 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const [editingDimension, setEditingDimension] = useState<number | null>(null);
   const [editContent, setEditContent] = useState('');
 
+  // 流式输出实时文本（用于底部状态栏打字机效果）
+  const [streamOutput, setStreamOutput] = useState('');
+  // AI 预生成的标题和痛点（Step 1 流式调用时一并生成）
+  const [generatedTitle, setGeneratedTitle] = useState('');
+  const [generatedPainPoint, setGeneratedPainPoint] = useState('');
+  // 原始描述折叠状态
+  const [isOriginalExpanded, setIsOriginalExpanded] = useState(false);
+
   // ESC 关闭模态框
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -73,14 +81,30 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     setIsOptimizing(true);
     setError(null);
     setOriginalIdea(painPoint); // 保存用户原始输入
+    setStreamOutput('');
 
     try {
-      // 调用 AI 分析用户输入，生成理解维度
-      const result = await aiService.analyzeIdea(painPoint);
+      let fullText = '';
+      for await (const chunk of aiService.streamAnalyzeProject(painPoint)) {
+        fullText += chunk;
+        // 实时显示最后 180 字符，制造打字机效果
+        setStreamOutput(fullText.slice(-180));
+      }
 
-      // 解析 AI 返回的维度（2-5个）
-      const parsedDimensions = parseDimensions(result);
+      const parsed = aiService.parseProjectAnalysis(fullText);
+
+      // 设置维度
+      const parsedDimensions = parsed.dimensions.map((d, i) => ({
+        id: i + 1,
+        title: d.title,
+        content: d.content,
+        isCorrect: true,
+      }));
       setDimensions(parsedDimensions);
+
+      // 预生成标题和痛点（Step 2→3 直接从内存读取，无需二次 AI 调用）
+      setGeneratedTitle(parsed.title || painPoint.slice(0, 30));
+      setGeneratedPainPoint(parsed.painPoint || painPoint);
 
       setStep(2);
     } catch (err) {
@@ -88,79 +112,18 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
       setError(errorMessage);
     } finally {
       setIsOptimizing(false);
+      setStreamOutput('');
     }
   };
 
-  // 解析 AI 返回的理解维度
-  const parseDimensions = (result: string): UnderstandingDimension[] => {
-    const dimensions: UnderstandingDimension[] = [];
+  // Step 2: 确认理解正确，直接从预生成状态读取（0ms 等待）
+  const handleConfirmUnderstanding = () => {
+    const confirmedDimensions = dimensions.filter(d => d.isCorrect);
+    if (confirmedDimensions.length === 0) return;
 
-    // 尝试匹配多种格式：
-    // ① 标题: 内容
-    // 1. 标题: 内容
-    // 1．标题：内容
-    // - 标题: 内容
-    const lines = result.split('\n');
-    let id = 1;
-
-    for (const line of lines) {
-      if (id > 5) break;
-
-      // 匹配格式：序号 + 标题 + 分隔符 + 内容
-      const match = line.match(/^\s*(?:[①②③④⑤]|\d+[.．]|[-•])\s*([^:：]+)[:：]\s*(.+)$/);
-      if (match) {
-        dimensions.push({
-          id,
-          title: match[1].trim(),
-          content: match[2].trim(),
-          isCorrect: true,
-        });
-        id++;
-      }
-    }
-
-    // 如果没解析到，使用默认维度
-    if (dimensions.length === 0) {
-      return [
-        { id: 1, title: '核心痛点', content: result.slice(0, 50) || '用户遇到的主要问题', isCorrect: true },
-        { id: 2, title: '目标用户', content: '主要服务对象', isCorrect: true },
-        { id: 3, title: '使用场景', content: '什么时候会使用', isCorrect: true },
-      ];
-    }
-
-    return dimensions;
-  };
-
-  // Step 2: 确认理解正确，生成最终标题和描述
-  const handleConfirmUnderstanding = async () => {
-    setIsOptimizing(true);
-    setError(null);
-
-    try {
-      // 将确认后的维度传给 AI，生成优化后的标题和描述
-      const confirmedDimensions = dimensions.filter(d => d.isCorrect);
-      const result = await aiService.generateFromDimensions(painPoint, confirmedDimensions);
-
-      const titleMatch = result.match(/标题[:：]\s*(.+)/);
-      const painPointMatch = result.match(/痛点[:：]\s*(.+)/s);
-
-      if (titleMatch) {
-        setTitle(titleMatch[1].trim());
-      } else {
-        setTitle(painPoint.slice(0, 30));
-      }
-
-      if (painPointMatch) {
-        setPainPoint(painPointMatch[1].trim());
-      }
-
-      setStep(3);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : t('error.optimize_failed');
-      setError(errorMessage);
-    } finally {
-      setIsOptimizing(false);
-    }
+    setTitle(generatedTitle || painPoint.slice(0, 30));
+    setPainPoint(generatedPainPoint || painPoint);
+    setStep(3);
   };
 
   // 开始编辑某个维度
@@ -216,6 +179,10 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     setDimensions([]);
     setStep(1);
     setError(null);
+    setStreamOutput('');
+    setGeneratedTitle('');
+    setGeneratedPainPoint('');
+    setIsOriginalExpanded(false);
     onClose();
   };
 
@@ -229,10 +196,10 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   };
 
   return (
-    <div className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="border border-brutal-border bg-brutal-surface w-full max-w-2xl relative">
-        {/* 贪吃蛇加载动画 */}
-        <SnakeLoader isLoading={isOptimizing} text="AI 正在深度理解..." />
+    <div className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="border border-brutal-border bg-brutal-surface w-full max-w-2xl relative max-h-[90vh] flex flex-col">
+        {/* 边框贪吃蛇动效 */}
+        <SnakeLoader isLoading={isOptimizing} />
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-brutal-border">
           <div>
@@ -248,8 +215,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
+        {/* Content - 限制高度，内部滚动 */}
+        <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 120px)' }}>
           {error && (
             <div className="mb-4 p-3 border border-brutal-warning text-brutal-warning text-sm font-mono">
               <span className="text-brutal-warning">[{t('ai.error_prefix')}]</span> {error}
@@ -328,13 +295,31 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                 </div>
               </div>
 
-              {/* 用户原始描述 */}
+              {/* 用户原始描述 - 限制高度，支持折叠 */}
               <div>
-                <label className="block text-xs font-mono text-brutal-muted mb-2">
-                  你描述的是：
-                </label>
-                <div className="p-3 border border-brutal-border bg-brutal-bg font-mono text-sm text-brutal-text">
-                  {painPoint}
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-mono text-brutal-muted">
+                    你描述的是：
+                  </label>
+                  {originalIdea.length > 200 && (
+                    <button
+                      onClick={() => setIsOriginalExpanded(!isOriginalExpanded)}
+                      className="text-[10px] font-mono text-brutal-accent hover:text-brutal-text flex items-center gap-1"
+                    >
+                      {isOriginalExpanded ? (
+                        <><ChevronUp className="w-3 h-3" /> 收起</>
+                      ) : (
+                        <><ChevronDown className="w-3 h-3" /> 展开</>
+                      )}
+                    </button>
+                  )}
+                </div>
+                <div
+                  className={`p-3 border border-brutal-border bg-brutal-bg font-mono text-sm text-brutal-text whitespace-pre-wrap break-words overflow-y-auto ${
+                    isOriginalExpanded ? 'max-h-60' : 'max-h-40'
+                  }`}
+                >
+                  {originalIdea || painPoint}
                 </div>
               </div>
 
@@ -471,6 +456,14 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                 />
               </div>
 
+              {/* 原始想法已保存提示 */}
+              {originalIdea && (
+                <div className="flex items-center gap-2 text-[10px] font-mono text-brutal-success border border-brutal-success/30 px-2 py-1">
+                  <Check className="w-3 h-3" />
+                  原始想法已保存到数据库
+                </div>
+              )}
+
               <div className="flex gap-2">
                 <button
                   onClick={() => setStep(2)}
@@ -492,13 +485,23 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2 border-t border-brutal-border bg-brutal-bg">
-          <div className="text-xs font-mono text-brutal-muted">
-            {step === 1 && `> ${t('project.awaiting_input')}`}
-            {step === 2 && '> 确认 AI 理解是否正确...'}
-            {step === 3 && `> ${t('project.ready_to_commit')}`}
-            <span className="animate-blink">_</span>
-          </div>
+        <div className="px-4 py-2 border-t border-brutal-border bg-brutal-bg flex-shrink-0">
+          {isOptimizing ? (
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-brutal-accent border-t-transparent animate-spin flex-shrink-0" />
+              <div className="text-xs font-mono text-brutal-accent truncate flex-1">
+                {'>'} {streamOutput || 'AI 正在分析...'}
+                <span className="animate-blink">_</span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs font-mono text-brutal-muted">
+              {step === 1 && `> ${t('project.awaiting_input')}`}
+              {step === 2 && '> 确认 AI 理解是否正确...'}
+              {step === 3 && `> ${t('project.ready_to_commit')}`}
+              <span className="animate-blink">_</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

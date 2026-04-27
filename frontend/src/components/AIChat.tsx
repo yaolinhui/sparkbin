@@ -153,7 +153,7 @@ export function AIChat({
 
   const petConfigKey = `sparkbin_pet_config_${getUserId() || 'guest'}`;
 
-  // 加载宠物配置（优先从后端获取，回退到 localStorage）
+  // 加载宠物配置（已登录用户从后端获取，游客从 localStorage 获取）
   useEffect(() => {
     if (isAuthenticated()) {
       authApi.getMe()
@@ -167,18 +167,10 @@ export function AIChat({
             };
             setPetConfig(config);
             localStorage.setItem(petConfigKey, JSON.stringify(config));
-          } else {
-            const saved = localStorage.getItem(petConfigKey);
-            if (saved) {
-              setPetConfig(JSON.parse(saved));
-            }
           }
         })
         .catch(() => {
-          const saved = localStorage.getItem(petConfigKey);
-          if (saved) {
-            setPetConfig(JSON.parse(saved));
-          }
+          // 后端失败时静默处理，不回落到 localStorage
         });
     } else {
       const saved = localStorage.getItem(petConfigKey);

@@ -117,7 +117,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
   createProject: async (title: string, painPoint: string, originalIdea?: string) => {
     set({ isLoading: true, error: null });
     try {
-      const newProject = await projectsApi.create({ title, pain_point: painPoint, original_idea: originalIdea || painPoint });
+      const newProject = await projectsApi.create({ title, pain_point: painPoint, original_idea: originalIdea });
       const project = convertProjectDetailToProject(newProject);
       set((state) => ({
         projects: [project, ...state.projects],
@@ -139,7 +139,6 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
       const backendUpdates: Record<string, string | number | boolean | object> = {};
       if (updates.title !== undefined) backendUpdates.title = updates.title;
       if (updates.painPoint !== undefined) backendUpdates.pain_point = updates.painPoint;
-      if (updates.originalIdea !== undefined) backendUpdates.original_idea = updates.originalIdea;
       if (updates.status !== undefined) backendUpdates.status = updates.status;
       if (updates.currentStage !== undefined) backendUpdates.current_stage = updates.currentStage;
 

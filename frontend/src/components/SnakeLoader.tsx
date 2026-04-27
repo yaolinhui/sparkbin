@@ -2,23 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 
 interface SnakeLoaderProps {
   isLoading: boolean;
-  text?: string;
 }
 
-const LOADING_LOGS = [
-  '> Initializing neural context...',
-  '> Parsing user intent...',
-  '> Extracting key dimensions...',
-  '> Cross-referencing patterns...',
-  '> Synthesizing response...',
-  '> Finalizing output...',
-];
-
-export function SnakeLoader({ isLoading, text = 'AI 正在深度理解...' }: SnakeLoaderProps) {
-  const [progress, setProgress] = useState(0);
-  const [logs, setLogs] = useState<string[]>([]);
+export function SnakeLoader({ isLoading }: SnakeLoaderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
+  const [progress, setProgress] = useState(0);
 
   // 监听容器尺寸变化
   useEffect(() => {
@@ -53,8 +42,8 @@ export function SnakeLoader({ isLoading, text = 'AI 正在深度理解...' }: Sn
     const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
       const elapsed = timestamp - startTime;
-      // 3秒绕边框一圈
-      const newProgress = (elapsed / 3000) % 1;
+      // 2.5秒绕边框一圈
+      const newProgress = (elapsed / 2500) % 1;
       setProgress(newProgress);
       animationFrameId = requestAnimationFrame(animate);
     };
@@ -63,58 +52,42 @@ export function SnakeLoader({ isLoading, text = 'AI 正在深度理解...' }: Sn
     return () => cancelAnimationFrame(animationFrameId);
   }, [isLoading]);
 
-  // 终端日志逐行输出
-  useEffect(() => {
-    if (!isLoading) {
-      setLogs([]);
-      return;
-    }
-
-    setLogs([LOADING_LOGS[0]]);
-    let index = 0;
-    const interval = setInterval(() => {
-      index++;
-      if (index < LOADING_LOGS.length) {
-        setLogs(prev => [...prev.slice(-3), LOADING_LOGS[index]]);
-      }
-    }, 700);
-
-    return () => clearInterval(interval);
-  }, [isLoading]);
-
   if (!isLoading) return null;
 
   const { width, height } = size;
-  const padding = 3;
+  const padding = 2;
   const rectW = Math.max(0, width - padding * 2);
   const rectH = Math.max(0, height - padding * 2);
   const perimeter = rectW * 2 + rectH * 2;
 
-  // 主蛇身：周长的 22%，连续光带
-  const headLen = perimeter > 0 ? perimeter * 0.22 : 0;
-  const headGap = perimeter > 0 ? perimeter * 0.78 : 0;
+  // 主蛇身：周长的 18%，连续光带
+  const headLen = perimeter > 0 ? perimeter * 0.18 : 0;
+  const headGap = perimeter > 0 ? perimeter * 0.82 : 0;
   const headOffset = perimeter > 0 ? -progress * perimeter : 0;
 
-  // 拖尾光晕：周长的 45%，更宽更淡
-  const tailLen = perimeter > 0 ? perimeter * 0.45 : 0;
-  const tailGap = perimeter > 0 ? perimeter * 0.55 : 0;
+  // 拖尾光晕：周长的 40%，更宽更淡
+  const tailLen = perimeter > 0 ? perimeter * 0.4 : 0;
+  const tailGap = perimeter > 0 ? perimeter * 0.6 : 0;
   const tailOffset = perimeter > 0 ? -progress * perimeter : 0;
 
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 z-50 bg-brutal-bg/70 backdrop-blur-[2px] flex items-center justify-center"
+      className="absolute inset-0 z-40 pointer-events-none"
+      aria-hidden="true"
     >
-      {/* SVG 边框贪吃蛇 */}
+      {/* 轻微背景遮罩 */}
+      <div className="absolute inset-0 bg-brutal-bg/10" />
+
       {width > 0 && height > 0 && (
         <svg
-          className="absolute inset-0 pointer-events-none"
+          className="absolute inset-0"
           width={width}
           height={height}
         >
           <defs>
             <filter id="snake-glow" x="-100%" y="-100%" width="300%" height="300%">
-              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feGaussianBlur stdDeviation="3" result="blur" />
               <feFlood floodColor="var(--brutal-accent)" result="color" />
               <feComposite in="color" in2="blur" operator="in" result="shadow" />
               <feMerge>
@@ -140,7 +113,7 @@ export function SnakeLoader({ isLoading, text = 'AI 正在深度理解...' }: Sn
             stroke="var(--brutal-border)"
             strokeWidth={1}
             strokeDasharray="4 4"
-            opacity={0.4}
+            opacity={0.3}
           />
 
           {/* 拖尾光晕层：更宽、更淡 */}
@@ -151,12 +124,12 @@ export function SnakeLoader({ isLoading, text = 'AI 正在深度理解...' }: Sn
             height={rectH}
             fill="none"
             stroke="var(--brutal-accent)"
-            strokeWidth={10}
+            strokeWidth={8}
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeDasharray={`${tailLen} ${tailGap}`}
             strokeDashoffset={tailOffset}
-            opacity={0.25}
+            opacity={0.2}
             filter="url(#snake-glow)"
             style={{ transition: 'none' }}
           />
@@ -169,7 +142,7 @@ export function SnakeLoader({ isLoading, text = 'AI 正在深度理解...' }: Sn
             height={rectH}
             fill="none"
             stroke="url(#snake-gradient)"
-            strokeWidth={5}
+            strokeWidth={4}
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeDasharray={`${headLen} ${headGap}`}
@@ -181,64 +154,10 @@ export function SnakeLoader({ isLoading, text = 'AI 正在深度理解...' }: Sn
       )}
 
       {/* 四角脉冲扫描标记 */}
-      <div className="absolute top-0 left-0 w-6 h-6 border-t-[3px] border-l-[3px] border-brutal-accent animate-pulse" />
-      <div className="absolute top-0 right-0 w-6 h-6 border-t-[3px] border-r-[3px] border-brutal-accent animate-pulse" style={{ animationDelay: '200ms' }} />
-      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-[3px] border-r-[3px] border-brutal-accent animate-pulse" style={{ animationDelay: '400ms' }} />
-      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-[3px] border-l-[3px] border-brutal-accent animate-pulse" style={{ animationDelay: '600ms' }} />
-
-      {/* 中心终端窗口 */}
-      <div className="relative border-2 border-brutal-border bg-brutal-surface/95 shadow-[8px_8px_0px_rgba(0,0,0,0.3)] min-w-[300px] max-w-[90%]">
-        {/* 终端标题栏 */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-brutal-border bg-brutal-bg">
-          <span className="text-[10px] font-mono text-brutal-muted uppercase tracking-wider">
-            // SYSTEM.LOADING
-          </span>
-          <div className="flex gap-1.5">
-            <div className="w-2 h-2 bg-brutal-border" />
-            <div className="w-2 h-2 bg-brutal-border" />
-            <div className="w-2 h-2 bg-brutal-accent animate-pulse" />
-          </div>
-        </div>
-
-        {/* 终端内容 */}
-        <div className="p-5 space-y-4">
-          {/* 主标题 */}
-          <div className="flex items-center gap-3">
-            <div className="w-5 h-5 border-2 border-brutal-accent border-t-transparent animate-spin" />
-            <span className="text-sm font-mono font-bold text-brutal-text">{text}</span>
-          </div>
-
-          {/* 进度条 */}
-          <div className="w-full h-2 bg-brutal-border/30 border border-brutal-border">
-            <div
-              className="h-full bg-brutal-accent animate-pulse"
-              style={{
-                width: `${Math.min(95, (logs.length / LOADING_LOGS.length) * 100)}%`,
-                transition: 'width 0.3s ease-out',
-              }}
-            />
-          </div>
-
-          {/* 终端日志 */}
-          <div className="bg-brutal-bg border border-brutal-border p-3 min-h-[100px]">
-            <div className="space-y-1 font-mono text-xs">
-              {logs.map((log, i) => (
-                <div
-                  key={`${i}-${log}`}
-                  className={`${
-                    i === logs.length - 1 ? 'text-brutal-accent' : 'text-brutal-muted'
-                  }`}
-                >
-                  {log}
-                  {i === logs.length - 1 && (
-                    <span className="animate-blink ml-0.5">_</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+      <div className="absolute top-0 left-0 w-5 h-5 border-t-2 border-l-2 border-brutal-accent animate-pulse" />
+      <div className="absolute top-0 right-0 w-5 h-5 border-t-2 border-r-2 border-brutal-accent animate-pulse" style={{ animationDelay: '200ms' }} />
+      <div className="absolute bottom-0 right-0 w-5 h-5 border-b-2 border-r-2 border-brutal-accent animate-pulse" style={{ animationDelay: '400ms' }} />
+      <div className="absolute bottom-0 left-0 w-5 h-5 border-b-2 border-l-2 border-brutal-accent animate-pulse" style={{ animationDelay: '600ms' }} />
     </div>
   );
 }

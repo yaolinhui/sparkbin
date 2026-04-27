@@ -5,7 +5,7 @@ import { PET_OPTIONS, PERSONALITY_OPTIONS, VERBOSITY_OPTIONS, getContextDialogue
 
 interface AIPetConfigProps {
   config: Config | null;
-  onSave: (config: Config) => void;
+  onSave: (config: Config) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -39,8 +39,8 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
     setTimeout(() => setIsBouncing(false), 500);
   };
 
-  const handleSave = () => {
-    onSave(form);
+  const handleSave = async () => {
+    await onSave(form);
     onClose();
   };
 

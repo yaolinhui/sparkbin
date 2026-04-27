@@ -545,14 +545,18 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
       {isPetConfigOpen && (
         <AIPetConfig
           config={petConfig}
-          onSave={(config: AIPetConfigType) => {
-            setPetConfig(config);
-            localStorage.setItem(petConfigKey, JSON.stringify(config));
-            // 同步到后端
+          onSave={async (config: AIPetConfigType) => {
             if (isAuthenticated()) {
-              authApi.updatePetConfig(config).catch(() => {
-                // 静默失败，localStorage 已保存
-              });
+              try {
+                await authApi.updatePetConfig(config);
+                setPetConfig(config);
+                localStorage.setItem(petConfigKey, JSON.stringify(config));
+              } catch {
+                // 后端保存失败，不更新本地状态
+              }
+            } else {
+              setPetConfig(config);
+              localStorage.setItem(petConfigKey, JSON.stringify(config));
             }
           }}
           onClose={() => setIsPetConfigOpen(false)}

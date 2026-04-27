@@ -348,6 +348,95 @@ class AIService {
     return this.chatCompletion(messages);
   }
 
+  // 流式分析项目想法：同时生成理解维度 + 标题 + 痛点描述
+  // 返回 AsyncGenerator，前端可实时接收 chunk 显示打字机效果
+  async *streamAnalyzeProject(idea: string): AsyncGenerator<string, void, unknown> {
+    const messages: KimiMessage[] = [
+      {
+        role: 'system',
+        content: `你是一个专业的产品分析师，擅长从模糊的想法中提取核心要素并优化表达。
+请分析用户的想法，生成理解维度、产品标题和精炼的痛点描述。
+
+输出格式（严格遵循以下标记）：
+【维度】
+① 核心痛点: [一句话描述]
+② 目标用户: [描述主要服务的人群]
+③ 使用场景: [描述用户在什么情况下会使用]
+（根据复杂度生成 2-5 个维度）
+
+【标题】
+[15字以内的产品名称]
+
+【痛点】
+[2-3句话描述核心痛点和解决方案]
+
+请确保三个标记【维度】【标题】【痛点】都存在。`,
+      },
+      {
+        role: 'user',
+        content: `请分析这个想法：\n${idea}`,
+      },
+    ];
+
+    for await (const chunk of this.chatCompletionStream(messages)) {
+      yield chunk;
+    }
+  }
+
+  // 解析流式分析结果：从完整文本中提取维度、标题、痛点
+  parseProjectAnalysis(result: string): {
+    dimensions: { title: string; content: string }[];
+    title: string;
+    painPoint: string;
+  } {
+    // 提取维度部分
+    const dimMatch = result.match(/【维度】([\s\S]*?)(?=【标题】)/);
+    const titleMatch = result.match(/【标题】\s*\n?\s*([\s\S]*?)(?=【痛点】)/);
+    const painMatch = result.match(/【痛点】\s*\n?\s*([\s\S]*)/);
+
+    // 解析维度
+    const dimensions: { title: string; content: string }[] = [];
+    if (dimMatch) {
+      const dimText = dimMatch[1];
+      const lines = dimText.split('\n');
+      let id = 1;
+      for (const line of lines) {
+        if (id > 5) break;
+        const match = line.match(/^\s*(?:[①②③④⑤]|\d+[.．]|[-•])\s*([^:：]+)[:：]\s*(.+)$/);
+        if (match) {
+          dimensions.push({
+            title: match[1].trim(),
+            content: match[2].trim(),
+          });
+          id++;
+        }
+      }
+    }
+
+    // 如果没解析到维度，使用默认维度
+    if (dimensions.length === 0) {
+      dimensions.push(
+        { title: '核心痛点', content: '用户遇到的主要问题' },
+        { title: '目标用户', content: '主要服务对象' },
+        { title: '使用场景', content: '什么时候会使用' },
+      );
+    }
+
+    // 提取标题
+    let title = '';
+    if (titleMatch) {
+      title = titleMatch[1].trim().replace(/^标题[:：]\s*/, '').split('\n')[0] || '';
+    }
+
+    // 提取痛点
+    let painPoint = '';
+    if (painMatch) {
+      painPoint = painMatch[1].trim().replace(/^痛点[:：]\s*/, '');
+    }
+
+    return { dimensions, title, painPoint };
+  }
+
   // 为想法阶段生成建议（走后端代理）
   async generateIdeaSuggestion(
     projectId: string,
