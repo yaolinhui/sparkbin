@@ -1,35 +1,67 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
 
 from ..database import get_db
 from ..auth import (
-    verify_password, create_access_token, get_current_user, hash_password,
-    check_login_rate_limit, record_login_failure, require_admin,
+    verify_password, create_access_token, create_refresh_token, decode_token,
+    get_current_user, hash_password,
+    check_login_rate_limit, record_login_failure, validate_password_complexity,
 )
-from ..models import User
+from ..models import User, LoginAuditLog
 from ..schemas import (
     LoginRequest, LoginResponse, ChangePasswordRequest, BaseResponse,
-    PreferredModelUpdate, PetConfigUpdate, ThemePreferenceUpdate
+    PreferredModelUpdate, PetConfigUpdate, ThemePreferenceUpdate,
+    TokenPairResponse, RefreshTokenRequest,
 )
 from ..models import AIProvider
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/login", response_model=LoginResponse)
+def _record_audit_log(
+    db: Session,
+    username: str,
+    action: str,
+    ip_address: str = "unknown",
+    user_agent: str = "",
+    user_id: str | None = None,
+    detail: str = "",
+):
+    """记录登录审计日志"""
+    log = LoginAuditLog(
+        username=username,
+        user_id=user_id,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        action=action,
+        detail=detail,
+    )
+    db.add(log)
+    db.commit()
+
+
+@router.post("/login", response_model=TokenPairResponse)
 def login(
     request: LoginRequest,
     db: Session = Depends(get_db),
     req: Request = None,
 ):
-    """用户登录"""
+    """用户登录（返回 Access Token + Refresh Token）"""
+    client_ip = req.client.host if req and req.client else "unknown"
+    user_agent = req.headers.get("user-agent", "") if req else ""
+
     if req:
         check_login_rate_limit(req)
 
     user = db.query(User).filter(User.username == request.username).first()
 
     if not user or not verify_password(request.password, user.password_hash):
+        # 记录失败审计日志
+        _record_audit_log(
+            db, username=request.username, action="login_failure",
+            ip_address=client_ip, user_agent=user_agent,
+            detail="用户名或密码错误",
+        )
         if req:
             record_login_failure(req)
         raise HTTPException(
@@ -37,13 +69,72 @@ def login(
             detail="用户名或密码错误"
         )
 
-    access_token = create_access_token(data={"sub": user.username, "role": user.role.value})
-    return LoginResponse(access_token=access_token)
+    token_data = {"sub": user.username, "role": user.role.value}
+    access_token = create_access_token(data=token_data)
+    refresh_token = create_refresh_token(data=token_data)
+
+    # 记录成功审计日志
+    _record_audit_log(
+        db, username=user.username, action="login_success",
+        ip_address=client_ip, user_agent=user_agent,
+        user_id=str(user.id),
+    )
+
+    return TokenPairResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+    )
+
+
+@router.post("/refresh", response_model=LoginResponse)
+def refresh_token(
+    request: RefreshTokenRequest,
+    db: Session = Depends(get_db),
+):
+    """使用 Refresh Token 换取新的 Access Token"""
+    payload = decode_token(request.refresh_token, expected_type="refresh")
+
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token 无效或已过期",
+        )
+
+    username: str = payload.get("sub")
+    if username is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token 无效",
+        )
+
+    user = db.query(User).filter(User.username == username).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="用户不存在",
+        )
+
+    new_access_token = create_access_token(
+        data={"sub": user.username, "role": user.role.value}
+    )
+    return LoginResponse(access_token=new_access_token)
 
 
 @router.post("/logout", response_model=BaseResponse)
-def logout():
-    """用户登出（客户端删除 Token 即可）"""
+def logout(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    req: Request = None,
+):
+    """用户登出（记录审计日志）"""
+    client_ip = req.client.host if req and req.client else "unknown"
+    user_agent = req.headers.get("user-agent", "") if req else ""
+
+    _record_audit_log(
+        db, username=current_user.username, action="logout",
+        ip_address=client_ip, user_agent=user_agent,
+        user_id=str(current_user.id),
+    )
     return BaseResponse(message="已登出")
 
 
@@ -51,18 +142,50 @@ def logout():
 def change_password(
     request: ChangePasswordRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    req: Request = None,
 ):
-    """修改密码"""
+    """修改密码（含复杂度校验）"""
+    client_ip = req.client.host if req and req.client else "unknown"
+    user_agent = req.headers.get("user-agent", "") if req else ""
+
+    # 校验原密码
     if not verify_password(request.old_password, current_user.password_hash):
+        _record_audit_log(
+            db, username=current_user.username, action="password_change",
+            ip_address=client_ip, user_agent=user_agent,
+            user_id=str(current_user.id),
+            detail="失败：原密码错误",
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="原密码错误"
         )
 
+    # 校验新密码复杂度
+    is_valid, error_msg = validate_password_complexity(request.new_password)
+    if not is_valid:
+        _record_audit_log(
+            db, username=current_user.username, action="password_change",
+            ip_address=client_ip, user_agent=user_agent,
+            user_id=str(current_user.id),
+            detail=f"失败：{error_msg}",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_msg,
+        )
+
     current_user.password_hash = hash_password(request.new_password)
     current_user.require_password_change = False
     db.commit()
+
+    _record_audit_log(
+        db, username=current_user.username, action="password_change",
+        ip_address=client_ip, user_agent=user_agent,
+        user_id=str(current_user.id),
+        detail="成功",
+    )
 
     return BaseResponse(message="密码修改成功")
 
@@ -154,4 +277,3 @@ def update_theme_preference(
     current_user.theme_preference = request.theme
     db.commit()
     return BaseResponse(message=f"主题偏好已更新为: {request.theme}")
-

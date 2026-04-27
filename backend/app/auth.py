@@ -77,38 +77,75 @@ def hash_password(password: str) -> str:
     return hashed.decode('utf-8')
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """创建 JWT Token"""
+_ACCESS_TOKEN_EXPIRE_MINUTES = 15
+_REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+
+def _create_token(data: dict, expires_delta: timedelta, token_type: str) -> str:
+    """创建 JWT Token（内部通用）"""
     settings = get_settings()
     to_encode = data.copy()
-
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(days=7)  # 默认7天
-
-    to_encode.update({"exp": expire})
+    to_encode.update({
+        "exp": datetime.utcnow() + expires_delta,
+        "type": token_type,
+    })
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm="HS256")
     return encoded_jwt
 
 
-def decode_token(token: str) -> Optional[dict]:
-    """解码 JWT Token"""
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """创建 Access Token（默认15分钟）"""
+    if expires_delta is None:
+        expires_delta = timedelta(minutes=_ACCESS_TOKEN_EXPIRE_MINUTES)
+    return _create_token(data, expires_delta, "access")
+
+
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """创建 Refresh Token（默认7天）"""
+    if expires_delta is None:
+        expires_delta = timedelta(days=_REFRESH_TOKEN_EXPIRE_DAYS)
+    return _create_token(data, expires_delta, "refresh")
+
+
+def decode_token(token: str, expected_type: Optional[str] = None) -> Optional[dict]:
+    """解码 JWT Token，可校验类型"""
     settings = get_settings()
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
+        if expected_type and payload.get("type") != expected_type:
+            return None
         return payload
     except JWTError:
         return None
+
+
+def validate_password_complexity(password: str) -> tuple[bool, str]:
+    """校验密码复杂度
+
+    规则：
+    - 至少 8 个字符
+    - 包含至少 1 个大写字母
+    - 包含至少 1 个小写字母
+    - 包含至少 1 个数字
+    """
+    if len(password) < 8:
+        return False, "密码至少需要 8 个字符"
+    if not any(c.isupper() for c in password):
+        return False, "密码需要包含至少 1 个大写字母"
+    if not any(c.islower() for c in password):
+        return False, "密码需要包含至少 1 个小写字母"
+    if not any(c.isdigit() for c in password):
+        return False, "密码需要包含至少 1 个数字"
+    return True, ""
 
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> User:
-    """获取当前登录用户"""
+    """获取当前登录用户（要求 access token）"""
     token = credentials.credentials
-    payload = decode_token(token)
+    payload = decode_token(token, expected_type="access")
 
     if payload is None:
         raise HTTPException(

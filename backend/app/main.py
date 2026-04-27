@@ -1,6 +1,10 @@
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 from contextlib import asynccontextmanager
 
 from .config import get_settings, get_cors_origins
@@ -15,6 +19,50 @@ from .models import Base
 from .auth import init_default_user
 from .services.ai_proxy import init_default_ai_configs
 from .routers import auth, projects, ai, admin, payments
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """添加安全响应头中间件"""
+
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+
+        # 防止 MIME 类型嗅探
+        response.headers["X-Content-Type-Options"] = "nosniff"
+
+        # 防止点击劫持
+        response.headers["X-Frame-Options"] = "DENY"
+
+        # XSS 保护（现代浏览器主要依赖 CSP，此头部为向后兼容）
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+
+        #  referrer 策略
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+        # 权限策略
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+
+        # 内容安全策略（CSP）— 根据实际前端资源调整
+        # 当前为 SPA + 本地开发环境设置；生产环境部署 HTTPS 时需进一步收紧
+        csp = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https:; "
+            "font-src 'self'; "
+            "connect-src 'self' http://localhost:8000 https://api.stripe.com; "
+            "frame-src https://js.stripe.com https://hooks.stripe.com; "
+            "object-src 'none'; "
+            "base-uri 'self';"
+        )
+        response.headers["Content-Security-Policy"] = csp
+
+        # HSTS（仅在 HTTPS 环境下生效；开发环境可注释或设为 0）
+        # 此处设为 0 秒以避免开发环境强制 HTTPS 导致无法访问
+        # 生产环境部署时：改为 "max-age=31536000; includeSubDomains; preload"
+        response.headers["Strict-Transport-Security"] = "max-age=0"
+
+        return response
 
 
 def _ensure_sqlite_columns():
@@ -95,6 +143,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 安全响应头中间件
+app.add_middleware(SecurityHeadersMiddleware)
 
 # 注册路由
 app.include_router(auth.router)

@@ -3,9 +3,11 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Token 和角色管理
 let authToken: string | null = localStorage.getItem('sparkbin_token');
+let refreshToken: string | null = localStorage.getItem('sparkbin_refresh_token');
 let userRole: string | null = localStorage.getItem('sparkbin_role');
 let userId: string | null = localStorage.getItem('sparkbin_user_id');
 let onUnauthorizedCallback: (() => void) | null = null;
+let refreshTimerId: ReturnType<typeof setInterval> | null = null;
 
 export function setAuthToken(token: string) {
   authToken = token;
@@ -32,11 +34,63 @@ export function setAuthToken(token: string) {
 
 export function clearAuthToken() {
   authToken = null;
+  refreshToken = null;
   userRole = null;
   userId = null;
   localStorage.removeItem('sparkbin_token');
+  localStorage.removeItem('sparkbin_refresh_token');
   localStorage.removeItem('sparkbin_role');
   localStorage.removeItem('sparkbin_user_id');
+}
+
+export function setRefreshToken(token: string) {
+  refreshToken = token;
+  localStorage.setItem('sparkbin_refresh_token', token);
+}
+
+export function getRefreshToken(): string | null {
+  return refreshToken;
+}
+
+export function startTokenRefreshTimer() {
+  stopTokenRefreshTimer();
+  // 每 14 分钟自动刷新一次（access token 有效期 15 分钟）
+  refreshTimerId = setInterval(() => {
+    refreshAccessToken().catch(() => {});
+  }, 14 * 60 * 1000);
+}
+
+export function stopTokenRefreshTimer() {
+  if (refreshTimerId) {
+    clearInterval(refreshTimerId);
+    refreshTimerId = null;
+  }
+}
+
+async function refreshAccessToken(): Promise<boolean> {
+  const token = getRefreshToken();
+  if (!token) return false;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: token }),
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const data = await response.json() as LoginResponse;
+    if (data.access_token) {
+      setAuthToken(data.access_token);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 export function getAuthToken(): string | null {
@@ -140,7 +194,16 @@ async function request<T>(
   });
 
   if (response.status === 401) {
+    // 尝试用 refresh token 刷新 access token
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      // 重试原请求
+      return request(endpoint, options);
+    }
+
+    // 刷新失败，执行登出逻辑
     clearAuthToken();
+    stopTokenRefreshTimer();
     if (onUnauthorizedCallback) {
       onUnauthorizedCallback();
     } else {
@@ -170,6 +233,7 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   access_token: string;
+  refresh_token: string;
   token_type: string;
 }
 

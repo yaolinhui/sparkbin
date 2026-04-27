@@ -6,7 +6,10 @@ import { ProjectDetail } from './components/ProjectDetail';
 import { AdminPage } from './components/AdminPage';
 import { LoginModal } from './components/LoginModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
-import { authApi, clearAuthToken, isAuthenticated, setCachedRole, setOnUnauthorized } from './services/api';
+import {
+  authApi, clearAuthToken, isAuthenticated, setCachedRole, setOnUnauthorized,
+  setRefreshToken, startTokenRefreshTimer, stopTokenRefreshTimer,
+} from './services/api';
 
 // React Router v7 兼容配置
 const routerFuture: FutureConfig = {
@@ -43,8 +46,10 @@ function App() {
             setRequirePasswordChange(false);
             setIsLoggedIn(true);
           }
+          startTokenRefreshTimer();
         } catch {
           clearAuthToken();
+          stopTokenRefreshTimer();
           setCachedRole(null);
           setUserRole(null);
           setIsLoggedIn(false);
@@ -58,16 +63,21 @@ function App() {
 
     return () => {
       setOnUnauthorized(null);
+      stopTokenRefreshTimer();
     };
   }, []);
 
-  const handleLogin = async () => {
+  const handleLogin = async (loginResponse?: { access_token: string; refresh_token: string }) => {
     try {
+      if (loginResponse) {
+        setRefreshToken(loginResponse.refresh_token);
+      }
       const me = await authApi.getMe();
       setCachedRole(me.role);
       setUserRole(me.role);
       setIsLoggedIn(true);
       setShowLogin(false);
+      startTokenRefreshTimer();
       if (me.require_password_change) {
         setRequirePasswordChange(true);
       }
@@ -83,6 +93,7 @@ function App() {
       // 忽略错误
     }
     clearAuthToken();
+    stopTokenRefreshTimer();
     setCachedRole(null);
     setUserRole(null);
     setIsLoggedIn(false);

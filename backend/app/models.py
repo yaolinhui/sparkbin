@@ -167,6 +167,22 @@ class AICallLog(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
+# 登录审计日志表
+class LoginAuditLog(Base):
+    __tablename__ = "login_audit_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    username = Column(String(50), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    ip_address = Column(String(45), nullable=False, default="unknown")
+    user_agent = Column(String(500), nullable=False, default="")
+    action = Column(String(30), nullable=False)  # login_success / login_failure / logout / password_change
+    detail = Column(Text, default="")  # 失败原因等额外信息
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    user = relationship("User")
+
+
 # 操作日志表
 class OperationLog(Base):
     __tablename__ = "operation_logs"
