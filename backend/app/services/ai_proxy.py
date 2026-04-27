@@ -3,6 +3,7 @@ import json
 import ssl
 import hashlib
 import time
+from uuid import UUID
 from typing import AsyncGenerator, List, Dict, Any
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
@@ -43,7 +44,7 @@ DEFAULT_CONFIGS = {
 class AIProxyService:
     def __init__(self, db: Session, user_id: str | None = None):
         self.db = db
-        self.user_id = user_id
+        self.user_id = UUID(user_id) if user_id else None
         self.encryption = get_encryption_manager()
 
     def get_active_config(self, provider: AIProvider) -> AIConfig:
