@@ -25,9 +25,40 @@ from ..services.stage_context import (
 )
 from ..services.logger import OperationLogger
 from ..encryption import get_encryption_manager
+from ..config import get_settings
+from sqlalchemy import func
+from datetime import datetime
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 logger = logging.getLogger(__name__)
+
+
+def _check_ai_quota(user: User, db) -> None:
+    """检查用户 AI 调用配额，超出则抛出 429"""
+    settings = get_settings()
+    # 自托管模式或未配置 Stripe：不限制
+    if not settings.stripe_secret_key:
+        return
+    # 管理员不限制
+    if user.role.value == "admin":
+        return
+
+    tier = user.current_tier_id or "free"
+    tier_limits = {"free": 30, "pro": 500, "team": 2000}
+    limit = tier_limits.get(tier, 30)
+
+    now = datetime.utcnow()
+    start_of_month = datetime(now.year, now.month, 1)
+    used = db.query(func.count(AICallLog.id)).filter(
+        AICallLog.user_id == user.id,
+        AICallLog.created_at >= start_of_month
+    ).scalar() or 0
+
+    if used >= limit:
+        raise HTTPException(
+            status_code=429,
+            detail=f"本月 AI 调用配额已用完（{used}/{limit}）。请升级套餐或等待下个月重置。"
+        )
 
 
 def _extract_content_from_sse_chunks(chunks: List[str]) -> str:
@@ -182,7 +213,8 @@ async def chat_completion(
     AI 聊天接口，支持流式返回
     返回 SSE 流
     """
-    ai_service = AIProxyService(db)
+    _check_ai_quota(current_user, db)
+    ai_service = AIProxyService(db, user_id=str(current_user.id))
 
     merged_messages = list(request.messages)
     stage_snapshot = None
@@ -316,7 +348,8 @@ async def generate_promote_suggestions(
     db: Session = Depends(get_db)
 ):
     """生成推广建议"""
-    ai_service = AIProxyService(db)
+    _check_ai_quota(current_user, db)
+    ai_service = AIProxyService(db, user_id=str(current_user.id))
 
     suggestions = await ai_service.generate_promote_suggestions(
         provider=request.provider,
@@ -355,7 +388,8 @@ async def generate_idea_suggestions(
     db: Session = Depends(get_db)
 ):
     """生成想法阶段便利贴建议"""
-    ai_service = AIProxyService(db)
+    _check_ai_quota(current_user, db)
+    ai_service = AIProxyService(db, user_id=str(current_user.id))
 
     # 使用用户首选模型，如果没有则默认使用 DeepSeek
     provider = current_user.preferred_model or AIProvider.DEEPSEEK

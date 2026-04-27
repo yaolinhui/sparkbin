@@ -41,8 +41,9 @@ DEFAULT_CONFIGS = {
 
 
 class AIProxyService:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, user_id: str | None = None):
         self.db = db
+        self.user_id = user_id
         self.encryption = get_encryption_manager()
 
     def get_active_config(self, provider: AIProvider) -> AIConfig:
@@ -252,6 +253,7 @@ class AIProxyService:
         finally:
             # 记录调用日志
             log = AICallLog(
+                user_id=self.user_id,
                 provider=provider,
                 model=config.default_model,
                 prompt_tokens=prompt_tokens,
@@ -355,6 +357,7 @@ class AIProxyService:
             raise
         finally:
             log = AICallLog(
+                user_id=self.user_id,
                 provider=provider,
                 model=config.default_model,
                 prompt_tokens=prompt_tokens,
@@ -486,6 +489,7 @@ class AIProxyService:
             )
         finally:
             log = AICallLog(
+                user_id=self.user_id,
                 provider=provider,
                 model=config.default_model,
                 prompt_tokens=prompt_tokens,

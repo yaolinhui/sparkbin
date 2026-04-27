@@ -13,6 +13,7 @@ import { ThemeSwitcher } from './ThemeSwitcher';
 import { ModelSelector } from './ModelSelector';
 import { AIPetConfig } from './AIPetConfig';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { UpgradePromptModal } from './UpgradePromptModal';
 import { PET_OPTIONS, getContextDialogue } from './AIPetConfig.constants';
 import type { AIPetConfig as AIPetConfigType } from '../types';
 
@@ -95,13 +96,20 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   });
   const [filter, setFilter] = useState<'all' | 'active' | 'paused' | 'archived'>('all');
   const [isArchivedExpanded, setIsArchivedExpanded] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [quota, setQuota] = useState<{
+    ai_calls_used_this_month: number;
+    ai_calls_limit: number;
+    projects_used: number;
+    projects_limit: number | null;
+  } | null>(null);
 
   // 初始加载
   useEffect(() => {
     fetchProjects();
     checkAIConfig(); // 检查 AI 配置状态
 
-    // 如果已登录，从后端加载宠物配置
+    // 如果已登录，从后端加载宠物配置和配额
     if (isAuthenticated()) {
       authApi.getMe()
         .then((data) => {
@@ -114,6 +122,9 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
             };
             setPetConfig(config);
             localStorage.setItem(petConfigKey, JSON.stringify(config));
+          }
+          if (data.quota) {
+            setQuota(data.quota);
           }
         })
         .catch(() => {
@@ -249,6 +260,15 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                   {status.text}
                 </div>
               </div>
+
+              {quota && quota.projects_limit !== null && quota.projects_limit > 0 && (
+                <div className="text-right">
+                  <div className="text-xs text-brutal-muted">项目配额</div>
+                  <div className={`text-xs font-mono ${quota.projects_used >= quota.projects_limit ? 'text-brutal-warning' : 'text-brutal-text'}`}>
+                    {quota.projects_used} / {quota.projects_limit}
+                  </div>
+                </div>
+              )}
 
               <div className="text-right">
                 <div className="text-xs text-brutal-muted">{t('system.last_sync')}</div>
@@ -394,7 +414,17 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
               {/* 添加新项目卡片 */}
               {filter !== 'archived' && (
                 <button
-                  onClick={() => setIsCreateModalOpen(true)}
+                  onClick={() => {
+                    const canCreate =
+                      !quota ||
+                      quota.projects_limit === null ||
+                      quota.projects_used < quota.projects_limit;
+                    if (canCreate) {
+                      setIsCreateModalOpen(true);
+                    } else {
+                      setShowUpgradeModal(true);
+                    }
+                  }}
                   className="bg-brutal-surface border-2 border-dashed border-brutal-border p-4 cursor-pointer
                            hover:border-brutal-accent hover:bg-brutal-accent/5
                            transition-all flex flex-col items-center justify-center min-h-[200px]"
@@ -556,6 +586,11 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         isOpen={isChangePasswordOpen}
         onSuccess={() => setIsChangePasswordOpen(false)}
         onClose={() => setIsChangePasswordOpen(false)}
+      />
+      <UpgradePromptModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        feature="projects"
       />
       {isPetConfigOpen && (
         <AIPetConfig

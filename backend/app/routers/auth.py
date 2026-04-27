@@ -193,9 +193,64 @@ def change_password(
     return BaseResponse(message="密码修改成功")
 
 
+def _get_user_quota(user: User, db: Session):
+    """计算用户当前配额使用情况"""
+    settings = get_settings()
+
+    # 自托管模式：无限制
+    if not settings.stripe_secret_key:
+        return {
+            "ai_calls_used_this_month": 0,
+            "ai_calls_limit": -1,
+            "projects_used": 0,
+            "projects_limit": None,
+        }
+
+    # 管理员无限制
+    if user.role.value == "admin":
+        return {
+            "ai_calls_used_this_month": 0,
+            "ai_calls_limit": -1,
+            "projects_used": 0,
+            "projects_limit": None,
+        }
+
+    tier = user.current_tier_id or "free"
+    tier_ai_limits = {"free": 30, "pro": 500, "team": 2000}
+    tier_project_limits = {"free": 3, "pro": None, "team": None}
+
+    ai_limit = tier_ai_limits.get(tier, 30)
+    project_limit = tier_project_limits.get(tier, 3)
+
+    # 本月 AI 调用次数
+    now = datetime.utcnow()
+    start_of_month = datetime(now.year, now.month, 1)
+    ai_used = db.query(func.count(AICallLog.id)).filter(
+        AICallLog.user_id == user.id,
+        AICallLog.created_at >= start_of_month
+    ).scalar() or 0
+
+    # 项目数量（排除软删除）
+    project_used = db.query(func.count(Project.id)).filter(
+        Project.user_id == user.id,
+        Project.deleted_at.is_(None)
+    ).scalar() or 0
+
+    return {
+        "ai_calls_used_this_month": ai_used,
+        "ai_calls_limit": ai_limit,
+        "projects_used": project_used,
+        "projects_limit": project_limit,
+    }
+
+
 @router.get("/me")
-def get_me(current_user: User = Depends(get_current_user)):
-    """获取当前用户信息"""
+def get_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取当前用户信息（含配额）"""
+    quota = _get_user_quota(current_user, db)
     return {
         "id": current_user.id,
         "username": current_user.username,
@@ -208,6 +263,7 @@ def get_me(current_user: User = Depends(get_current_user)):
         "pet_config": current_user.pet_config,
         "theme_preference": current_user.theme_preference or "dark",
         "require_password_change": current_user.require_password_change,
+        "quota": quota,
         "created_at": current_user.created_at
     }
 

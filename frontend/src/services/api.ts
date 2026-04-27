@@ -260,6 +260,12 @@ export const authApi = {
       pet_config: { type: string; name: string; personality: string; verbosity: string } | null;
       theme_preference: string | null;
       require_password_change: boolean;
+      quota: {
+        ai_calls_used_this_month: number;
+        ai_calls_limit: number;
+        projects_used: number;
+        projects_limit: number | null;
+      };
       created_at: string;
     }>('/auth/me'),
 

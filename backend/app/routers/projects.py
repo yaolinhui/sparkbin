@@ -12,8 +12,39 @@ from ..schemas import (
     CompleteStageRequest, ProjectStatusUpdate, BaseResponse, StageContentUpdate
 )
 from ..services.logger import OperationLogger
+from ..config import get_settings
+from sqlalchemy import func
 
 router = APIRouter(prefix="/projects", tags=["projects"])
+
+
+def _check_project_limit(user: User, db) -> None:
+    """检查用户项目数量上限，超出则抛出 403"""
+    settings = get_settings()
+    # 自托管模式或未配置 Stripe：不限制
+    if not settings.stripe_secret_key:
+        return
+    # 管理员不限制
+    if user.role.value == "admin":
+        return
+
+    tier = user.current_tier_id or "free"
+    tier_limits = {"free": 3, "pro": None, "team": None}
+    limit = tier_limits.get(tier, 3)
+
+    if limit is None:
+        return
+
+    count = db.query(func.count(Project.id)).filter(
+        Project.user_id == user.id,
+        Project.deleted_at.is_(None)
+    ).scalar() or 0
+
+    if count >= limit:
+        raise HTTPException(
+            status_code=403,
+            detail=f"免费版最多创建 {limit} 个项目。请升级至 Pro 以创建无限项目。"
+        )
 
 
 def _project_to_detail(project: Project) -> ProjectDetail:
@@ -91,6 +122,8 @@ def create_project(
     db: Session = Depends(get_db)
 ):
     """创建新项目"""
+    _check_project_limit(current_user, db)
+
     # 创建项目
     project = Project(
         user_id=current_user.id,

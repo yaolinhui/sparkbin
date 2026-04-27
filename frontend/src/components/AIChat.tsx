@@ -5,6 +5,7 @@ import { useI18n } from '../i18n/hooks';
 import { aiService, aiApi, type StageStreamMeta } from '../services/ai';
 import { getUserId, authApi, isAuthenticated } from '../services/api';
 import { PET_OPTIONS } from './AIPetConfig.constants';
+import { UpgradePromptModal } from './UpgradePromptModal';
 import type { AIPetConfig } from '../types';
 import type { StageSnapshot } from '../services/api';
 
@@ -147,13 +148,15 @@ export function AIChat({
   const [stageSnapshot, setStageSnapshot] = useState<StageSnapshot | null>(null);
   const [retryUsed, setRetryUsed] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [aiQuota, setAiQuota] = useState<{ used: number; limit: number } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const fullscreenInputRef = useRef<HTMLTextAreaElement>(null);
 
   const petConfigKey = `sparkbin_pet_config_${getUserId() || 'guest'}`;
 
-  // 加载宠物配置（已登录用户从后端获取，游客从 localStorage 获取）
+  // 加载宠物配置和配额（已登录用户从后端获取，游客从 localStorage 获取）
   useEffect(() => {
     if (isAuthenticated()) {
       authApi.getMe()
@@ -167,6 +170,12 @@ export function AIChat({
             };
             setPetConfig(config);
             localStorage.setItem(petConfigKey, JSON.stringify(config));
+          }
+          if (data.quota) {
+            setAiQuota({
+              used: data.quota.ai_calls_used_this_month,
+              limit: data.quota.ai_calls_limit,
+            });
           }
         })
         .catch(() => {
@@ -280,6 +289,12 @@ export function AIChat({
   const sendMessage = async (messageText?: string) => {
     const textToSend = (messageText ?? input).trim();
     if (!textToSend || isThinking) return;
+
+    // AI 配额检查
+    if (aiQuota && aiQuota.limit > 0 && aiQuota.used >= aiQuota.limit) {
+      setShowUpgradeModal(true);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -440,7 +455,14 @@ export function AIChat({
                 {petEmoji}
               </div>
               <div>
-                <div className="font-mono text-sm font-bold">{petName}</div>
+                <div className="flex items-center gap-2">
+                  <div className="font-mono text-sm font-bold">{petName}</div>
+                  {aiQuota && aiQuota.limit > 0 && (
+                    <span className={`text-[10px] font-mono px-1 py-0.5 border ${aiQuota.used >= aiQuota.limit ? 'text-brutal-warning border-brutal-warning/30' : 'text-brutal-muted border-brutal-border'}`}>
+                      AI: {aiQuota.used}/{aiQuota.limit}
+                    </span>
+                  )}
+                </div>
                 <div className="text-[10px] text-brutal-muted font-mono">{projectTitle || '未命名项目'} · {stage}</div>
               </div>
             </div>
@@ -673,6 +695,11 @@ export function AIChat({
                 NATIVE
               </span>
             )}
+            {aiQuota && aiQuota.limit > 0 && (
+              <span className={`text-[10px] font-mono px-1 py-0.5 border ${aiQuota.used >= aiQuota.limit ? 'text-brutal-warning border-brutal-warning/30' : 'text-brutal-muted border-brutal-border'}`}>
+                AI: {aiQuota.used}/{aiQuota.limit}
+              </span>
+            )}
           </div>
           {stageSnapshot && (
             <div className="flex items-center gap-2 mt-0.5">
@@ -802,6 +829,12 @@ export function AIChat({
           </div>
         </div>
       )}
+
+      <UpgradePromptModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        feature="ai_calls"
+      />
 
       {/* Input */}
       <div className="p-3 border-t border-brutal-border flex-shrink-0 bg-brutal-surface">
