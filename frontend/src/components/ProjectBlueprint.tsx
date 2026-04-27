@@ -508,7 +508,7 @@ export function ProjectBlueprint({ project, onClose, onStageClick }: ProjectBlue
   const maxDuration = Math.max(1, ...metrics.map((m) => Math.max(m.durationDays, m.targetDays)));
 
   return (
-    <div className="fixed inset-0 bg-brutal-bg z-50 flex flex-col">
+    <div className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm z-50 flex flex-col">
       <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-brutal-border bg-brutal-surface flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <GitGraph className="w-5 h-5 text-brutal-accent flex-shrink-0" />

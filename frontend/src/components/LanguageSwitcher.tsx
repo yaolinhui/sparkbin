@@ -13,11 +13,11 @@ export function LanguageSwitcher() {
   return (
     <button
       onClick={toggleLanguage}
-      className="flex items-center gap-2 px-3 py-2 border border-brutal-border bg-brutal-surface
-                 hover:border-brutal-text transition-colors"
+      className="flex items-center gap-2 px-3 py-2 border border-brutal-border bg-brutal-surface text-brutal-text
+                 hover:border-brutal-accent hover:bg-brutal-surface-hover transition-colors"
       title={t('system.language')}
     >
-      <Globe className="w-4 h-4 text-brutal-accent" />
+      <Globe className="w-4 h-4" />
       <span className="text-xs font-mono">
         {language === 'zh' ? '中文' : 'EN'}
       </span>

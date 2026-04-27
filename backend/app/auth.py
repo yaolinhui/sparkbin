@@ -17,8 +17,8 @@ from .models import User, UserRole
 # HTTP Bearer 认证
 security = HTTPBearer()
 
-# 内存中的登录失败记录: {ip: deque([timestamp, ...])}
-_login_attempts: dict[str, deque] = {}
+# 内存中的认证失败记录: {"{ip}:{action}": deque([timestamp, ...])}
+_auth_attempts: dict[str, deque] = {}
 _MAX_LOGIN_ATTEMPTS = 5
 _LOGIN_WINDOW_SECONDS = 300  # 5分钟
 
@@ -27,15 +27,16 @@ def _is_rate_limit_disabled() -> bool:
     return os.environ.get("SPARKBIN_TESTING") == "1"
 
 
-def check_login_rate_limit(request: Request) -> None:
-    """检查登录频率限制（测试模式下禁用）"""
+def check_rate_limit(request: Request, action: str) -> None:
+    """检查指定动作的速率限制（登录/注册等）"""
     if _is_rate_limit_disabled():
         return
 
     client_ip = request.client.host if request.client else "unknown"
+    key = f"{client_ip}:{action}"
     now = datetime.utcnow().timestamp()
 
-    attempts = _login_attempts.get(client_ip)
+    attempts = _auth_attempts.get(key)
     if attempts is None:
         return
 
@@ -46,20 +47,31 @@ def check_login_rate_limit(request: Request) -> None:
     if len(attempts) >= _MAX_LOGIN_ATTEMPTS:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="登录尝试次数过多，请5分钟后重试",
+            detail=f"{action}尝试次数过多，请5分钟后重试",
             headers={"Retry-After": str(_LOGIN_WINDOW_SECONDS)},
         )
 
 
-def record_login_failure(request: Request) -> None:
-    """记录一次登录失败（测试模式下跳过）"""
+def record_rate_limit_failure(request: Request, action: str) -> None:
+    """记录一次认证失败（测试模式下跳过）"""
     if _is_rate_limit_disabled():
         return
 
     client_ip = request.client.host if request.client else "unknown"
-    if client_ip not in _login_attempts:
-        _login_attempts[client_ip] = deque()
-    _login_attempts[client_ip].append(datetime.utcnow().timestamp())
+    key = f"{client_ip}:{action}"
+    if key not in _auth_attempts:
+        _auth_attempts[key] = deque()
+    _auth_attempts[key].append(datetime.utcnow().timestamp())
+
+
+def check_login_rate_limit(request: Request) -> None:
+    """检查登录频率限制（兼容包装）"""
+    check_rate_limit(request, "登录")
+
+
+def record_login_failure(request: Request) -> None:
+    """记录一次登录失败（兼容包装）"""
+    record_rate_limit_failure(request, "登录")
 
 
 def _prehash_password(password: str) -> bytes:

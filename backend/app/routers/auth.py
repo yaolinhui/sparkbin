@@ -11,6 +11,7 @@ from ..auth import (
     verify_password, create_access_token, create_refresh_token, decode_token,
     get_current_user, hash_password,
     check_login_rate_limit, record_login_failure, validate_password_complexity,
+    check_rate_limit, record_rate_limit_failure,
     create_email_verification_token, create_password_reset_token, decode_email_token,
 )
 from ..models import User, LoginAuditLog, Project, AICallLog, UserRole
@@ -358,8 +359,20 @@ def register(
     req: Request = None,
 ):
     """用户注册（邮箱 + 用户名 + 密码）"""
+    # 速率限制检查（无论成败都记录，防止脚本连续成功注册）
+    check_rate_limit(req, "注册")
+    record_rate_limit_failure(req, "注册")
+
+    # Honeypot 反机器人校验
+    if request.honeypot:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="请求异常，请重试",
+        )
+
     # 检查用户名唯一性
     if db.query(User).filter(User.username == request.username).first():
+        record_rate_limit_failure(req, "注册")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="用户名已被使用"
@@ -367,6 +380,7 @@ def register(
 
     # 检查邮箱唯一性
     if db.query(User).filter(User.email == request.email).first():
+        record_rate_limit_failure(req, "注册")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="邮箱已被注册"
@@ -375,6 +389,7 @@ def register(
     # 密码复杂度校验
     is_valid, error_msg = validate_password_complexity(request.password)
     if not is_valid:
+        record_rate_limit_failure(req, "注册")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error_msg,

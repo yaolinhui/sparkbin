@@ -439,7 +439,7 @@ export function AIChat({
   // ========== 全屏模式 ==========
   if (isFullscreen) {
     return (
-      <div className="fixed inset-0 z-50 bg-brutal-bg flex">
+      <div className="fixed inset-0 z-50 bg-brutal-bg/80 backdrop-blur-sm flex">
         {/* 左侧：对话区域 */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* 全屏头部 */}

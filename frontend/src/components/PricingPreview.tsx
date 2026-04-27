@@ -78,7 +78,7 @@ export function PricingPreview({ projectId, projectTitle, tiers, isOpen, onClose
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-brutal-bg/90 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="border-2 border-brutal-border bg-brutal-surface w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-brutal-border bg-brutal-bg sticky top-0">

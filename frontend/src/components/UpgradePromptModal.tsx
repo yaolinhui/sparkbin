@@ -27,7 +27,7 @@ export function UpgradePromptModal({ isOpen, onClose, feature }: UpgradePromptPr
   const msg = MESSAGES[feature];
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
       <div className="bg-brutal-surface border-2 border-brutal-border w-full max-w-md shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-brutal-border bg-brutal-bg">

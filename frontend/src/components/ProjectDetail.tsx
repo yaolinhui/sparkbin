@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pause, Play, Archive, LogOut, ChevronUp, Menu, GitGraph, Trash2 } from 'lucide-react';
+import { ArrowLeft, Pause, Play, Archive, LogOut, ChevronUp, Menu, GitGraph, Trash2, Pencil } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { useProjectStore } from '../stores/projectStore';
 import { useI18n, useStatusLabel, useStageLabel } from '../i18n/hooks';
@@ -326,6 +326,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const updateStageContent = useProjectStore((state) => state.updateStageContent);
   const completeStage = useProjectStore((state) => state.completeStage);
   const reopenStage = useProjectStore((state) => state.reopenStage);
+  const updateProject = useProjectStore((state) => state.updateProject);
   const updateProjectStatus = useProjectStore((state) => state.updateProjectStatus);
   const deleteProject = useProjectStore((state) => state.deleteProject);
 
@@ -346,6 +347,8 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const [viewingStage, setViewingStage] = useState<StageKey | null>(null); // 正在查看的阶段（可切换）
   const [isAIChatCollapsed, setIsAIChatCollapsed] = useState(false); // AI 聊天折叠状态
   const [showBlueprint, setShowBlueprint] = useState(false); // 项目蓝图显示状态
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
 
   // 如果没有项目数据或 stages 为空，获取完整项目详情
   useEffect(() => {
@@ -519,6 +522,36 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     await updateProjectStatus(project.id, status);
   };
 
+  const startEditTitle = () => {
+    if (!project) return;
+    setEditTitle(project.title);
+    setIsEditingTitle(true);
+  };
+
+  const saveTitle = async () => {
+    if (!project) return;
+    const trimmed = editTitle.trim();
+    if (trimmed && trimmed !== project.title) {
+      await updateProject(project.id, { title: trimmed });
+    }
+    setIsEditingTitle(false);
+    setEditTitle('');
+  };
+
+  const cancelEditTitle = () => {
+    setIsEditingTitle(false);
+    setEditTitle('');
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveTitle();
+    } else if (e.key === 'Escape') {
+      cancelEditTitle();
+    }
+  };
+
   const openDeleteModal = () => {
     setDeleteConfirmInput('');
     setDeleteError(null);
@@ -613,7 +646,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
         return (
           <button
             onClick={() => handleStatusChange('active')}
-            className="btn-brutal h-9 flex items-center gap-2 text-brutal-success border-brutal-success"
+            className="btn-brutal h-9 flex items-center gap-2"
           >
             <Play className="w-4 h-4" />
             {t('action.resume')}
@@ -649,9 +682,28 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                   <ArrowLeft className="w-4 h-4" />
                   <span className="text-sm">{t('nav.back')}</span>
                 </button>
-                <h1 className="text-xl font-mono font-bold truncate">
-                  {project.title}
-                </h1>
+                {isEditingTitle ? (
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onBlur={saveTitle}
+                    onKeyDown={handleTitleKeyDown}
+                    autoFocus
+                    className="text-xl font-mono font-bold bg-brutal-bg border border-brutal-accent px-2 py-1 flex-1 min-w-0 focus:outline-none"
+                  />
+                ) : (
+                  <button
+                    onClick={startEditTitle}
+                    className="flex items-center gap-2 group flex-1 min-w-0 text-left"
+                    title="点击修改项目名称"
+                  >
+                    <h1 className="text-xl font-mono font-bold truncate">
+                      {project.title}
+                    </h1>
+                    <Pencil className="w-3 h-3 text-brutal-muted opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
@@ -688,7 +740,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 <ThemeSwitcher />
                 <button
                   onClick={onLogout}
-                  className="btn-brutal h-9 flex items-center gap-2 border-brutal-warning text-brutal-warning"
+                  className="btn-brutal h-9 flex items-center gap-2"
                   title="Logout"
                 >
                   <LogOut className="w-4 h-4" />
@@ -734,9 +786,28 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                     {currentStageLabel}
                   </span>
                 </div>
-                <h1 className="text-base font-mono font-bold truncate">
-                  {project.title}
-                </h1>
+                {isEditingTitle ? (
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onBlur={saveTitle}
+                    onKeyDown={handleTitleKeyDown}
+                    autoFocus
+                    className="text-base font-mono font-bold bg-brutal-bg border border-brutal-accent px-2 py-0.5 flex-1 min-w-0 focus:outline-none"
+                  />
+                ) : (
+                  <button
+                    onClick={startEditTitle}
+                    className="flex items-center gap-2 group flex-1 min-w-0 text-left"
+                    title="点击修改项目名称"
+                  >
+                    <h1 className="text-base font-mono font-bold truncate">
+                      {project.title}
+                    </h1>
+                    <Pencil className="w-3 h-3 text-brutal-muted opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
@@ -761,7 +832,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 </button>
                 <button
                   onClick={onLogout}
-                  className="btn-brutal h-9 p-2 border-brutal-warning text-brutal-warning"
+                  className="btn-brutal h-9 p-2"
                   title="Logout"
                 >
                   <LogOut className="w-4 h-4" />
@@ -876,7 +947,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
       {/* Confirmation Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 bg-brutal-bg/90 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="border-2 border-brutal-border bg-brutal-surface w-full max-w-md">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-brutal-border bg-brutal-bg">
@@ -938,7 +1009,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
       {/* Sync Modal */}
       {showSyncModal && (
-        <div className="fixed inset-0 bg-brutal-bg/90 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="border-2 border-brutal-accent bg-brutal-surface w-full max-w-2xl">
             <div className="flex items-center justify-between p-4 border-b border-brutal-accent bg-brutal-bg">
               <div className="flex items-center gap-2">
@@ -1016,7 +1087,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
       {/* Delete Project Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-brutal-bg/90 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="border-2 border-brutal-warning bg-brutal-surface w-full max-w-lg">
             <div className="flex items-center justify-between p-4 border-b border-brutal-warning bg-brutal-bg">
               <div className="flex items-center gap-2">

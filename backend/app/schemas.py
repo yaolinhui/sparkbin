@@ -32,6 +32,7 @@ class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     email: str = Field(..., pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
     password: str = Field(..., min_length=8)
+    honeypot: Optional[str] = Field(default=None)
 
 
 class ForgotPasswordRequest(BaseModel):

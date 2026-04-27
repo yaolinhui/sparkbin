@@ -242,6 +242,7 @@ export interface RegisterRequest {
   username: string;
   email: string;
   password: string;
+  honeypot?: string;
 }
 
 export interface ForgotPasswordRequest {

@@ -68,10 +68,10 @@ export function ModelSelector({ className = '' }: ModelSelectorProps) {
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className={`flex items-center gap-2 px-3 py-2 border border-brutal-border bg-brutal-surface hover:border-brutal-text hover:bg-brutal-surface-hover transition-colors ${className}`}
+        className={`flex items-center gap-2 px-3 py-2 border border-brutal-border bg-brutal-surface text-brutal-text hover:border-brutal-accent hover:bg-brutal-surface-hover transition-colors ${className}`}
         title={t('ai.select_model')}
       >
-        <Cpu className="w-4 h-4 text-brutal-accent" />
+        <Cpu className="w-4 h-4" />
         <span className="font-mono text-xs">{`> ${displayName}`}</span>
       </button>
 

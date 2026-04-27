@@ -67,7 +67,7 @@ export function ChangePasswordModal({ isOpen, isForced = false, onSuccess, onClo
   };
 
   return (
-    <div className="fixed inset-0 bg-brutal-bg/90 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="w-full max-w-md border-2 border-brutal-border bg-brutal-surface">
         {/* Header */}
         <div className="p-6 border-b-2 border-brutal-border bg-brutal-text relative">

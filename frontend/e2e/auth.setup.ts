@@ -1,4 +1,5 @@
 import { test as setup, expect } from '@playwright/test';
+import fs from 'fs';
 
 const authFile = 'playwright/.auth/user.json';
 
@@ -68,6 +69,45 @@ setup('authenticate', async ({ page }) => {
     return token;
   }, { timeout: 10000 }).toBeTruthy();
 
-  // 保存存储状态（包含 localStorage 中的 token）
-  await page.context().storageState({ path: authFile });
+  // 手动构造包含 localStorage 的 storageState（Playwright 不会自动捕获 localStorage）
+  const localStorageData = await page.evaluate(() => {
+    return {
+      token: localStorage.getItem('sparkbin_token') || '',
+      refreshToken: localStorage.getItem('sparkbin_refresh_token') || '',
+      role: localStorage.getItem('sparkbin_role') || '',
+      userId: localStorage.getItem('sparkbin_user_id') || '',
+    };
+  });
+
+  const storageState = {
+    cookies: [],
+    origins: [
+      {
+        origin: 'http://localhost:5173',
+        localStorage: [
+          { name: 'sparkbin_token', value: localStorageData.token },
+          { name: 'sparkbin_refresh_token', value: localStorageData.refreshToken },
+          { name: 'sparkbin_role', value: localStorageData.role },
+          { name: 'sparkbin_user_id', value: localStorageData.userId },
+        ],
+      },
+    ],
+  };
+
+  const fs = await import('fs');
+  fs.mkdirSync('playwright/.auth', { recursive: true });
+  fs.writeFileSync(authFile, JSON.stringify(storageState, null, 2));
+});
+
+setup.afterAll(async () => {
+  // Playwright 在 context 关闭时会自动覆盖 storageState 文件，
+  // 但由于 localStorage 未被自动捕获，我们需要在 afterAll 中重新写入
+  const fs = await import('fs');
+  if (!fs.existsSync(authFile)) return;
+
+  const content = JSON.parse(fs.readFileSync(authFile, 'utf-8'));
+  if (!content.origins || content.origins.length === 0 || !content.origins[0].localStorage) {
+    // 如果 Playwright 自动保存的文件没有 localStorage，则不做任何事
+    // （说明 Playwright 仍然没有捕获 localStorage，需要其他方案）
+  }
 });
