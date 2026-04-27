@@ -1,9 +1,12 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, status
+﻿from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from ..database import get_db
-from ..auth import verify_password, create_access_token, get_current_user, hash_password
+from ..auth import (
+    verify_password, create_access_token, get_current_user, hash_password,
+    check_login_rate_limit, record_login_failure, require_admin,
+)
 from ..models import User
 from ..schemas import (
     LoginRequest, LoginResponse, ChangePasswordRequest, BaseResponse,
@@ -15,11 +18,20 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/login", response_model=LoginResponse)
-def login(request: LoginRequest, db: Session = Depends(get_db)):
+def login(
+    request: LoginRequest,
+    db: Session = Depends(get_db),
+    req: Request = None,
+):
     """用户登录"""
+    if req:
+        check_login_rate_limit(req)
+
     user = db.query(User).filter(User.username == request.username).first()
 
     if not user or not verify_password(request.password, user.password_hash):
+        if req:
+            record_login_failure(req)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误"

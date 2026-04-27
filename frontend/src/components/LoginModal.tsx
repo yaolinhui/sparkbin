@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { Lock, User, AlertCircle, Loader2 } from 'lucide-react';
+import { Lock, User, AlertCircle, Loader2, X, Eye, EyeOff } from 'lucide-react';
 import { authApi, setAuthToken } from '../services/api';
 
 interface LoginModalProps {
   isOpen: boolean;
   onLogin: () => void;
+  onClose?: () => void;
 }
 
-export function LoginModal({ isOpen, onLogin }: LoginModalProps) {
-  const [username, setUsername] = useState('admin');
+export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +37,17 @@ export function LoginModal({ isOpen, onLogin }: LoginModalProps) {
     <div className="fixed inset-0 bg-brutal-bg flex items-center justify-center z-50 p-4">
       <div className="w-full max-w-md border-2 border-brutal-border bg-brutal-surface">
         {/* Header */}
-        <div className="p-6 border-b-2 border-brutal-border bg-brutal-text">
+        <div className="p-6 border-b-2 border-brutal-border bg-brutal-text relative">
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="absolute right-4 top-4 w-8 h-8 bg-brutal-bg flex items-center justify-center
+                         hover:bg-brutal-accent transition-colors"
+              aria-label="关闭"
+            >
+              <X className="w-4 h-4 text-brutal-text" />
+            </button>
+          )}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-brutal-bg flex items-center justify-center">
               <Lock className="w-5 h-5 text-brutal-text" />
@@ -82,19 +94,29 @@ export function LoginModal({ isOpen, onLogin }: LoginModalProps) {
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brutal-muted" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-3 py-3 border border-brutal-border bg-brutal-bg
+                className="w-full pl-10 pr-10 py-3 border border-brutal-border bg-brutal-bg
                            focus:border-brutal-accent focus:outline-none
                            font-mono text-sm transition-colors"
                 placeholder="••••••"
                 disabled={isLoading}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-brutal-muted hover:text-brutal-text"
+                tabIndex={-1}
+                aria-label={showPassword ? '隐藏密码' : '显示密码'}
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
             </div>
-            <p className="mt-2 text-xs font-mono text-brutal-muted">
-              Default: admin / admin
-            </p>
           </div>
 
           <button

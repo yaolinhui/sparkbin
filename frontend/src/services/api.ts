@@ -5,6 +5,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 let authToken: string | null = localStorage.getItem('sparkbin_token');
 let userRole: string | null = localStorage.getItem('sparkbin_role');
 let userId: string | null = localStorage.getItem('sparkbin_user_id');
+let onUnauthorizedCallback: (() => void) | null = null;
 
 export function setAuthToken(token: string) {
   authToken = token;
@@ -56,6 +57,19 @@ export function getUserRole(): string {
 
 export function getUserId(): string | null {
   return userId;
+}
+
+export function setCachedRole(role: string | null) {
+  userRole = role;
+  if (role) {
+    localStorage.setItem('sparkbin_role', role);
+  } else {
+    localStorage.removeItem('sparkbin_role');
+  }
+}
+
+export function setOnUnauthorized(callback: (() => void) | null) {
+  onUnauthorizedCallback = callback;
 }
 
 function extractErrorMessage(responseText: string, statusCode: number): string {
@@ -127,7 +141,11 @@ async function request<T>(
 
   if (response.status === 401) {
     clearAuthToken();
-    window.location.href = '/login';
+    if (onUnauthorizedCallback) {
+      onUnauthorizedCallback();
+    } else {
+      window.location.href = '/login';
+    }
     throw new Error('Unauthorized');
   }
 

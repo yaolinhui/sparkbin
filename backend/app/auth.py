@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
 from typing import Optional
+from collections import deque
 from jose import JWTError, jwt
 import bcrypt
 from sqlalchemy.orm import Session
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from .config import get_settings
@@ -12,6 +13,50 @@ from .models import User, UserRole
 
 # HTTP Bearer 认证
 security = HTTPBearer()
+
+# 内存中的登录失败记录: {ip: deque([timestamp, ...])}
+_login_attempts: dict[str, deque] = {}
+_MAX_LOGIN_ATTEMPTS = 5
+_LOGIN_WINDOW_SECONDS = 300  # 5分钟
+
+
+def check_login_rate_limit(request: Request) -> None:
+    """检查登录频率限制"""
+    client_ip = request.client.host if request.client else "unknown"
+    now = datetime.utcnow().timestamp()
+
+    attempts = _login_attempts.get(client_ip)
+    if attempts is None:
+        return
+
+    # 清理过期记录
+    while attempts and attempts[0] < now - _LOGIN_WINDOW_SECONDS:
+        attempts.popleft()
+
+    if len(attempts) >= _MAX_LOGIN_ATTEMPTS:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="登录尝试次数过多，请5分钟后重试",
+            headers={"Retry-After": str(_LOGIN_WINDOW_SECONDS)},
+        )
+
+
+def record_login_failure(request: Request) -> None:
+    """记录一次登录失败"""
+    client_ip = request.client.host if request.client else "unknown"
+    if client_ip not in _login_attempts:
+        _login_attempts[client_ip] = deque()
+    _login_attempts[client_ip].append(datetime.utcnow().timestamp())
+
+
+async def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    """要求当前用户为管理员"""
+    if current_user.role.value != UserRole.ADMIN.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="需要管理员权限",
+        )
+    return current_user
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -110,4 +155,12 @@ def init_default_user(db: Session):
     )
     db.add(new_user)
     db.commit()
-    print(f"Default user created: {settings.default_username}/{settings.default_password}")
+
+    if settings.default_username == "admin" and settings.default_password == "admin":
+        import warnings
+        warnings.warn(
+            "SECURITY WARNING: Default user is using admin/admin. "
+            "Please change the default credentials via environment variables.",
+            RuntimeWarning,
+            stacklevel=2
+        )

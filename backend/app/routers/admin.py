@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from ..database import get_db
-from ..auth import get_current_user
+from ..auth import get_current_user, require_admin
 from ..models import User, OperationLog
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 @router.get("/logs")
 def list_operation_logs(
     limit: int = 100,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """获取操作日志"""

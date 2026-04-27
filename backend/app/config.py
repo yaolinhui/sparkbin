@@ -35,9 +35,26 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
 
 
+_DEFAULT_SECRET_KEY = "your-secret-key-change-this"
+_DEFAULT_ENCRYPTION_KEY = "your-32-byte-encryption-key-here!"
+
+
 @lru_cache()
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+
+    if settings.secret_key == _DEFAULT_SECRET_KEY:
+        raise ValueError(
+            "SECURITY ERROR: SECRET_KEY is using the default value. "
+            "Please set a strong SECRET_KEY in your .env file before starting the application."
+        )
+    if settings.encryption_key == _DEFAULT_ENCRYPTION_KEY:
+        raise ValueError(
+            "SECURITY ERROR: ENCRYPTION_KEY is using the default value. "
+            "Please set a strong ENCRYPTION_KEY in your .env file before starting the application."
+        )
+
+    return settings
 
 
 def get_cors_origins() -> list[str]:
