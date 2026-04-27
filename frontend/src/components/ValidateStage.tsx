@@ -436,7 +436,7 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
   };
 
   return (
-    <div className="h-full flex flex-col bg-brutal-bg">
+    <div className="flex-1 min-h-0 flex flex-col bg-brutal-bg">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-brutal-border bg-brutal-surface">
         <div className="flex items-center gap-3">
