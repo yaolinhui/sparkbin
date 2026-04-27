@@ -61,6 +61,7 @@ def change_password(
         )
 
     current_user.password_hash = hash_password(request.new_password)
+    current_user.require_password_change = False
     db.commit()
 
     return BaseResponse(message="密码修改成功")
@@ -80,6 +81,7 @@ def get_me(current_user: User = Depends(get_current_user)):
         "current_tier_id": current_user.current_tier_id,
         "pet_config": current_user.pet_config,
         "theme_preference": current_user.theme_preference or "dark",
+        "require_password_change": current_user.require_password_change,
         "created_at": current_user.created_at
     }
 

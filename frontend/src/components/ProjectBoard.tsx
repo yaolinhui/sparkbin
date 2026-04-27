@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Github, Terminal, LogOut, Server, Settings, Cat, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Github, Terminal, LogOut, Server, Settings, Cat, ChevronDown, ChevronRight, Lock } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
 import { isAdmin, getUserId, authApi, isAuthenticated } from '../services/api';
@@ -12,6 +12,7 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { ModelSelector } from './ModelSelector';
 import { AIPetConfig } from './AIPetConfig';
+import { ChangePasswordModal } from './ChangePasswordModal';
 import { PET_OPTIONS, getContextDialogue } from './AIPetConfig.constants';
 import type { AIPetConfig as AIPetConfigType } from '../types';
 
@@ -84,6 +85,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isPetConfigOpen, setIsPetConfigOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [showPetBubble, setShowPetBubble] = useState(false);
   const [petDialogue, setPetDialogue] = useState('');
   const petConfigKey = `sparkbin_pet_config_${getUserId() || 'guest'}`;
@@ -282,6 +284,14 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                   title="GitHub Backup"
                 >
                   <Github className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setIsChangePasswordOpen(true)}
+                  className="btn-brutal h-9 flex items-center gap-2"
+                  title="修改密码"
+                >
+                  <Lock className="w-4 h-4" />
+                  <span className="text-xs font-mono">改密</span>
                 </button>
                 <button
                   onClick={onLogout}
@@ -541,6 +551,11 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
       <GitHubConfigModal
         isOpen={isConfigModalOpen}
         onClose={() => setIsConfigModalOpen(false)}
+      />
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onSuccess={() => setIsChangePasswordOpen(false)}
+        onClose={() => setIsChangePasswordOpen(false)}
       />
       {isPetConfigOpen && (
         <AIPetConfig

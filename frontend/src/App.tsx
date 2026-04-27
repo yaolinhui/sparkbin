@@ -5,6 +5,7 @@ import { ProjectBoard } from './components/ProjectBoard';
 import { ProjectDetail } from './components/ProjectDetail';
 import { AdminPage } from './components/AdminPage';
 import { LoginModal } from './components/LoginModal';
+import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { authApi, clearAuthToken, isAuthenticated, setCachedRole, setOnUnauthorized } from './services/api';
 
 // React Router v7 兼容配置
@@ -18,6 +19,7 @@ function App() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
+  const [requirePasswordChange, setRequirePasswordChange] = useState(false);
 
   useEffect(() => {
     // 注册 401 全局回调：触发登录弹层而不是硬跳转
@@ -34,12 +36,19 @@ function App() {
           const me = await authApi.getMe();
           setCachedRole(me.role);
           setUserRole(me.role);
-          setIsLoggedIn(true);
+          if (me.require_password_change) {
+            setRequirePasswordChange(true);
+            setIsLoggedIn(true);
+          } else {
+            setRequirePasswordChange(false);
+            setIsLoggedIn(true);
+          }
         } catch {
           clearAuthToken();
           setCachedRole(null);
           setUserRole(null);
           setIsLoggedIn(false);
+          setRequirePasswordChange(false);
         }
       }
       setIsChecking(false);
@@ -59,6 +68,9 @@ function App() {
       setUserRole(me.role);
       setIsLoggedIn(true);
       setShowLogin(false);
+      if (me.require_password_change) {
+        setRequirePasswordChange(true);
+      }
     } catch {
       // getMe 失败时保持未登录状态
     }
@@ -114,7 +126,14 @@ function App() {
           </div>
         </div>
       )}
-      {isLoggedIn && (
+      {isLoggedIn && requirePasswordChange && (
+        <ChangePasswordModal
+          isOpen={true}
+          isForced={true}
+          onSuccess={() => setRequirePasswordChange(false)}
+        />
+      )}
+      {isLoggedIn && !requirePasswordChange && (
         <BrowserRouter future={routerFuture}>
           <Routes>
             <Route path="/" element={<ProjectBoard onLogout={handleLogout} />} />

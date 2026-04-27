@@ -147,11 +147,12 @@ def init_default_user(db: Session):
     if existing_user:
         return
 
-    # 创建默认用户（第一个用户为管理员）
+    # 创建默认用户（第一个用户为管理员，强制首次登录改密）
     new_user = User(
         username=settings.default_username,
         password_hash=hash_password(settings.default_password),
-        role=UserRole.ADMIN
+        role=UserRole.ADMIN,
+        require_password_change=True,
     )
     db.add(new_user)
     db.commit()

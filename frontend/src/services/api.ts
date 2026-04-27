@@ -195,6 +195,7 @@ export const authApi = {
       current_tier_id: string | null;
       pet_config: { type: string; name: string; personality: string; verbosity: string } | null;
       theme_preference: string | null;
+      require_password_change: boolean;
       created_at: string;
     }>('/auth/me'),
 

@@ -40,6 +40,9 @@ def _ensure_sqlite_columns():
             conn.execute(text("ALTER TABLE users ADD COLUMN pet_config JSON DEFAULT '{}'"))
         if "theme_preference" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN theme_preference VARCHAR(20) DEFAULT 'dark'"))
+        if "require_password_change" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN require_password_change BOOLEAN DEFAULT 0"))
+            conn.execute(text("UPDATE users SET require_password_change = 0"))
         conn.commit()
 
     # projects 表

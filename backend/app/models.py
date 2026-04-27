@@ -68,6 +68,9 @@ class User(Base):
     # 主题偏好
     theme_preference = Column(String(20), default="dark", nullable=True)  # dark / light
 
+    # 安全字段
+    require_password_change = Column(Boolean, default=False, nullable=False)
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
