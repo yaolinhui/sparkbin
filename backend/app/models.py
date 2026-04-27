@@ -51,10 +51,17 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    username = Column(String(50), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=False)
+    username = Column(String(50), unique=True, nullable=True, index=True)
+    password_hash = Column(String(255), nullable=True)
+    email = Column(String(255), unique=True, nullable=True, index=True)
+    email_verified = Column(Boolean, default=False, nullable=False)
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
     preferred_model = Column(Enum(AIProvider), nullable=True)  # 用户首选 AI 模型
+
+    # 第三方登录
+    oauth_provider = Column(String(20), nullable=True)  # google / github
+    oauth_id = Column(String(255), nullable=True, index=True)
+    avatar_url = Column(String(500), nullable=True)
 
     # 订阅/支付状态（Stripe Test Mode）
     subscription_status = Column(String(20), default="inactive", nullable=False)  # inactive / active / past_due / canceled

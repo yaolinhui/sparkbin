@@ -30,6 +30,17 @@ class Settings(BaseSettings):
     stripe_publishable_key: str = ""  # 前端展示用，可选
     app_url: str = "http://localhost:5173"  # 支付回调基础地址
 
+    # 邮件服务（Resend）
+    resend_api_key: str = ""
+    resend_from_email: str = "SparkBin <noreply@sparkbin.dev>"
+
+    # OAuth 配置
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    github_client_id: str = ""
+    github_client_secret: str = ""
+    frontend_url: str = "http://localhost:5173"  # OAuth 回调和邮件链接基础地址
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

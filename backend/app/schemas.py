@@ -28,6 +28,26 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
 
 
+class RegisterRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str = Field(..., pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+    password: str = Field(..., min_length=8)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=8)
+
+
+class VerifyEmailResponse(BaseModel):
+    success: bool
+    message: str
+
+
 class TokenPairResponse(BaseModel):
     access_token: str
     refresh_token: str

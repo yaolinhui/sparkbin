@@ -237,9 +237,40 @@ export interface LoginResponse {
   token_type: string;
 }
 
+export interface RegisterRequest {
+  username: string;
+  email: string;
+  password: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
+}
+
+export interface BaseResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface VerifyEmailResponse {
+  success: boolean;
+  message: string;
+}
+
 export const authApi = {
   login: (data: LoginRequest) =>
     request<LoginResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  register: (data: RegisterRequest) =>
+    request<LoginResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -251,6 +282,9 @@ export const authApi = {
     request<{
       id: string;
       username: string;
+      email: string | null;
+      email_verified: boolean;
+      avatar_url: string | null;
       role: string;
       preferred_model: AIProvider | null;
       subscription_status: string;
@@ -274,6 +308,24 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
     }),
+
+  forgotPassword: (data: ForgotPasswordRequest) =>
+    request<BaseResponse>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  resetPassword: (data: ResetPasswordRequest) =>
+    request<BaseResponse>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  verifyEmail: (token: string) =>
+    request<VerifyEmailResponse>(`/auth/verify-email?token=${encodeURIComponent(token)}`),
+
+  getOAuthUrl: (provider: 'google' | 'github') =>
+    `${API_BASE_URL}/auth/oauth/${provider}`,
 
   // 获取首选 AI 模型
   getPreferredModel: () =>

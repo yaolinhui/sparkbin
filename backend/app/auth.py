@@ -120,6 +120,29 @@ def decode_token(token: str, expected_type: Optional[str] = None) -> Optional[di
         return None
 
 
+def create_email_verification_token(user_id: str, email: str) -> str:
+    """创建邮箱验证 token（24小时有效）"""
+    return _create_token(
+        {"sub": user_id, "email": email},
+        timedelta(hours=24),
+        "email_verify"
+    )
+
+
+def create_password_reset_token(user_id: str, email: str) -> str:
+    """创建密码重置 token（24小时有效）"""
+    return _create_token(
+        {"sub": user_id, "email": email},
+        timedelta(hours=24),
+        "password_reset"
+    )
+
+
+def decode_email_token(token: str, expected_type: str) -> Optional[dict]:
+    """解码邮箱相关 token（验证/重置）"""
+    return decode_token(token, expected_type=expected_type)
+
+
 def validate_password_complexity(password: str) -> tuple[bool, str]:
     """校验密码复杂度
 

@@ -33,7 +33,7 @@ setup('authenticate', async ({ page }) => {
   await usernameInput.fill('admin');
   await page.locator('input[type="password"]').first().fill('admin');
 
-  const loginButton = page.locator('button').filter({ hasText: /登录|Login|Sign/i }).first();
+  const loginButton = page.getByRole('button', { name: 'LOGIN' });
   await loginButton.click();
 
   await page.waitForResponse(resp => resp.url().includes('/auth/login'), { timeout: 10000 }).catch(() => {});
