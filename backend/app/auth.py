@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 from collections import deque
@@ -20,8 +21,15 @@ _MAX_LOGIN_ATTEMPTS = 5
 _LOGIN_WINDOW_SECONDS = 300  # 5分钟
 
 
+def _is_rate_limit_disabled() -> bool:
+    return os.environ.get("SPARKBIN_TESTING") == "1"
+
+
 def check_login_rate_limit(request: Request) -> None:
-    """检查登录频率限制"""
+    """检查登录频率限制（测试模式下禁用）"""
+    if _is_rate_limit_disabled():
+        return
+
     client_ip = request.client.host if request.client else "unknown"
     now = datetime.utcnow().timestamp()
 
@@ -42,7 +50,10 @@ def check_login_rate_limit(request: Request) -> None:
 
 
 def record_login_failure(request: Request) -> None:
-    """记录一次登录失败"""
+    """记录一次登录失败（测试模式下跳过）"""
+    if _is_rate_limit_disabled():
+        return
+
     client_ip = request.client.host if request.client else "unknown"
     if client_ip not in _login_attempts:
         _login_attempts[client_ip] = deque()

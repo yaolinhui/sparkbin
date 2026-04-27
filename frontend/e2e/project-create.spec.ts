@@ -3,40 +3,13 @@ import { test, expect } from '@playwright/test';
 /**
  * 创建项目 E2E 测试
  * 覆盖：打开弹窗、填写表单、提交成功
+ * 依赖 auth.setup.ts 提供的已登录 storageState
  */
 
 test.describe('创建项目', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
-
-    // 尝试登录
-    const usernameInput = page.locator('input[type="text"]').first();
-    await usernameInput.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
-
-    const hasLoginForm = await usernameInput.isVisible().catch(() => false);
-    if (hasLoginForm) {
-      await usernameInput.fill('admin');
-      await page.locator('input[type="password"]').first().fill('admin');
-      await page.locator('button').filter({ hasText: /登录|Login|Sign/i }).first().click();
-      await page.waitForResponse(resp => resp.url().includes('/auth/login'), { timeout: 10000 });
-      await page.waitForLoadState('networkidle');
-    }
-
-    // 处理强制改密弹窗（首次登录）
-    const changePasswordHeading = page.locator('h1').filter({ hasText: /首次登录|修改默认密码/i });
-    const hasForceChange = await changePasswordHeading.isVisible().catch(() => false);
-    if (hasForceChange) {
-      const modal = page.locator('div.fixed').filter({ has: changePasswordHeading });
-      const pwdInputs = modal.locator('input[type="password"]');
-      await pwdInputs.nth(0).fill('admin');
-      await pwdInputs.nth(1).fill('Admin123');
-      await pwdInputs.nth(2).fill('Admin123');
-      await modal.locator('button[type="submit"]').click();
-      await page.waitForResponse(resp => resp.url().includes('/auth/change-password'), { timeout: 10000 }).catch(() => {});
-      await page.waitForLoadState('networkidle');
-    }
-
     // 等待项目列表 API 加载完成
     await page.waitForResponse(resp => resp.url().includes('/api/v1/projects'), { timeout: 15000 }).catch(() => {});
     await page.waitForLoadState('networkidle');

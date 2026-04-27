@@ -17,6 +17,7 @@ from ..models import AIProvider
 from ..config import get_settings
 from sqlalchemy import func
 from datetime import datetime
+from uuid import UUID as UuidType
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -31,9 +32,10 @@ def _record_audit_log(
     detail: str = "",
 ):
     """记录登录审计日志"""
+    parsed_user_id = UuidType(user_id) if user_id else None
     log = LoginAuditLog(
         username=username,
-        user_id=user_id,
+        user_id=parsed_user_id,
         ip_address=ip_address,
         user_agent=user_agent,
         action=action,

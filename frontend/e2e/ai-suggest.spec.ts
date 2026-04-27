@@ -3,45 +3,27 @@ import { test, expect } from '@playwright/test';
 /**
  * AI 建议功能 E2E 测试
  * 覆盖：点击 AI 建议按钮 -> 弹窗加载 -> 应用建议 -> 刷新验证持久化
+ * 依赖 auth.setup.ts 提供的已登录 storageState
  */
 
 test.describe('AI 建议功能', () => {
-  test.beforeEach(async ({ page }) => {
+  test('项目详情页应能打开 AI 建议弹窗并持久化保存', async ({ page }) => {
+    // 1. 先进入项目列表，找到第一个项目卡片
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // 登录
-    const usernameInput = page.locator('input[type="text"]').first();
-    await usernameInput.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+    const projectLinks = page.locator('a[href*="/project/"]');
+    const count = await projectLinks.count();
 
-    const hasLoginForm = await usernameInput.isVisible().catch(() => false);
-    if (hasLoginForm) {
-      await usernameInput.fill('admin');
-      await page.locator('input[type="password"]').first().fill('admin');
-      await page.locator('button').filter({ hasText: /登录|Login|Sign/i }).first().click();
-      await page.waitForResponse(resp => resp.url().includes('/auth/login'), { timeout: 10000 });
-      await page.waitForLoadState('networkidle');
+    if (count === 0) {
+      test.skip('没有可测试的项目');
+      return;
     }
 
-    // 处理强制改密弹窗（首次登录）
-    const changePasswordHeading = page.locator('h1').filter({ hasText: /首次登录|修改默认密码/i });
-    const hasForceChange = await changePasswordHeading.isVisible().catch(() => false);
-    if (hasForceChange) {
-      const modal = page.locator('div.fixed').filter({ has: changePasswordHeading });
-      const pwdInputs = modal.locator('input[type="password"]');
-      await pwdInputs.nth(0).fill('admin');
-      await pwdInputs.nth(1).fill('Admin123');
-      await pwdInputs.nth(2).fill('Admin123');
-      await modal.locator('button[type="submit"]').click();
-      await page.waitForResponse(resp => resp.url().includes('/auth/change-password'), { timeout: 10000 }).catch(() => {});
-      await page.waitForLoadState('networkidle');
-    }
-  });
-
-  test('项目详情页应能打开 AI 建议弹窗并持久化保存', async ({ page }) => {
-    // 直接访问测试项目详情页
-    await page.goto('/project/bcb3c745-328a-4795-9315-a46408b6a939');
+    // 点击第一个项目卡片进入详情页
+    await projectLinks.first().click();
     await page.waitForURL('**/project/**', { timeout: 10000 });
+    await page.waitForLoadState('networkidle');
 
     // 等待 IdeaStage 渲染
     await page.waitForTimeout(500);

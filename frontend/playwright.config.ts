@@ -10,7 +10,7 @@ export default defineConfig({
   /* 测试文件匹配模式 */
   testMatch: '**/*.spec.ts',
 
-  /* 并行运行测试 */
+  /* 并行运行测试（setup 除外，它在项目配置中串行） */
   fullyParallel: true,
 
   /* 失败时保留工件 */
@@ -56,16 +56,27 @@ export default defineConfig({
 
   /* 项目配置（浏览器） */
   projects: [
+    // 先运行 setup 项目：登录并保存 storageState
+    {
+      name: 'setup',
+      testMatch: '**/*.setup.ts',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // 其他测试复用 setup 保存的 storageState，避免重复登录触发速率限制
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/user.json',
+      },
+      dependencies: ['setup'],
     },
   ],
 
   /* 自动启动服务 */
   webServer: [
     {
-      command: 'cd ../backend && python start.py',
+      command: 'bash -c "cd ../backend && export SPARKBIN_TESTING=1 && python start.py"',
       url: 'http://localhost:8000/health',
       timeout: 180 * 1000,
       reuseExistingServer: !process.env.CI,
