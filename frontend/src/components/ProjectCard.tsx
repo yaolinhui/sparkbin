@@ -67,7 +67,7 @@ export function ProjectCard({ project, index, compact }: ProjectCardProps) {
   };
 
   const completedStagesCount = Object.values(project.stages).filter(
-    (s) => s.isLocked
+    (s) => s.completedAt
   ).length;
 
   const progressPercent = Math.round((completedStagesCount / 6) * 100);

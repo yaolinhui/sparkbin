@@ -515,7 +515,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
   // 计算完成的阶段
   const completedStages = availableStages
-    .filter(([, stage]) => stage?.isLocked)
+    .filter(([, stage]) => stage?.completedAt)
     .map(([key]) => key as StageKey);
 
   const currentStageData = project.stages?.[validCurrentStage];

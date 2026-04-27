@@ -201,7 +201,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
     const currentStageData = currentProject?.stages?.[currentStageKey];
     const stageContent = currentStageData?.content || '';
     const isStageEmpty = !stageContent || stageContent.length < 20;
-    const completedStagesCount = Object.values(currentProject?.stages || {}).filter((s: import('../types').Stage) => s?.isLocked).length;
+    const completedStagesCount = Object.values(currentProject?.stages || {}).filter((s: import('../types').Stage) => s?.completedAt).length;
     const hasWarnings = currentProject ?
       Object.entries(currentProject.stages || {}).some(([, stage]: [string, import('../types').Stage]) => {
         if (!stage?.isLocked) return false;
