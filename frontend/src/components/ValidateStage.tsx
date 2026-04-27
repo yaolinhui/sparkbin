@@ -891,7 +891,7 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
                         ? conclusion === 'passed'
                           ? 'bg-brutal-success text-brutal-bg border-brutal-success'
                           : conclusion === 'failed'
-                          ? 'bg-brutal-error text-white border-brutal-error'
+                          ? 'bg-brutal-error text-brutal-bg border-brutal-error'
                           : 'bg-brutal-warning text-brutal-bg border-brutal-warning'
                         : 'border-brutal-border'
                     }`}
@@ -963,7 +963,7 @@ function DroppableKanbanColumn({
   const { setNodeRef, isOver } = useDroppable({ id, data: { type: 'column' } });
 
   return (
-    <div className="flex-shrink-0 w-72 flex flex-col">
+    <div className="flex-shrink-0 min-w-[260px] w-64 lg:w-72 flex flex-col">
       <div
         className={`flex items-center justify-between px-3 py-2 border-t-2 ${color} bg-brutal-surface`}
       >

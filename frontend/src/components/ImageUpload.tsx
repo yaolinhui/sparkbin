@@ -61,7 +61,7 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
         {!disabled && (
           <button
             onClick={handleRemove}
-            className="absolute -top-2 -right-2 w-5 h-5 bg-brutal-warning text-white flex items-center justify-center"
+            className="absolute -top-2 -right-2 w-5 h-5 bg-brutal-warning text-brutal-bg flex items-center justify-center"
             title="删除"
           >
             <X className="w-3 h-3" />

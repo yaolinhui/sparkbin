@@ -544,8 +544,12 @@ export function ProjectBlueprint({ project, onClose, onStageClick }: ProjectBlue
         <div className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6">
           <div className="mb-6">
             <div className="text-xs font-mono text-brutal-muted mb-3">// 创业管线（点击卡片查看执行细节）</div>
-            <div className="overflow-x-auto pb-2">
-              <div className="flex gap-3 min-w-max">
+            <div className="overflow-x-auto pb-2 relative scroll-smooth">
+              {/* 左侧滚动指示 */}
+              <div className="absolute left-0 top-0 bottom-2 w-6 bg-gradient-to-r from-brutal-bg to-transparent pointer-events-none z-10" />
+              {/* 右侧滚动指示 */}
+              <div className="absolute right-0 top-0 bottom-2 w-6 bg-gradient-to-l from-brutal-bg to-transparent pointer-events-none z-10" />
+              <div className="flex gap-3 min-w-max px-1">
                 {metrics.map((metric, index) => (
                   <button
                     key={metric.key}

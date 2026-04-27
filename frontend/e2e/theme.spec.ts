@@ -22,6 +22,20 @@ test.describe('主题切换', () => {
       await page.waitForResponse(resp => resp.url().includes('/auth/login'), { timeout: 10000 });
       await page.waitForLoadState('networkidle');
     }
+
+    // 处理强制改密弹窗（首次登录）
+    const changePasswordHeading = page.locator('h1').filter({ hasText: /首次登录|修改默认密码/i });
+    const hasForceChange = await changePasswordHeading.isVisible().catch(() => false);
+    if (hasForceChange) {
+      const modal = page.locator('div.fixed').filter({ has: changePasswordHeading });
+      const pwdInputs = modal.locator('input[type="password"]');
+      await pwdInputs.nth(0).fill('admin');
+      await pwdInputs.nth(1).fill('Admin123');
+      await pwdInputs.nth(2).fill('Admin123');
+      await modal.locator('button[type="submit"]').click();
+      await page.waitForResponse(resp => resp.url().includes('/auth/change-password'), { timeout: 10000 }).catch(() => {});
+      await page.waitForLoadState('networkidle');
+    }
   });
 
   test('页面应默认使用深色主题', async ({ page }) => {

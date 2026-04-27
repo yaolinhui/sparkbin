@@ -98,7 +98,7 @@ export function SnakeLoader({ isLoading }: SnakeLoaderProps) {
             </filter>
             <linearGradient id="snake-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="var(--brutal-accent)" />
-              <stop offset="50%" stopColor="#fff" />
+              <stop offset="50%" stopColor="var(--brutal-bg)" />
               <stop offset="100%" stopColor="var(--brutal-accent)" />
             </linearGradient>
           </defs>

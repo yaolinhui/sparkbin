@@ -92,9 +92,9 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
                   className="px-4 py-3 rounded-2xl text-sm font-mono text-center max-w-[200px]"
                   style={{
                     backgroundColor: selectedPet?.color || '#374151',
-                    color: '#fff',
-                    border: '2px solid #000',
-                    boxShadow: '4px 4px 0px #000',
+                    color: 'var(--brutal-bg)',
+                    border: '2px solid var(--brutal-text)',
+                    boxShadow: '4px 4px 0px var(--brutal-text)',
                   }}
                 >
                   {dialogue}

@@ -76,7 +76,7 @@ export function ProjectCard({ project, index, compact }: ProjectCardProps) {
     return (
       <div
         className="bg-brutal-surface p-3 flex items-center justify-between cursor-pointer
-                   hover:brightness-95 transition-all"
+                   hover:bg-brutal-surface-hover hover:border-brutal-text transition-colors border border-transparent"
         onClick={() => navigate(`/project/${project.id}`)}
       >
         <div className="flex items-center gap-4">
@@ -99,7 +99,7 @@ export function ProjectCard({ project, index, compact }: ProjectCardProps) {
 
   return (
     <div
-      className="bg-brutal-surface p-4 cursor-pointer hover:brightness-95 transition-all
+      className="bg-brutal-surface p-4 cursor-pointer hover:bg-brutal-surface-hover transition-colors
                  border-r border-b border-brutal-border last:border-r-0"
       onClick={() => navigate(`/project/${project.id}`)}
     >
@@ -119,7 +119,7 @@ export function ProjectCard({ project, index, compact }: ProjectCardProps) {
       </div>
 
       {/* Title */}
-      <h3 className="font-mono font-bold text-sm mb-2 {...props} line-clamp-1" title={project.title}>
+      <h3 className="font-mono font-bold text-sm mb-2 line-clamp-1" title={project.title}>
         {project.title}
       </h3>
 

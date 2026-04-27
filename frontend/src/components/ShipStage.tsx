@@ -46,6 +46,15 @@ const PLATFORMS = [
   { key: 'wechat', label: '微信公众号', color: '#07c160', icon: '微' },
 ] as const;
 
+function getContrastText(hexColor: string): string {
+  const hex = hexColor.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5 ? '#1a1a1a' : '#ffffff';
+}
+
 export function ShipStage({ project, onUpdateContent, isLocked, onToggleLock }: ShipStageProps) {
   const { t } = useI18n();
   const [data, setData] = useState<ShipData>({
@@ -333,7 +342,7 @@ export function ShipStage({ project, onUpdateContent, isLocked, onToggleLock }: 
                     <div className="flex items-center gap-2">
                       <span
                         className="w-6 h-6 flex items-center justify-center text-xs font-bold"
-                        style={{ backgroundColor: platform.color, color: '#fff' }}
+                        style={{ backgroundColor: platform.color, color: getContrastText(platform.color) }}
                       >
                         {platform.icon}
                       </span>

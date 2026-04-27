@@ -319,14 +319,24 @@ export function AIConfigModal({ isOpen, onClose }: AIConfigModalProps) {
               disabled={!currentConfig.api_key || isTesting || isLoading}
               className="btn-brutal h-9 flex-1 disabled:opacity-50"
             >
-              {isTesting ? 'SAVING...' : 'SAVE & TEST'}
+              {isTesting ? (
+                <span className="flex items-center gap-2 justify-center">
+                  <span className="w-3 h-3 border border-brutal-text border-t-transparent animate-spin" />
+                  SAVING...
+                </span>
+              ) : 'SAVE & TEST'}
             </button>
             <button
               onClick={handleSave}
               disabled={!currentConfig.api_key || isLoading}
               className="btn-brutal-primary h-9 flex-1 disabled:opacity-50"
             >
-              {isLoading ? 'SAVING...' : 'SAVE'}
+              {isLoading ? (
+                <span className="flex items-center gap-2 justify-center">
+                  <span className="w-3 h-3 border border-brutal-bg border-t-transparent animate-spin" />
+                  SAVING...
+                </span>
+              ) : 'SAVE'}
             </button>
           </div>
         </div>

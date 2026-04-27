@@ -504,7 +504,7 @@ export function AIChat({
                   </div>
                 )}
                 <div
-                  className={`max-w-[75%] p-4 text-sm rounded-2xl overflow-hidden ${
+                  className={`max-w-[75%] p-4 text-sm rounded-2xl ${
                     message.role === 'user'
                       ? 'bg-brutal-text text-brutal-bg rounded-br-none'
                       : 'bg-brutal-surface border border-brutal-border rounded-bl-none'
@@ -564,7 +564,7 @@ export function AIChat({
                   opacity: !input.trim() || isThinking ? 0.5 : 1,
                 }}
               >
-                <Send className="w-4 h-4 text-white" />
+                <Send className="w-4 h-4 text-brutal-bg" />
               </button>
             </div>
           </div>
@@ -751,7 +751,7 @@ export function AIChat({
               </div>
             )}
             <div
-              className={`max-w-[80%] p-3 text-sm rounded-2xl overflow-hidden ${
+              className={`max-w-[80%] p-3 text-sm rounded-2xl ${
                 message.role === 'user'
                   ? 'bg-brutal-text text-brutal-bg rounded-br-none'
                   : 'bg-brutal-bg border border-brutal-border rounded-bl-none'
@@ -856,7 +856,7 @@ export function AIChat({
               opacity: !input.trim() || isThinking ? 0.5 : 1,
             }}
           >
-            <Send className="w-4 h-4 text-white" />
+            <Send className="w-4 h-4 text-brutal-bg" />
           </button>
         </div>
       </div>

@@ -285,7 +285,7 @@ export function GrowStage({ project, onUpdateContent, isLocked, onToggleLock }: 
           {/* Week View */}
           {viewMode === 'week' && (
             <div className="flex-1 overflow-auto p-4">
-              <div className="grid grid-cols-7 gap-2 min-w-[600px]">
+              <div className="grid grid-cols-7 gap-2 min-w-0 md:min-w-[600px]">
                 {['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((day, i) => {
                   const dayContents = weekContents.filter(c => {
                     const date = new Date(c.scheduledDate);

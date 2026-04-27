@@ -633,7 +633,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-brutal-bg text-brutal-text font-mono">
+    <div className="h-[100dvh] flex flex-col overflow-hidden bg-brutal-bg text-brutal-text font-mono">
       {/* Header - 可折叠 */}
       <div className="border-b border-brutal-border bg-brutal-surface">
         {isHeaderExpanded ? (
@@ -859,7 +859,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
         {/* Right: AI Chat - 根据折叠状态动态调整宽度 */}
         <div
           className={`bg-brutal-bg transition-all duration-300 ease-in-out flex-shrink-0 h-full ${
-            isAIChatCollapsed ? 'w-12' : 'w-[420px]'
+            isAIChatCollapsed ? 'w-12' : 'w-full sm:w-[320px] md:w-[380px] lg:w-[420px] max-w-[420px]'
           }`}
         >
           <AIChat

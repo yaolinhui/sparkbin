@@ -14,8 +14,8 @@
 :root {
   /* Dark theme colors */
   --brutal-bg: #0a0a0a;
-  --brutal-surface: #141414;
-  --brutal-surface-hover: #1a1a1a;
+  --brutal-surface: #1a1a1a;
+  --brutal-surface-hover: #1f1f1f;
   --brutal-border: #2a2a2a;
   --brutal-border-hover: #3a3a3a;
   --brutal-text: #ffffff;
@@ -45,8 +45,8 @@
   --brutal-text: #1a1a1a;
   --brutal-text-secondary: #4a4a4a;
   --brutal-muted: #8a8680;
-  --brutal-accent: #1a1a1a; /* Muted dark accent for light mode */
-  --brutal-accent-hover: #333333;
+  --brutal-accent: #005fcc; /* Blue accent for light mode - provides visual hierarchy */
+  --brutal-accent-hover: #3388ff;
   --brutal-success: #2d8659;
   --brutal-warning: #c2410c;
   --brutal-error: #dc2626;
@@ -129,7 +129,12 @@ body {
 /* Selection - uses accent color */
 ::selection {
   background-color: var(--brutal-accent);
-  color: var(--brutal-bg);
+  color: var(--brutal-text);
+}
+
+[data-theme="light"] ::selection {
+  background-color: var(--brutal-accent);
+  color: #ffffff;
 }
 
 /* ============================================
@@ -150,7 +155,7 @@ body {
 
 .btn-brutal:hover {
   background-color: var(--brutal-surface-hover);
-  border-color: var(--brutal-text);
+  border-color: var(--brutal-accent);
 }
 
 .btn-brutal:active {
@@ -183,8 +188,8 @@ body {
 }
 
 [data-theme="light"] .btn-brutal-primary:hover {
-  background-color: var(--brutal-muted);
-  border-color: var(--brutal-muted);
+  background-color: var(--brutal-accent-hover);
+  border-color: var(--brutal-accent-hover);
 }
 
 .btn-brutal-primary:disabled {

@@ -9,6 +9,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const saved = localStorage.getItem('sparkbin-theme');
     if (saved === 'light' || saved === 'dark') return saved;
+    // Detect system preference if no saved theme
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches) {
+      return 'light';
+    }
     return 'dark'; // Default to dark theme
   });
 

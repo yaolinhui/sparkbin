@@ -61,7 +61,7 @@ export function RichTextEditor({
           <button
             onClick={() => editor.chain().focus().toggleBold().run()}
             disabled={!editor.can().chain().focus().toggleBold().run()}
-            className={`p-2 border border-transparent hover:border-brutal-muted transition-colors ${
+            className={`p-2 border border-transparent hover:border-brutal-muted transition-colors focus-visible:border-brutal-accent focus-visible:outline-none ${
               editor.isActive('bold') ? 'bg-brutal-border border-brutal-muted' : ''
             }`}
           >
@@ -70,7 +70,7 @@ export function RichTextEditor({
           <button
             onClick={() => editor.chain().focus().toggleItalic().run()}
             disabled={!editor.can().chain().focus().toggleItalic().run()}
-            className={`p-2 border border-transparent hover:border-brutal-muted transition-colors ${
+            className={`p-2 border border-transparent hover:border-brutal-muted transition-colors focus-visible:border-brutal-accent focus-visible:outline-none ${
               editor.isActive('italic') ? 'bg-brutal-border border-brutal-muted' : ''
             }`}
           >
@@ -80,7 +80,7 @@ export function RichTextEditor({
           <button
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             disabled={!editor.can().chain().focus().toggleBulletList().run()}
-            className={`p-2 border border-transparent hover:border-brutal-muted transition-colors ${
+            className={`p-2 border border-transparent hover:border-brutal-muted transition-colors focus-visible:border-brutal-accent focus-visible:outline-none ${
               editor.isActive('bulletList') ? 'bg-brutal-border border-brutal-muted' : ''
             }`}
           >
@@ -89,7 +89,7 @@ export function RichTextEditor({
           <button
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
             disabled={!editor.can().chain().focus().toggleOrderedList().run()}
-            className={`p-2 border border-transparent hover:border-brutal-muted transition-colors ${
+            className={`p-2 border border-transparent hover:border-brutal-muted transition-colors focus-visible:border-brutal-accent focus-visible:outline-none ${
               editor.isActive('orderedList') ? 'bg-brutal-border border-brutal-muted' : ''
             }`}
           >

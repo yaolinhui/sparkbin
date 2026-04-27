@@ -120,7 +120,7 @@ export function IdeaSuggestModal({
   });
 
   return (
-    <div className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto pt-[5vh]">
       <div className="border border-brutal-border bg-brutal-surface w-full max-w-3xl relative max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-brutal-border flex-shrink-0">

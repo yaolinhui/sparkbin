@@ -276,7 +276,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 <ThemeSwitcher />
                 <LanguageSwitcher />
                 <button
@@ -523,9 +523,9 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
               className="px-4 py-3 rounded-2xl text-sm font-mono text-center max-w-[200px]"
               style={{
                 backgroundColor: petColor,
-                color: '#fff',
-                border: '2px solid #000',
-                boxShadow: '4px 4px 0px #000',
+                color: 'var(--brutal-bg)',
+                border: '2px solid var(--brutal-text)',
+                boxShadow: '4px 4px 0px var(--brutal-text)',
               }}
             >
               {petDialogue}
