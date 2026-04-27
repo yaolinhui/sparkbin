@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import type { AIPetConfig as Config } from '../types';
 import { PET_OPTIONS, PERSONALITY_OPTIONS, VERBOSITY_OPTIONS, getContextDialogue } from './AIPetConfig.constants';
@@ -16,20 +16,14 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
     personality: config?.personality || 'gentle',
     verbosity: config?.verbosity || 'moderate',
   });
-  const [dialogue, setDialogue] = useState('');
+  const [dialogue, setDialogue] = useState(() => {
+    const pet = PET_OPTIONS.find(p => p.id === (config?.type || 'cat'));
+    return pet?.greeting || '';
+  });
   const [isBouncing, setIsBouncing] = useState(false);
 
   const selectedPet = PET_OPTIONS.find(p => p.id === form.type);
   const selectedPersonality = PERSONALITY_OPTIONS.find(p => p.id === form.personality);
-
-  // 切换宠物时更新默认名字和台词
-  useEffect(() => {
-    const pet = PET_OPTIONS.find(p => p.id === form.type);
-    if (pet) {
-      setForm(prev => ({ ...prev, name: pet.name }));
-      setDialogue(pet.greeting);
-    }
-  }, [form.type]);
 
   // 点击宠物互动
   const handlePetClick = () => {
@@ -144,7 +138,16 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
                 {PET_OPTIONS.map((pet) => (
                   <button
                     key={pet.id}
-                    onClick={() => setForm({ ...form, type: pet.id as Config['type'] })}
+                    onClick={() => {
+                    const currentPet = PET_OPTIONS.find(p => p.id === form.type);
+                    const shouldUpdateName = !form.name || form.name === currentPet?.name;
+                    setForm({
+                      ...form,
+                      type: pet.id as Config['type'],
+                      name: shouldUpdateName ? pet.name : form.name,
+                    });
+                    setDialogue(pet.greeting);
+                  }}
                     className={`p-2 border-2 text-center transition-all relative ${
                       form.type === pet.id
                         ? 'border-brutal-accent bg-brutal-accent/10'
@@ -222,4 +225,3 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
   );
 }
 
-export default AIPetConfig;
