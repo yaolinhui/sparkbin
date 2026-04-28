@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Lock, User, AlertCircle, Loader2, X, Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
 import { authApi, setAuthToken, setRefreshToken } from '../services/api';
 
@@ -53,6 +53,24 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 弹窗关闭时重置所有状态，避免重新打开时残留错误
+  useEffect(() => {
+    if (!isOpen) {
+      setError(null);
+      setIsLoading(false);
+      setRegUsername('');
+      setRegEmail('');
+      setRegPassword('');
+      setRegConfirm('');
+      setHoneypot('');
+      setForgotEmail('');
+      setForgotSent(false);
+      setUsername('');
+      setPassword('');
+      setTab('login');
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const resetErrors = () => setError(null);
@@ -79,7 +97,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     resetErrors();
 
     // Honeypot 防御：如果隐藏字段被填写，静默丢弃（不暴露是 honeypot）
-    if (honeypot) {
+    if (honeypot.trim()) {
       setError('注册失败，请刷新页面后重试');
       return;
     }
@@ -162,7 +180,13 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
   );
 
   return (
-    <div className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      style={{
+        backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.1) 1.5px, transparent 1.5px)',
+        backgroundSize: '32px 32px',
+      }}
+    >
       <div className="w-full max-w-md border-2 border-brutal-border bg-brutal-surface">
         {/* Header */}
         <div className="p-6 border-b-2 border-brutal-border bg-brutal-text relative">
@@ -341,6 +365,9 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
               onChange={(e) => setHoneypot(e.target.value)}
               className="absolute opacity-0 top-0 left-0 h-0 w-0 pointer-events-none"
               aria-hidden="true"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-bwignore="true"
             />
             <div>
               <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">用户名</label>
