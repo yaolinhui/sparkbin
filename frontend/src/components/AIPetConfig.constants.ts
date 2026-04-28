@@ -79,9 +79,48 @@ export function getContextDialogue(
     totalStages?: number;
     projectStatus?: 'active' | 'paused' | 'archived';
     hasWarnings?: boolean;
+    isLeaving?: boolean;
   }
 ): string {
-  const { currentStage, stageName, isStageEmpty, completedStages = 0, totalStages = 6, projectStatus, hasWarnings } = context;
+  const { currentStage, stageName, isStageEmpty, completedStages = 0, totalStages = 6, projectStatus, hasWarnings, isLeaving } = context;
+
+  // 用户要离开 —— 宠物挽留台词（最高优先级）
+  if (isLeaving) {
+    const 挽留台词: Record<string, Record<string, string>> = {
+      cat: {
+        sharp: '走什么走？猫粮还没结呢！',
+        rational: '当前会话存在未保存状态，建议确认后再离开。',
+        zen: '要去哪？喵～',
+        gentle: '不要走嘛～喵喵会寂寞的，再陪陪我好不好？',
+      },
+      dog: {
+        sharp: '你敢走？我把你项目全 bark 成 public！',
+        rational: '退出前请确认所有更改已同步，避免数据丢失。',
+        zen: '汪～慢慢走，我等你回来。',
+        gentle: '主人不要走！旺仔会一直等你的！',
+      },
+      rabbit: {
+        sharp: '跑？你跑得过我？',
+        rational: '建议完成当前工作流后再退出，保持效率。',
+        zen: '蹦跶～去去就回哦。',
+        gentle: '小白不想一个人待着…带我一起走好不好？',
+      },
+      dragon: {
+        sharp: '临阵脱逃？龙族看不起你。',
+        rational: '勇士，确认放弃当前征程吗？',
+        zen: '龙去龙回，随缘。',
+        gentle: '不要丢下小龙…我会喷火保护你的项目的！',
+      },
+      trae_slime: {
+        sharp: '黏住你了，走不掉的。',
+        rational: '检测到离开意图，建议评估任务完成度。',
+        zen: '噗噜～滑走了再滑回来。',
+        gentle: '黏黏会化成一滩眼泪的…不要走嘛～',
+      },
+    };
+    const petLines = 挽留台词[petId] || 挽留台词.cat;
+    return petLines[personality] || petLines.gentle;
+  }
 
   // 项目状态优先
   if (projectStatus === 'paused') {

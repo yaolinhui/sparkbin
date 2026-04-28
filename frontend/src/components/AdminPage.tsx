@@ -248,7 +248,8 @@ export function AdminPage({ onLogout }: AdminPageProps) {
         {/* Main Content */}
         <main className="flex-1 p-6 overflow-y-auto">
           {activeTab === 'ai' && (
-            <div className="max-w-2xl">
+            <div>
+              {/* Header */}
               <div className="flex items-center gap-3 mb-6">
                 <Server className="w-5 h-5 text-brutal-accent" />
                 <h2 className="text-xl font-bold">AI 后端配置</h2>
@@ -265,154 +266,209 @@ export function AdminPage({ onLogout }: AdminPageProps) {
                 </p>
               </div>
 
-              {/* Message - 固定在表单下方，靠近操作按钮 */}
-              {message && (
-                <div
-                  className={`p-3 border mb-4 flex items-center gap-2 font-mono text-sm ${
-                    message.type === 'success'
-                      ? 'border-brutal-success text-brutal-success bg-brutal-success/5'
-                      : message.type === 'info'
-                        ? 'border-brutal-accent text-brutal-accent bg-brutal-accent/5'
-                        : 'border-brutal-warning text-brutal-warning bg-brutal-warning/5'
-                  }`}
-                >
-                  {message.type === 'success' ? (
-                    <Check className="w-4 h-4 flex-shrink-0" />
-                  ) : message.type === 'info' ? (
-                    <Server className="w-4 h-4 flex-shrink-0 animate-pulse" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  )}
-                  <span className="break-all">{message.text}</span>
-                </div>
-              )}
+              {/* Two-column layout: Form left, Status right */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left: Provider + Config Form (2/3) */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Provider Selection */}
+                  <div>
+                    <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
+                      选择提供商
+                    </label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                      {(Object.keys(PROVIDER_INFO) as AIProvider[]).map((p) => {
+                        const isActive = configs[p].is_active;
+                        const lastTest = lastTestedAt[p];
+                        return (
+                          <button
+                            key={p}
+                            onClick={() => setSelectedProvider(p)}
+                            className={`p-3 border text-left transition-colors relative ${
+                              selectedProvider === p
+                                ? 'border-brutal-accent bg-brutal-accent/10'
+                                : 'border-brutal-border hover:border-brutal-text'
+                            }`}
+                          >
+                            <span
+                              className={`absolute top-2 right-2 w-2 h-2 ${
+                                isActive ? 'bg-brutal-success' : 'bg-brutal-muted/40'
+                              }`}
+                              title={isActive ? '已配置' : '未配置'}
+                            />
+                            <div className="font-mono font-bold pr-4">{PROVIDER_INFO[p].name}</div>
+                            <div className="text-xs text-brutal-muted mt-1">
+                              {isActive ? '已配置' : '未配置'}
+                              {lastTest && (
+                                <span className="ml-1 text-brutal-accent">
+                                  {lastTest.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-              {/* Provider Selection */}
-              <div className="mb-6">
-                <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
-                  选择提供商
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(Object.keys(PROVIDER_INFO) as AIProvider[]).map((p) => {
-                    const isActive = configs[p].is_active;
-                    const lastTest = lastTestedAt[p];
-                    return (
+                  {/* Config Form */}
+                  <div className="space-y-4 border border-brutal-border p-6 bg-brutal-surface">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold">{PROVIDER_INFO[selectedProvider].name} 配置</h3>
+                      {currentConfig.is_active && (
+                        <span className="px-2 py-1 text-xs border border-brutal-success text-brutal-success">
+                          已启用
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
+                        API Key
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showApiKey ? 'text' : 'password'}
+                          value={currentConfig.api_key}
+                          onChange={(e) => updateCurrentConfig({ api_key: e.target.value })}
+                          placeholder="sk-..."
+                          className="w-full p-3 pr-12 border border-brutal-border bg-brutal-bg focus:border-brutal-accent focus:ring-1 focus:ring-brutal-accent focus:outline-none transition-colors font-mono text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKey((v) => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-brutal-muted hover:text-brutal-text transition-colors"
+                          title={showApiKey ? '隐藏' : '显示'}
+                        >
+                          {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-xs font-mono text-brutal-muted uppercase">
+                            Base URL
+                          </label>
+                          <button
+                            onClick={useDefault}
+                            className="text-xs text-brutal-accent hover:underline"
+                          >
+                            使用默认
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={currentConfig.base_url}
+                          onChange={(e) => updateCurrentConfig({ base_url: e.target.value })}
+                          placeholder={PROVIDER_INFO[selectedProvider].defaultUrl}
+                          className="w-full p-3 border border-brutal-border bg-brutal-bg focus:border-brutal-accent focus:ring-1 focus:ring-brutal-accent focus:outline-none transition-colors font-mono text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
+                          Model
+                        </label>
+                        <input
+                          type="text"
+                          value={currentConfig.default_model}
+                          onChange={(e) => updateCurrentConfig({ default_model: e.target.value })}
+                          placeholder={PROVIDER_INFO[selectedProvider].defaultModel}
+                          className="w-full p-3 border border-brutal-border bg-brutal-bg focus:border-brutal-accent focus:ring-1 focus:ring-brutal-accent focus:outline-none transition-colors font-mono text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 pt-2">
                       <button
-                        key={p}
-                        onClick={() => setSelectedProvider(p)}
-                        className={`p-3 border text-left transition-colors relative ${
-                          selectedProvider === p
-                            ? 'border-brutal-accent bg-brutal-accent/10'
-                            : 'border-brutal-border hover:border-brutal-text'
+                        onClick={handleTest}
+                        disabled={isLoading}
+                        className="flex-1 btn-brutal h-10 flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        <Server className="w-4 h-4" />
+                        {isLoading ? '测试中...' : '测试并保存'}
+                      </button>
+                      <button
+                        onClick={() => handleSave()}
+                        disabled={isLoading}
+                        className="flex-1 btn-brutal-primary h-10 flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        <Key className="w-4 h-4" />
+                        {isLoading ? '保存中...' : '仅保存'}
+                      </button>
+                    </div>
+
+                    {/* Message - placed right after buttons */}
+                    {message && (
+                      <div
+                        className={`p-3 border flex items-center gap-2 font-mono text-sm ${
+                          message.type === 'success'
+                            ? 'border-brutal-success text-brutal-success bg-brutal-success/5'
+                            : message.type === 'info'
+                              ? 'border-brutal-accent text-brutal-accent bg-brutal-accent/5'
+                              : 'border-brutal-warning text-brutal-warning bg-brutal-warning/5'
                         }`}
                       >
-                        {/* 连接状态指示点 */}
-                        <span
-                          className={`absolute top-2 right-2 w-2 h-2 ${
-                            isActive ? 'bg-brutal-success' : 'bg-brutal-muted/40'
-                          }`}
-                          title={isActive ? '已配置' : '未配置'}
-                        />
-                        <div className="font-mono font-bold pr-4">{PROVIDER_INFO[p].name}</div>
-                        <div className="text-xs text-brutal-muted mt-1">
-                          {isActive ? '已配置' : '未配置'}
-                          {lastTest && (
-                            <span className="ml-2 text-brutal-accent">
-                              上次测试: {lastTest.toLocaleTimeString()}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Config Form */}
-              <div className="space-y-4 border border-brutal-border p-6 bg-brutal-surface">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold">{PROVIDER_INFO[selectedProvider].name} 配置</h3>
-                  {currentConfig.is_active && (
-                    <span className="px-2 py-1 text-xs border border-brutal-success text-brutal-success">
-                      已启用
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
-                    API Key
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showApiKey ? 'text' : 'password'}
-                      value={currentConfig.api_key}
-                      onChange={(e) => updateCurrentConfig({ api_key: e.target.value })}
-                      placeholder="sk-..."
-                      className="w-full p-3 pr-12 border border-brutal-border bg-brutal-bg focus:border-brutal-accent focus:ring-1 focus:ring-brutal-accent focus:outline-none transition-colors font-mono text-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowApiKey((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-brutal-muted hover:text-brutal-text transition-colors"
-                      title={showApiKey ? '隐藏' : '显示'}
-                    >
-                      {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                        {message.type === 'success' ? (
+                          <Check className="w-4 h-4 flex-shrink-0" />
+                        ) : message.type === 'info' ? (
+                          <Server className="w-4 h-4 flex-shrink-0 animate-pulse" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        )}
+                        <span className="break-all">{message.text}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-xs font-mono text-brutal-muted uppercase">
-                      Base URL
-                    </label>
-                    <button
-                      onClick={useDefault}
-                      className="text-xs text-brutal-accent hover:underline"
-                    >
-                      使用默认
-                    </button>
+                {/* Right: Status Panel (1/3) */}
+                <div className="space-y-4">
+                  {/* Provider Status */}
+                  <div className="border border-brutal-border p-4 bg-brutal-surface">
+                    <h3 className="font-bold mb-3 text-sm">提供商状态</h3>
+                    <div className="space-y-2">
+                      {(Object.keys(PROVIDER_INFO) as AIProvider[]).map((p) => {
+                        const cfg = configs[p];
+                        const lastTest = lastTestedAt[p];
+                        return (
+                          <div key={p} className="flex items-center justify-between text-sm">
+                            <span className="font-mono">{PROVIDER_INFO[p].name}</span>
+                            <div className="flex items-center gap-2">
+                              {lastTest && (
+                                <span className="text-xs text-brutal-muted">
+                                  {lastTest.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                              <span
+                                className={`w-2 h-2 ${
+                                  cfg.is_active ? 'bg-brutal-success' : 'bg-brutal-muted/40'
+                                }`}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <input
-                    type="text"
-                    value={currentConfig.base_url}
-                    onChange={(e) => updateCurrentConfig({ base_url: e.target.value })}
-                    placeholder={PROVIDER_INFO[selectedProvider].defaultUrl}
-                    className="w-full p-3 border border-brutal-border bg-brutal-bg focus:border-brutal-accent focus:ring-1 focus:ring-brutal-accent focus:outline-none transition-colors font-mono text-sm"
-                  />
-                </div>
 
-                <div>
-                  <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
-                    Model
-                  </label>
-                  <input
-                    type="text"
-                    value={currentConfig.default_model}
-                    onChange={(e) => updateCurrentConfig({ default_model: e.target.value })}
-                    placeholder={PROVIDER_INFO[selectedProvider].defaultModel}
-                    className="w-full p-3 border border-brutal-border bg-brutal-bg focus:border-brutal-accent focus:ring-1 focus:ring-brutal-accent focus:outline-none transition-colors font-mono text-sm"
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={handleTest}
-                    disabled={isLoading}
-                    className="flex-1 btn-brutal h-10 flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    <Server className="w-4 h-4" />
-                    {isLoading ? '测试中...' : '测试并保存'}
-                  </button>
-                  <button
-                    onClick={() => handleSave()}
-                    disabled={isLoading}
-                    className="flex-1 btn-brutal-primary h-10 flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    <Key className="w-4 h-4" />
-                    {isLoading ? '保存中...' : '仅保存'}
-                  </button>
+                  {/* Quick Help */}
+                  <div className="border border-brutal-border p-4 bg-brutal-surface">
+                    <h3 className="font-bold mb-3 text-sm">配置说明</h3>
+                    <div className="space-y-3 text-xs text-brutal-muted font-mono">
+                      <p>
+                        <span className="text-brutal-accent">{'>'}</span> 测试连接成功后会自动保存配置
+                      </p>
+                      <p>
+                        <span className="text-brutal-accent">{'>'}</span> API Key 加密存储，前端不直接接触
+                      </p>
+                      <p>
+                        <span className="text-brutal-accent">{'>'}</span> 切换提供商不会影响已保存的其他配置
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
