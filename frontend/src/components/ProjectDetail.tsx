@@ -1,5 +1,40 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+
+// 兼容 BrowserRouter 的 useBlocker（React Router v6 data router 专用 hook 的 polyfill）
+function useBlocker(shouldBlock: boolean) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [state, setState] = useState<'unblocked' | 'blocked'>('unblocked');
+  const retryRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (!shouldBlock) return;
+
+    const handlePopState = () => {
+      setState('blocked');
+      retryRef.current = () => navigate(document.location.pathname + document.location.search);
+      // 阻止实际导航，将用户留在当前页面
+      window.history.pushState(null, '', location.pathname + location.search);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [shouldBlock, location, navigate]);
+
+  const proceed = useCallback(() => {
+    setState('unblocked');
+    retryRef.current?.();
+    retryRef.current = null;
+  }, []);
+
+  const reset = useCallback(() => {
+    setState('unblocked');
+    retryRef.current = null;
+  }, []);
+
+  return { state, proceed, reset, location };
+}
 import { ArrowLeft, Pause, Play, Archive, LogOut, MoreVertical, Sun, Moon, GitGraph, Trash2, Pencil } from 'lucide-react';
 import { useTheme } from '../theme/hooks';
 import { useProjectStore } from '../stores/projectStore';
@@ -344,6 +379,9 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const pendingNavRef = useRef<(() => void) | null>(null);
   const dirtyEditorsRef = useRef<Set<string>>(new Set());
   const forceProceedRef = useRef<boolean>(false);
+  const [dirtyCount, setDirtyCount] = useState(0);
+
+  const hasUnsavedChanges = dirtyCount > 0 || isEditingTitle;
 
   const markDirty = useCallback((key: string, dirty: boolean) => {
     if (dirty) {
@@ -351,12 +389,23 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     } else {
       dirtyEditorsRef.current.delete(key);
     }
+    setDirtyCount(dirtyEditorsRef.current.size);
   }, []);
+
+  // 拦截浏览器返回按钮导航
+  const blocker = useBlocker(hasUnsavedChanges);
+
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      pendingNavRef.current = () => blocker.proceed();
+      setShowLeaveConfirm(true);
+    }
+  }, [blocker]);
 
   const { toggleTheme, isLight } = useTheme();
 
   const handleBackClick = () => {
-    if (dirtyEditorsRef.current.size > 0 || isEditingTitle) {
+    if (hasUnsavedChanges) {
       pendingNavRef.current = () => navigate('/');
       setShowLeaveConfirm(true);
     } else {
@@ -372,6 +421,10 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
   const cancelLeave = () => {
     setShowLeaveConfirm(false);
+    // 如果是由 useBlocker 拦截的导航，需要调用 reset 解除阻塞
+    if (blocker.state === 'blocked') {
+      blocker.reset();
+    }
     pendingNavRef.current = null;
   };
 
@@ -1063,6 +1116,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                   onChange={handleContentChange}
                   placeholder={`// ${t('placeholder.enter_notes')}`}
                   readonly={isCurrentStageLocked}
+                  onDirtyChange={(d) => markDirty(`editor_${validCurrentStage}`, d)}
                 />
               </div>
             ) : (

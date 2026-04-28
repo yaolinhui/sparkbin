@@ -62,7 +62,7 @@ class RefreshTokenRequest(BaseModel):
 # ========== 用户 ==========
 class PetConfig(BaseModel):
     """AI 宠物配置"""
-    type: str = "cat"  # cat | robot | panda | fox
+    type: str = "cat"  # cat | dog | rabbit | dragon | trae_slime
     name: str = ""
     personality: str = "gentle"  # gentle | rational | zen | sharp
     verbosity: str = "moderate"  # quiet | moderate | chatty

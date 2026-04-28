@@ -1,7 +1,7 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Bold, Italic, List, ListOrdered } from 'lucide-react';
 import { useI18n } from '../i18n/hooks';
 
@@ -10,6 +10,7 @@ interface RichTextEditorProps {
   onChange: (content: string) => void;
   placeholder?: string;
   readonly?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 export function RichTextEditor({
@@ -17,9 +18,16 @@ export function RichTextEditor({
   onChange,
   placeholder,
   readonly = false,
+  onDirtyChange,
 }: RichTextEditorProps) {
   const { t } = useI18n();
   const finalPlaceholder = placeholder || `// ${t('placeholder.enter_notes')}`;
+  const initialContentRef = useRef(content || '<p></p>');
+
+  // content 外部变化时（如切换阶段），重置 initialContentRef
+  useEffect(() => {
+    initialContentRef.current = content || '<p></p>';
+  }, [content]);
 
   const editor = useEditor({
     extensions: [
@@ -36,7 +44,9 @@ export function RichTextEditor({
     content: content || '<p></p>',
     editable: !readonly,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+      const html = editor.getHTML();
+      onChange(html);
+      onDirtyChange?.(html !== initialContentRef.current);
     },
   });
 

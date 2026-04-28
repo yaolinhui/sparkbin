@@ -1,4 +1,7 @@
-// 宠物配置 - 使用大 Emoji + 个性台词
+import type { LucideIcon } from 'lucide-react';
+import { Heart, BarChart3, Coffee, Zap, VolumeX, MessageCircle, MessagesSquare } from 'lucide-react';
+
+// 宠物配置 - 像素风小伙伴
 export const PET_OPTIONS = [
   {
     id: 'cat',
@@ -7,30 +10,6 @@ export const PET_OPTIONS = [
     color: '#fbbf24',
     greeting: '喵～要抱抱！',
     traits: '爱撒娇、爱睡觉、治愈系'
-  },
-  {
-    id: 'robot',
-    name: '铁蛋',
-    emoji: '🤖',
-    color: '#60a5fa',
-    greeting: '哔哔！铁蛋为你服务！',
-    traits: '靠谱、幽默、科技感'
-  },
-  {
-    id: 'panda',
-    name: '滚滚',
-    emoji: '🐼',
-    color: '#a3a3a3',
-    greeting: '嗯嗯～竹子真好吃～',
-    traits: '佛系、呆萌、慢节奏'
-  },
-  {
-    id: 'fox',
-    name: '阿狸',
-    emoji: '🦊',
-    color: '#f97316',
-    greeting: '嘿嘿～今天也很聪明哦！',
-    traits: '机灵、调皮、小聪明'
   },
   {
     id: 'dog',
@@ -42,71 +21,50 @@ export const PET_OPTIONS = [
   },
   {
     id: 'rabbit',
-    name: '跳跳',
+    name: '小白',
     emoji: '🐰',
-    color: '#f9a8d4',
-    greeting: '蹦蹦～有什么新点子吗？',
-    traits: '活泼、好奇、点子多'
-  },
-  {
-    id: 'owl',
-    name: '博士',
-    emoji: '🦉',
-    color: '#8b5cf6',
-    greeting: '咕咕～深夜学习也要注意休息。',
-    traits: '博学、沉稳、夜猫子'
+    color: '#f472b6',
+    greeting: '蹦跶蹦跶～',
+    traits: '活泼、机敏、软萌'
   },
   {
     id: 'dragon',
     name: '小龙',
     emoji: '🐲',
-    color: '#ef4444',
-    greeting: '吼～准备好大干一场了吗！',
-    traits: '霸气、冲劲、领导力'
+    color: '#10b981',
+    greeting: '吼吼～我来守护你的项目！',
+    traits: '勇敢、霸气、有担当'
   },
   {
-    id: 'unicorn',
-    name: '彩彩',
-    emoji: '🦄',
-    color: '#ec4899',
-    greeting: '嘤～今天也要闪闪发光！',
-    traits: '梦幻、创意、乐观派'
-  },
-  {
-    id: 'hamster',
-    name: '仓仓',
-    emoji: '🐹',
-    color: '#84cc16',
-    greeting: '吱～一口一口吃掉大目标！',
-    traits: '勤劳、囤积、细水长流'
+    id: 'trae_slime',
+    name: '黏黏',
+    emoji: '💧',
+    color: '#60a5fa',
+    greeting: '噗噜噗噜～',
+    traits: '随性、好奇、百变'
   },
 ];
 
-export const PERSONALITY_OPTIONS = [
-  { id: 'gentle', name: '温柔', desc: '鼓励型，语气柔和', emoji: '🌸', color: '#f472b6' },
-  { id: 'rational', name: '理性', desc: '高效分析，逻辑清晰', emoji: '📊', color: '#60a5fa' },
-  { id: 'zen', name: '佛系', desc: '慢节奏，不着急', emoji: '🧘', color: '#a78bfa' },
-  { id: 'sharp', name: '犀利', desc: '直接挑战，指出问题', emoji: '⚡', color: '#fbbf24' },
+export const PERSONALITY_OPTIONS: { id: string; name: string; desc: string; icon: LucideIcon; color: string }[] = [
+  { id: 'gentle', name: '温柔', desc: '鼓励型，语气柔和', icon: Heart, color: '#f472b6' },
+  { id: 'rational', name: '理性', desc: '高效分析，逻辑清晰', icon: BarChart3, color: '#60a5fa' },
+  { id: 'zen', name: '佛系', desc: '慢节奏，不着急', icon: Coffee, color: '#a78bfa' },
+  { id: 'sharp', name: '犀利', desc: '直接挑战，指出问题', icon: Zap, color: '#fbbf24' },
 ];
 
-export const VERBOSITY_OPTIONS = [
-  { id: 'quiet', name: '安静', desc: '只在必要时发言', emoji: '🤫' },
-  { id: 'moderate', name: '适中', desc: '适度主动建议', emoji: '💬' },
-  { id: 'chatty', name: '话痨', desc: '经常主动提示', emoji: '🗣️' },
+export const VERBOSITY_OPTIONS: { id: string; name: string; desc: string; icon: LucideIcon }[] = [
+  { id: 'quiet', name: '安静', desc: '只在必要时发言', icon: VolumeX },
+  { id: 'moderate', name: '适中', desc: '适度主动建议', icon: MessageCircle },
+  { id: 'chatty', name: '话痨', desc: '经常主动提示', icon: MessagesSquare },
 ];
 
 // 基础台词库
 export const PET_DIALOGUES: Record<string, string[]> = {
   cat: ['喵～', '蹭蹭～', '呼噜呼噜...', '要小鱼干嘛～', '今天阳光真好喵～'],
-  robot: ['正在思考...', '铁蛋明白！', '数据分析中...', '哔哔！', '系统运行正常'],
-  panda: ['嗯嗯～', '竹子真香～', '困困...', '抱抱～', '再睡一回合...'],
-  fox: ['嘿嘿～', '我聪明吧！', '今天也超棒！', '摸摸头～', '有新的计划吗？'],
   dog: ['汪汪！', '主人最棒！', '一起去散步吧～', '收到！马上执行！', '今天也要元气满满！'],
-  rabbit: ['蹦蹦～', '胡萝卜时间到！', '耳朵竖起来听你说～', '新点子新点子！', '快告诉我好消息！'],
-  owl: ['咕咕～', '知识就是力量', '夜深了，注意休息', '这个问题很有趣', '让我思考一下...'],
-  dragon: ['吼～', '燃烧吧小宇宙！', '前方有挑战，上！', '龙焰准备就绪', '今天也要征服世界'],
-  unicorn: ['嘤～', '彩虹出现啦～', '相信自己，你超棒的！', '魔法时刻到了', '闪闪发光吧～'],
-  hamster: ['吱～', '又囤了一颗瓜子', '小步前进也是进步', '累了就歇歇吧', '积累起来就很多啦'],
+  rabbit: ['蹦跶～', '耳朵竖起来啦！', '胡萝卜时间到了吗？', '蹦蹦跳跳真开心～', '小白在哦！'],
+  dragon: ['吼吼～', '我来喷火助力！', '龙族的智慧与你同在', '宝藏就在前方！', '展翅高飞吧！'],
+  trae_slime: ['噗噜～', '黏住你啦！', '我在变形哦', '史莱姆滚滚来～', '咕噜咕噜...'],
 };
 
 // 项目状态相关台词

@@ -8,54 +8,218 @@ function hexToAnsiBg(hex) {
   return `\x1b[48;2;${r};${g};${b}m`;
 }
 
-function renderColor(title, frame, palette) {
-  console.log('\n' + '='.repeat(50));
-  console.log(`  [${title}]`);
-  console.log('='.repeat(50));
-  for (const row of frame.pixels) {
+// ============================================================
+// 32×32 Cat — 改进版：明确头颈分界、尖耳朵、大眼睛、带尾巴
+// ============================================================
+const catPalette = {
+  '.': 'transparent',
+  'A': '#f4a261', // 主橘色
+  'D': '#d68c45', // 深橘阴影
+  'L': '#f9c74f', // 浅黄高光
+  'W': '#ffffff', // 白色眼睛
+  'B': '#1d3557', // 蓝色瞳孔
+  'P': '#ff8fa3', // 粉色耳朵/鼻子
+};
+
+const catIdle1 = [
+  '................................',
+  '................................',
+  '.........PP........PP.........',
+  '........PPPP......PPPP........',
+  '........PPAAAAAAAAAAPP........',
+  '.......AAAAAAAAAAAAAAA........',
+  '......AAAAAAAAAAAAAAAAA.......',
+  '......AAAAAAAAAAAAAAAAA.......',
+  '.......AAWWAAAAAAAAAAWWAA.......',
+  '.......AAWBAAAAAAAAAAWBAA.......',
+  '.....AAAAAAAAAAAAAAAAAAA......',
+  '.....AAAAAAAAAAAAAAAAAAA......',
+  '.......AAAAAAAAPAAAAAAA.........',
+  '.......AAAAAALLLLLAAAAA.........',
+  '........AAAAAAAAAAAAA.........',
+  '.........AAAAAAAAAAA..........',
+  '........DDDDDDDDDDDDDD.........',
+  '.......AAAAAAAAAAAAAAAA........',
+  '......AAAAAAAAAAAAAAAAAA.......',
+  '......AAAAAALLLLLLAAAAAA.......',
+  '......AAAAAAAAAAAAAAAAAA.......',
+  '.......AAAAAAAAAAAAAAAA........',
+  '........AAAAAAAAAAAAAA.........',
+  '.......DDDDD....DDDDD..........',
+  '......DDDDDD...DDDDDAAA........',
+  '......DDDDDD...DDDDAAA.........',
+  '.......DDDD.....DDAAAA.........',
+  '........DD.......DAAAAA.........',
+  '...................AAAAA........',
+  '..................AAAAAA........',
+  '.................AAAAAAA........',
+  '................................',
+];
+
+const catIdle2 = [
+  '................................',
+  '................................',
+  '.........PP........PP.........',
+  '........PPPP......PPPP........',
+  '........PPAAAAAAAAAAPP........',
+  '.......AAAAAAAAAAAAAAA........',
+  '......AAAAAAAAAAAAAAAAA.......',
+  '......AAAAAAAAAAAAAAAAA.......',
+  '.......AAWWAAAAAAAAAAWWAA.......',
+  '.......AAWBAAAAAAAAAAWBAA.......',
+  '.....AAAAAAAAAAAAAAAAAAA......',
+  '.....AAAAAAAAAAAAAAAAAAA......',
+  '.......AAAAAAAAPAAAAAAA.........',
+  '.......AAAAAALLLLLAAAAA.........',
+  '........AAAAAAAAAAAAA.........',
+  '.........AAAAAAAAAAA..........',
+  '.........DDDDDDDDDDD..........',
+  '........AAAAAAAAAAAAAA........',
+  '.......AAAAAAAAAAAAAAAA.......',
+  '.......AAAAAALLLLAAAAAA.......',
+  '.......AAAAAAAAAAAAAAAA.......',
+  '........AAAAAAAAAAAAAA........',
+  '.........AAAAAAAAAAAA.........',
+  '........DDDD....DDDD..........',
+  '.......DDDDDD..DDDDD..........',
+  '.......DDDDDD..DDDDD..........',
+  '........DDDD...DDDD...........',
+  '...................AAAAA........',
+  '..................AAAAAA........',
+  '.................AAAAAAA........',
+  '................................',
+  '................................',
+];
+
+const catBlink = [
+  '................................',
+  '................................',
+  '.........PP........PP.........',
+  '........PPPP......PPPP........',
+  '........PPAAAAAAAAAAPP........',
+  '.......AAAAAAAAAAAAAAA........',
+  '......AAAAAAAAAAAAAAAAA.......',
+  '......AAAAAAAAAAAAAAAAA.......',
+  '.......AADDAAAAAAAAAADDAA.......',
+  '.......AADDAAAAAAAAAADDAA.......',
+  '.....AAAAAAAAAAAAAAAAAAA......',
+  '.....AAAAAAAAAAAAAAAAAAA......',
+  '.......AAAAAAAAPAAAAAAA.........',
+  '.......AAAAAALLLLLAAAAA.........',
+  '........AAAAAAAAAAAAA.........',
+  '.........AAAAAAAAAAA..........',
+  '........DDDDDDDDDDDDDD.........',
+  '.......AAAAAAAAAAAAAAAA........',
+  '......AAAAAAAAAAAAAAAAAA.......',
+  '......AAAAAALLLLLLAAAAAA.......',
+  '......AAAAAAAAAAAAAAAAAA.......',
+  '.......AAAAAAAAAAAAAAAA........',
+  '........AAAAAAAAAAAAAA.........',
+  '.......DDDDD....DDDDD..........',
+  '......DDDDDD...DDDDDAAA........',
+  '......DDDDDD...DDDDAAA.........',
+  '.......DDDD.....DDAAAA.........',
+  '........DD.......DAAAAA.........',
+  '...................AAAAA........',
+  '..................AAAAAA........',
+  '.................AAAAAAA........',
+  '................................',
+];
+
+const catHappy = [
+  '................................',
+  '................................',
+  '.........PP........PP.........',
+  '........PPPP......PPPP........',
+  '........PPAAAAAAAAAAPP........',
+  '.......AAAAAAAAAAAAAAA........',
+  '......AAAAAAAAAAAAAAAAA.......',
+  '......AAAAAAAAAAAAAAAAA.......',
+  '.......AAWWAAAAAAAAAAWWAA.......',
+  '.......AAWBAAAAAAAAAAWBAA.......',
+  '.....AAAAAAAAAAAAAAAAAAA......',
+  '.....AAAAAAAAAAAAAAAAAAA......',
+  '.......AAAAAAAAPAAAAAAA.........',
+  '......AAAALLLLLLLLLLLLAAAA......',
+  '........AAAAAAAAAAAAA.........',
+  '.........AAAAAAAAAAA..........',
+  '........DDDDDDDDDDDDDD.........',
+  '.......AAAAAAAAAAAAAAAA........',
+  '......AAAAAAAAAAAAAAAAAA.......',
+  '......AAAAAALLLLLLAAAAAA.......',
+  '......AAAAAAAAAAAAAAAAAA.......',
+  '.......AAAAAAAAAAAAAAAA........',
+  '........AAAAAAAAAAAAAA.........',
+  '.......DDDDD....DDDDD..........',
+  '......DDDDDD...DDDDDAAA........',
+  '......DDDDDD...DDDDAAA.........',
+  '.......DDDD.....DDAAAA.........',
+  '........DD.......DAAAAA.........',
+  '...................AAAAA........',
+  '..................AAAAAA........',
+  '.................AAAAAAA........',
+  '................................',
+];
+
+// ============================================================
+// 渲染引擎 — 将 32×32 逻辑像素放大显示
+// 水平：每个逻辑像素 → 4 个空格（128 字符宽）
+// 垂直：每个逻辑像素 → 2 行（64 行高）
+// 终端字符高≈2倍宽，4×2 字符块视觉上接近正方形
+// ============================================================
+const SCALE_X = 4;
+const SCALE_Y = 2;
+
+function renderColor(title, pixels, palette) {
+  console.log('\n' + '='.repeat(70));
+  console.log(`  [${title}]  画布: 32×32  显示: ~128×64  配色: 暖橘猫`);
+  console.log('='.repeat(70));
+  for (const row of pixels) {
     let line = '  ';
     for (const char of row) {
       const color = palette[char];
       if (!color || color === 'transparent') {
-        line += '  ';
+        line += ' '.repeat(SCALE_X);
       } else {
-        line += hexToAnsiBg(color) + '  ' + RESET;
+        line += hexToAnsiBg(color) + ' '.repeat(SCALE_X) + RESET;
       }
     }
-    console.log(line);
+    for (let r = 0; r < SCALE_Y; r++) {
+      console.log(line);
+    }
   }
 }
 
-function renderAscii(title, frame, palette) {
-  console.log('\n' + '='.repeat(50));
-  console.log(`  [${title}]`);
-  console.log('='.repeat(50));
+function renderAscii(title, pixels, palette) {
+  console.log('\n' + '='.repeat(70));
+  console.log(`  [${title}]  ASCII 模式（无颜色终端 fallback）`);
+  console.log('='.repeat(70));
   const symbolMap = {};
   let symIdx = 0;
   const symbols = ['@', '#', '*', '=', '+', '~', '%'];
-  for (const row of frame.pixels) {
+  for (const row of pixels) {
     let line = '  ';
     for (const char of row) {
       const color = palette[char];
       if (!color || color === 'transparent') {
-        line += '  ';
+        line += ' '.repeat(SCALE_X);
       } else {
         if (!symbolMap[color]) {
           symbolMap[color] = symbols[symIdx % symbols.length];
           symIdx++;
         }
-        line += symbolMap[color] + symbolMap[color];
+        line += symbolMap[color].repeat(SCALE_X);
       }
     }
-    console.log(line);
+    for (let r = 0; r < SCALE_Y; r++) {
+      console.log(line);
+    }
   }
   const entries = Object.entries(symbolMap);
   if (entries.length) {
     const names = {
-      '#1a1a1a': '黑', '#ff6b6b': '红', '#ffffff': '白',
-      '#f4a261': '橙', '#f9c74f': '黄', '#ff8fa3': '粉',
-      '#1d3557': '蓝', '#d68c45': '棕', '#e94560': '玫红',
-      '#ffb4b4': '浅粉', '#0f3460': '藏青', '#2d2d2d': '深灰',
+      '#f4a261': '主橘', '#d68c45': '深橘阴影', '#f9c74f': '浅黄高光',
+      '#ffffff': '白', '#1d3557': '深蓝瞳孔', '#ff8fa3': '粉',
     };
     console.log('  图例: ' + entries.map(([c, s]) => `${s}=${names[c] || c}`).join(', '));
   }
@@ -64,107 +228,21 @@ function renderAscii(title, frame, palette) {
 const supportsColor = process.stdout.isTTY;
 const render = supportsColor ? renderColor : renderAscii;
 
-// ============================================================
-// Style A: 极简几何 12×12 — 正脸，尖耳朵+眼睛+粉鼻
-// ============================================================
-const geometricPalette = {
-  '.': 'transparent', 'B': '#2d2d2d', 'W': '#ffffff', 'P': '#ff6b6b',
-};
-const geometricCat = {
-  width: 12, height: 12,
-  pixels: [
-    '............',
-    '..BB....BB..',
-    '.BBBB..BBBB.',
-    '.BBBBBBBBBB.',
-    '.BBBBBBBBBB.',
-    '.BBWBBBBWBB.',
-    '.BBWBBBBWBB.',
-    '.BBBBBBBBBB.',
-    '..BBBBPBBB..',
-    '..BBBBBBBB..',
-    '..BBBBBBBB..',
-    '............',
-  ],
-};
-
-// ============================================================
-// Style B: 8-bit 侧面 16×16 — 耳朵+眼睛+尾巴，像游戏精灵
-// ============================================================
-const retroPalette = {
-  '.': 'transparent', 'F': '#f4a261', 'D': '#d68c45', 'W': '#ffffff',
-  'B': '#1d3557', 'P': '#ff8fa3',
-};
-const retroCat = {
-  width: 16, height: 16,
-  pixels: [
-    '................',
-    '.....DD.........',
-    '....FFFF........',
-    '....FFFFFF......',
-    '....FFFFFF......',
-    '....FWFFFF......',
-    '....FWBFFF......',
-    '....FFFFFF......',
-    '.....FFFFF......',
-    '.....FFFFFF.....',
-    '....FFFFFFFF....',
-    '....FFFFFFFF....',
-    '...FFFFFFFFF....',
-    '...FFFF.........',
-    '...FFF..........',
-    '................',
-  ],
-};
-
-// ============================================================
-// Style C: 大像素正脸 24×24 — 圆润脑袋+明显五官+双腿
-// ============================================================
-const bigPixelPalette = {
-  '.': 'transparent', 'F': '#e94560', 'D': '#ff6b6b', 'W': '#ffffff',
-  'B': '#0f3460', 'P': '#ffb4b4',
-};
-const bigPixelCat = {
-  width: 24, height: 24,
-  pixels: [
-    '........................',
-    '........................',
-    '........................',
-    '........DD.....DD.......',
-    '.......FFFF...FFFF......',
-    '.......FFFFF.FFFFF......',
-    '.......FFFFFFFFFFFF.....',
-    '.......FFFFFFFFFFFF.....',
-    '.......FFFFFFFFFFFF.....',
-    '.......FFWFFFFFFWFFF....',
-    '.......FFWBFFFFWBFFF....',
-    '.......FFFFFFFFFFFF.....',
-    '........FFFFPFFFFF......',
-    '........FFFFFFFFFF......',
-    '........FFFFFFFFFF......',
-    '.......FFFFFFFFFFFF.....',
-    '.......FFFFFFFFFFFF.....',
-    '.......FFFFFFFFFFFF.....',
-    '......FFFFFFFFFFFFFF....',
-    '......FFFFFFFFFFFFFF....',
-    '.....FFFFF.....FFFFF....',
-    '.....FFFFF.....FFFFF....',
-    '.....FFFFF.....FFFFF....',
-    '........................',
-  ],
-};
-
 console.log('\n');
-console.log('╔══════════════════════════════════════════════════╗');
-console.log('║     SparkBin 像素宠物 - 重绘版（更像猫）          ║');
-console.log('╚══════════════════════════════════════════════════╝');
-console.log('\n提示: 本地终端运行可看到彩色方块。');
+console.log('╔══════════════════════════════════════════════════════════════════════╗');
+console.log('║     SparkBin 像素宠物预览 — 32×32 猫 v2（改进版）                     ║');
+console.log('╚══════════════════════════════════════════════════════════════════════╝');
+console.log('\n改进点：明确头颈分界 / 尖耳朵 / 2×2 大眼睛 / 带尾巴');
+console.log('提示：支持颜色的终端会显示彩色方块。每帧约 130 宽 × 66 行。');
 
-render('A. 极简几何 12×12 (正脸)', geometricCat, geometricPalette);
-render('B. 8-bit 侧面 16×16 (有尾巴)', retroCat, retroPalette);
-render('C. 大像素正脸 24×24 (圆润)', bigPixelCat, bigPixelPalette);
+render('Idle Frame 1  (静止帧1)', catIdle1, catPalette);
+render('Idle Frame 2  (静止帧2 — 呼吸)', catIdle2, catPalette);
+render('Blink Frame   (眨眼)', catBlink, catPalette);
+render('Happy Frame   (开心)', catHappy, catPalette);
 
-console.log('\n' + '='.repeat(50));
-console.log('  A = 极简正脸  |  B = 8-bit 侧面  |  C = 大像素正脸');
-console.log('  或回复 "都不行"');
-console.log('='.repeat(50) + '\n');
+console.log('\n' + '='.repeat(70));
+console.log('  帧说明：');
+console.log('  • Idle 1/2：身体微缩差异，idle 循环动画');
+console.log('  • Blink   ：闭眼帧，随机触发后回 idle');
+console.log('  • Happy   ：大笑嘴，被点击/互动时触发');
+console.log('='.repeat(70) + '\n');

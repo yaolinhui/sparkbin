@@ -1,4 +1,5 @@
 import { Check, ChevronRight } from 'lucide-react';
+import { useI18n, useStageLabel } from '../i18n/hooks';
 import { STAGE_ORDER, type StageKey } from '../types';
 
 interface StageFlowProps {
@@ -20,15 +21,6 @@ const STAGE_NUMBERS: Record<StageKey, string> = {
   monetize: '06',
 };
 
-const STAGE_LABELS: Record<StageKey, string> = {
-  idea: '想法',
-  validate: '验证',
-  prototype: '原型',
-  ship: '发布',
-  grow: '增长',
-  monetize: '变现',
-};
-
 export function StageFlow({
   currentStage,
   viewingStage,
@@ -38,6 +30,8 @@ export function StageFlow({
   isCompleting,
   canComplete
 }: StageFlowProps) {
+  const { t } = useI18n();
+  const stageLabel = useStageLabel;
   const progress = Math.round((completedStages.length / STAGE_ORDER.length) * 100);
 
   return (
@@ -58,7 +52,7 @@ export function StageFlow({
                   ${isCurrent || isViewing ? 'bg-cyan-500/10' :
                     'hover:bg-brutal-bg/50'}
                 `}
-                title={`${STAGE_LABELS[stage]} ${isCompleted ? '(已完成)' : isCurrent ? '(进行中)' : isViewing ? '(查看中)' : ''}`}
+                title={`${stageLabel(stage)} ${isCompleted ? '(' + t('status.completed') + ')' : isCurrent ? '(' + t('status.active') + ')' : isViewing ? '(' + t('status.viewing') + ')' : ''}`}
               >
                 <span className={`text-xs font-mono ${
                   isCurrent ? 'text-cyan-400 font-bold' :
@@ -72,7 +66,7 @@ export function StageFlow({
                   isViewing ? 'text-cyan-400' :
                   isCompleted ? 'text-brutal-success' : 'text-brutal-muted'
                 }`}>
-                  {STAGE_LABELS[stage].slice(0, 2)}
+                  {stageLabel(stage)}
                 </span>
               </button>
             );
@@ -84,14 +78,14 @@ export function StageFlow({
           <span className={`text-sm font-mono font-bold ${
             completedStages.includes(currentStage) ? 'text-brutal-success' : 'text-brutal-accent'
           }`}>
-            {STAGE_LABELS[currentStage]}
+            {stageLabel(currentStage)}
           </span>
           <span className={`text-xs px-2 py-0.5 font-mono ${
             completedStages.includes(currentStage)
               ? 'bg-brutal-success text-brutal-bg'
               : 'bg-brutal-accent text-brutal-bg'
           }`}>
-            {completedStages.includes(currentStage) ? '已完成' : '进行中'}
+            {completedStages.includes(currentStage) ? t('status.completed') : t('status.active')}
           </span>
 
           {/* 进度条 */}
@@ -118,14 +112,14 @@ export function StageFlow({
             ) : (
               <Check className="w-4 h-4" />
             )}
-            <span className="text-sm">提交阶段</span>
+            <span className="text-sm">{t('action.commit_stage')}</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         )}
         {completedStages.includes(currentStage) && (
           <span className="text-xs font-mono text-brutal-success flex items-center gap-1 flex-shrink-0">
             <Check className="w-4 h-4" />
-            已完成
+            {t('status.completed')}
           </span>
         )}
       </div>

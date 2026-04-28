@@ -29,30 +29,60 @@ interface AIChatProps {
   onCollapsedChange?: (collapsed: boolean) => void;
 }
 
-const WELCOME_MESSAGES: Record<string, { zh: string; en: string }> = {
+const WELCOME_MESSAGES: Record<string, Record<string, string>> = {
   idea: {
     zh: '喵～我是你的创意小助手！\n\n让我帮你完善想法吧～',
     en: 'Meow~ I\'m your creative assistant!\n\nLet me help refine your idea~',
+    ja: 'にゃ～アイデアアシスタントだよ！\n\n一緒にアイデアを磨こう～',
+    ko: '야옹~ 창의적 어시스턴트야!\n\n함께 아이디어를 다듬어보자~',
+    es: '¡Miau~ Soy tu asistente creativo!\n\nDéjame ayudarte a perfeccionar tu idea~',
+    fr: 'Miaou~ Je suis ton assistant créatif !\n\nLaisse-moi t\'aider à affiner ton idée~',
+    de: 'Miau~ Ich bin dein kreativer Assistent!\n\nLass mich dir helfen, deine Idee zu verfeinern~',
   },
   validate: {
     zh: '准备帮你验证想法！\n\n我们一起确认方向对不对～',
     en: 'Ready to validate your idea!\n\nLet\'s confirm the direction together~',
+    ja: 'アイデアを検証しよう！\n\n一緒に方向性を確認しよう～',
+    ko: '아이디어를 검증하자!\n\n함께 방향성을 확인해보자~',
+    es: '¡Listo para validar tu idea!\n\nConfirmemos la dirección juntos~',
+    fr: 'Prêt à valider ton idée !\n\nConfirmons la direction ensemble~',
+    de: 'Bereit, deine Idee zu validieren!\n\nLass uns zusammen die Richtung bestätigen~',
   },
   prototype: {
     zh: '来构建原型吧！\n\n我可以帮你拆分功能、选技术栈～',
     en: 'Let\'s build the prototype!\n\nI can help with features and tech stack~',
+    ja: 'プロトタイプを作ろう！\n\n機能分割や技術選定を手伝うよ～',
+    ko: '프로토타입을 만들자!\n\n기능 분할이나 기술 스택 선택을 도와줄게~',
+    es: '¡Construyamos el prototipo!\n\nPuedo ayudarte con funciones y stack tecnológico~',
+    fr: 'Construisons le prototype !\n\nJe peux t\'aider avec les fonctionnalités et la stack technique~',
+    de: 'Lass uns den Prototypen bauen!\n\nIch kann bei Features und Tech-Stack helfen~',
   },
   ship: {
     zh: '发布倒计时！\n\n检查一下清单，准备启航～',
     en: 'Launch countdown!\n\nCheck the list, ready to sail~',
+    ja: 'リリースカウントダウン！\n\nチェックリストを確認して、出航準備～',
+    ko: '출시 카운트다운!\n\n체크리스트를 확인하고 출항 준비를 하자~',
+    es: '¡Cuenta regresiva para el lanzamiento!\n\nRevisa la lista, listos para zarpar~',
+    fr: 'Compte à rebours pour le lancement !\n\nVérifie la liste, prêt à appareiller~',
+    de: 'Start-Countdown!\n\nPrüfe die Liste, bereit zum Ablegen~',
   },
   grow: {
     zh: '增长时间到！\n\n让我们获取更多用户～',
     en: 'Growth time!\n\nLet\'s acquire more users~',
+    ja: '成長の時間だ！\n\nもっとユーザーを獲得しよう～',
+    ko: '성장 시간!\n\n더 많은 사용자를 확보하자~',
+    es: '¡Hora de crecer!\n\nAdquiramos más usuarios~',
+    fr: 'C\'est l\'heure de croître !\n\nAcquérons plus d\'utilisateurs~',
+    de: 'Wachstumszeit!\n\nLass uns mehr Nutzer gewinnen~',
   },
   monetize: {
     zh: '变现模式开启！\n\n帮你设计定价策略～',
     en: 'Monetization mode on!\n\nHelp you design pricing strategy~',
+    ja: '収益化モード開始！\n\n価格戦略の設計を手伝うよ～',
+    ko: '수익화 모드 시작!\n\n가격 전략 설계를 도와줄게~',
+    es: '¡Modo monetización activado!\n\nTe ayudo a diseñar la estrategia de precios~',
+    fr: 'Mode monétisation activé !\n\nJe t\'aide à concevoir la stratégie de prix~',
+    de: 'Monetarisierungsmodus aktiviert!\n\nIch helfe dir bei der Preisstrategie~',
   },
 };
 

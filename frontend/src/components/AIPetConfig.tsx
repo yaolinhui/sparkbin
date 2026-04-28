@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, RotateCcw } from 'lucide-react';
 import type { AIPetConfig as Config } from '../types';
 import { PET_OPTIONS, PERSONALITY_OPTIONS, VERBOSITY_OPTIONS } from './AIPetConfig.constants';
 import { PixelPet } from './PixelPet';
@@ -68,13 +68,15 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
             >
               <PixelPet
                 frames={petFrames}
-                scale={4}
+                scale={5}
                 animation={previewAnim}
               />
               {/* 性格装饰 */}
-              <span className="absolute -top-2 -right-2 text-2xl">
-                {selectedPersonality?.emoji}
-              </span>
+              {selectedPersonality && (
+                <span className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center bg-brutal-bg border border-brutal-border rounded-full">
+                  <selectedPersonality.icon className="w-3.5 h-3.5" style={{ color: selectedPersonality.color }} />
+                </span>
+              )}
             </div>
 
             <p className="mt-6 text-xs text-brutal-muted font-mono text-center">
@@ -91,6 +93,15 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
                 className="text-xl font-mono font-bold text-center bg-brutal-bg border-2 border-brutal-border focus:border-brutal-accent outline-none px-4 py-2 w-full max-w-[180px]"
                 style={{ boxShadow: '3px 3px 0px var(--brutal-border)' }}
               />
+              {form.name !== selectedPet?.name && (
+                <button
+                  onClick={() => setForm({ ...form, name: selectedPet?.name || '' })}
+                  className="mt-2 text-[10px] text-brutal-muted hover:text-brutal-accent font-mono flex items-center gap-1 mx-auto transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  恢复默认名「{selectedPet?.name}」
+                </button>
+              )}
             </div>
 
             {/* 宠物特点 */}
@@ -119,13 +130,19 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
                       name: shouldUpdateName ? pet.name : form.name,
                     });
                   }}
-                    className={`p-2 border-2 text-center transition-all relative ${
+                    className={`p-2 border-2 text-center transition-all relative flex flex-col items-center justify-center ${
                       form.type === pet.id
                         ? 'border-brutal-accent bg-brutal-accent/10'
                         : 'border-brutal-border hover:border-brutal-accent/50'
                     }`}
                   >
-                    <span className="text-3xl block mb-1">{pet.emoji}</span>
+                    <div className="mb-1">
+                      <PixelPet
+                        frames={PIXEL_PET_CATALOG[pet.id] || PIXEL_PET_CATALOG['cat']}
+                        scale={1}
+                        animation="idle"
+                      />
+                    </div>
                     <span className="text-[10px] font-mono">{pet.name}</span>
                     {form.type === pet.id && (
                       <span className="absolute top-0.5 right-0.5 text-brutal-accent text-xs">✓</span>
@@ -149,7 +166,7 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
                         : 'border-brutal-border hover:border-brutal-accent/50'
                     }`}
                   >
-                    <span className="text-2xl">{p.emoji}</span>
+                    <p.icon className="w-6 h-6 shrink-0" style={{ color: p.color }} />
                     <div>
                       <span className="text-sm font-mono font-bold block">{p.name}</span>
                       <span className="text-xs text-brutal-muted">{p.desc}</span>
@@ -173,7 +190,7 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
                         : 'border-brutal-border hover:border-brutal-accent/50'
                     }`}
                   >
-                    <span className="text-2xl block mb-1">{v.emoji}</span>
+                    <v.icon className="w-6 h-6 mx-auto mb-1" />
                     <span className="text-xs font-mono font-bold block">{v.name}</span>
                   </button>
                 ))}

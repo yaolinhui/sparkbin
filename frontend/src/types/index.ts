@@ -228,7 +228,7 @@ export interface Project {
 
 // AI 宠物配置
 export interface AIPetConfig {
-  type: 'cat' | 'robot' | 'panda' | 'fox';
+  type: 'cat' | 'dog' | 'rabbit' | 'dragon' | 'trae_slime';
   name: string;
   personality: 'gentle' | 'rational' | 'zen' | 'sharp';
   verbosity: 'quiet' | 'moderate' | 'chatty';

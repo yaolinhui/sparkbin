@@ -20,7 +20,7 @@ export function useStageLabel(stageKey: string): string {
     return stageKey.toUpperCase();
   }
 
-  // For Chinese, return as-is; for English, uppercase
+  // For English, uppercase; for CJK languages (zh, ja), return as-is
   return language === 'en' ? translated.toUpperCase() : translated;
 }
 

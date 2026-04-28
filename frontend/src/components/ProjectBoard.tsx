@@ -16,7 +16,7 @@ import { PixelPet } from './PixelPet';
 import { PIXEL_PET_CATALOG } from './PixelPet.frames';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { UpgradePromptModal } from './UpgradePromptModal';
-import { PET_OPTIONS, getContextDialogue } from './AIPetConfig.constants';
+import { PET_OPTIONS, PERSONALITY_OPTIONS, getContextDialogue } from './AIPetConfig.constants';
 import type { AIPetConfig as AIPetConfigType } from '../types';
 
 interface ProjectBoardProps {
@@ -546,31 +546,35 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         {/* 宠物按钮 */}
         <button
           onClick={handlePetClick}
-          className={`relative w-16 h-16 bg-brutal-bg border-2 border-brutal-border
-                     hover:border-brutal-accent
+          onDoubleClick={() => setIsPetConfigOpen(true)}
+          className={`relative w-16 h-16 bg-brutal-bg rounded-lg
                      transition-all duration-200
-                     flex items-center justify-center ${
+                     flex items-center justify-center
+                     hover:scale-105 hover:shadow-lg ${
                        isPetBouncing ? 'scale-110' : 'animate-pulse-slow'
                      }`}
-          style={{ boxShadow: '4px 4px 0px var(--brutal-border)' }}
-          title={`${petName} - 点击互动`}
+          style={{ boxShadow: '2px 2px 8px rgba(0,0,0,0.15)' }}
+          title={`${petName} - 单击互动 / 双击配置`}
         >
           <PixelPet frames={petFrames} scale={2} animation="idle" />
           {/* 性格装饰 */}
-          <span className="absolute -top-1 -right-1 text-lg"
-          >
-            {petConfig?.personality === 'gentle' ? '🌸' :
-             petConfig?.personality === 'rational' ? '📊' :
-             petConfig?.personality === 'zen' ? '🧘' : '⚡'}
-          </span>
+          {(() => {
+            const P = PERSONALITY_OPTIONS.find(p => p.id === petConfig?.personality);
+            return P ? (
+              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-brutal-bg border border-brutal-border rounded-full"
+              >
+                <P.icon className="w-3 h-3" style={{ color: P.color }} />
+              </span>
+            ) : null;
+          })()}
         </button>
 
         {/* 配置按钮 */}
         <button
           onClick={() => setIsPetConfigOpen(true)}
-          className="text-xs text-brutal-muted hover:text-brutal-accent font-mono"
+          className="text-[10px] text-brutal-muted hover:text-brutal-accent font-mono transition-colors"
         >
-          更换宠物
+          双击宠物也可配置
         </button>
       </div>
 

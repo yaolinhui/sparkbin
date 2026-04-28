@@ -48,11 +48,11 @@ export function ModelSelectorModal({
 
   if (!isOpen) return null;
 
-  const displayNames: Record<AIProvider, { zh: string; en: string }> = {
-    deepseek: { zh: 'DeepSeek', en: 'DeepSeek' },
-    kimi: { zh: 'Kimi', en: 'Kimi' },
-    doubao: { zh: '豆包', en: 'Doubao' },
-    openai: { zh: 'OpenAI', en: 'OpenAI' },
+  const displayNames: Record<AIProvider, Record<string, string>> = {
+    deepseek: { zh: 'DeepSeek', en: 'DeepSeek', ja: 'DeepSeek', ko: 'DeepSeek', es: 'DeepSeek', fr: 'DeepSeek', de: 'DeepSeek' },
+    kimi: { zh: 'Kimi', en: 'Kimi', ja: 'Kimi', ko: 'Kimi', es: 'Kimi', fr: 'Kimi', de: 'Kimi' },
+    doubao: { zh: '豆包', en: 'Doubao', ja: 'Doubao', ko: 'Doubao', es: 'Doubao', fr: 'Doubao', de: 'Doubao' },
+    openai: { zh: 'OpenAI', en: 'OpenAI', ja: 'OpenAI', ko: 'OpenAI', es: 'OpenAI', fr: 'OpenAI', de: 'OpenAI' },
   };
 
   return (
