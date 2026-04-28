@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, ChevronRight, ChevronLeft, Maximize2, X } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, ChevronRight, ChevronLeft, Maximize2, X, Heart, BarChart3, Coffee, Zap } from 'lucide-react';
 import { SafeMarkdown } from './SafeMarkdown';
 import { useI18n } from '../i18n/hooks';
 import { aiService, aiApi, type StageStreamMeta } from '../services/ai';
@@ -240,21 +240,32 @@ export function AIChat({
   const petName = petConfig?.name || selectedPet.name;
   const petColor = selectedPet.color;
   const petFrames = PIXEL_PET_CATALOG[petConfig?.type || 'cat'] || PIXEL_PET_CATALOG['cat'];
-  const personalityEmoji = petConfig?.personality === 'gentle' ? '🌸' :
-                           petConfig?.personality === 'rational' ? '📊' :
-                           petConfig?.personality === 'zen' ? '🧘' : '⚡';
+  const personalityIcon =
+    petConfig?.personality === 'gentle' ? Heart :
+    petConfig?.personality === 'rational' ? BarChart3 :
+    petConfig?.personality === 'zen' ? Coffee : Zap;
+  const personalityColor =
+    petConfig?.personality === 'gentle' ? '#f472b6' :
+    petConfig?.personality === 'rational' ? '#60a5fa' :
+    petConfig?.personality === 'zen' ? '#a78bfa' : '#fbbf24';
+
+  // 阶段切换时清空消息历史，重新载入当前阶段的欢迎语
+  useEffect(() => {
+    setMessages([]);
+  }, [stage]);
 
   useEffect(() => {
     if (messages.length === 0) {
       const welcome = WELCOME_MESSAGES[stage] || {
         zh: `嗨～我是${petName}，你的AI小伙伴！`,
         en: `Hi~ I'm ${petName}, your AI buddy!`,
+        ja: `こんにちは～${petName}だよ、あなたのAI友達！`,
       };
       setMessages([
         {
           id: 'welcome',
           role: 'assistant',
-          content: welcome[language],
+          content: welcome[language] || welcome['zh'],
         },
       ]);
     }
@@ -717,7 +728,9 @@ export function AIChat({
           >
             <PixelPet frames={petFrames} scale={1} animation="idle" />
           </div>
-          <span className="absolute -top-0.5 -right-0.5 text-xs">{personalityEmoji}</span>
+          <span className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-brutal-bg border border-brutal-border rounded-full">
+            {React.createElement(personalityIcon, { className: 'w-3 h-3', style: { color: personalityColor } })}
+          </span>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">

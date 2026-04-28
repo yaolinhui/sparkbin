@@ -37,6 +37,8 @@ function useBlocker(shouldBlock: boolean) {
 }
 import { ArrowLeft, Pause, Play, Archive, LogOut, MoreVertical, Sun, Moon, GitGraph, Trash2, Pencil } from 'lucide-react';
 import { useTheme } from '../theme/hooks';
+import { ThemeSwitcher } from './ThemeSwitcher';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import { useProjectStore } from '../stores/projectStore';
 import { useI18n, useStatusLabel, useStageLabel } from '../i18n/hooks';
 import type { Project, Stage } from "../types";
@@ -947,6 +949,8 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
               )}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
+              <ThemeSwitcher />
+              <LanguageSwitcher />
               <button
                 onClick={() => setShowBlueprint(true)}
                 className="btn-brutal h-9 flex items-center gap-2 text-brutal-accent border-brutal-accent"

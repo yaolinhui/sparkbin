@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Server, Key, FileText, Shield, Check, AlertCircle, Cpu } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import { aiApi, adminApi, type AIProvider, type AIConfig } from '../services/api';
 // i18n reserved for future use
 
@@ -72,25 +73,23 @@ export function AdminPage({ onLogout }: AdminPageProps) {
   const loadConfigs = async () => {
     try {
       const configs = await aiApi.getConfigs();
-      const configMap: Record<AIProvider, AIConfig> = {
-        deepseek: { base_url: '', api_key: '', default_model: '', is_active: false },
-        kimi: { base_url: '', api_key: '', default_model: '', is_active: false },
-        doubao: { base_url: '', api_key: '', default_model: '', is_active: false },
-        openai: { base_url: '', api_key: '', default_model: '', is_active: false },
-      };
 
-      configs.forEach((c) => {
-        if (c.provider in configMap) {
-          configMap[c.provider as AIProvider] = {
-            base_url: c.base_url,
-            api_key: c.api_key === '***' ? '' : c.api_key,
-            default_model: c.default_model,
-            is_active: c.is_active,
-          };
-        }
+      setConfigs((prev) => {
+        const next = { ...prev };
+        configs.forEach((c) => {
+          if (c.provider in next) {
+            const provider = c.provider as AIProvider;
+            next[provider] = {
+              base_url: c.base_url,
+              // 后端隐藏已配置的 key 为 ***，保留前端已有值避免输入框被清空
+              api_key: c.api_key === '***' ? (prev[provider]?.api_key || '') : c.api_key,
+              default_model: c.default_model,
+              is_active: c.is_active,
+            };
+          }
+        });
+        return next;
       });
-
-      setConfigs(configMap);
     } catch (error) {
       console.error('Failed to load configs:', error);
     }
@@ -194,6 +193,7 @@ export function AdminPage({ onLogout }: AdminPageProps) {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             <ThemeSwitcher />
             <button
               onClick={onLogout}
