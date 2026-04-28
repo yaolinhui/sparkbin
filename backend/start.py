@@ -2,8 +2,12 @@
 """
 SparkBin 后端启动脚本
 """
+import os
 import uvicorn
 from app.config import get_settings
+
+# 禁用 .pyc 字节码缓存，防止 reload 时加载过时的编译缓存
+os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")
 
 settings = get_settings()
 

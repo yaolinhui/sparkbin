@@ -1,3 +1,4 @@
+import sys
 import logging
 import json
 from fastapi import FastAPI
@@ -19,6 +20,22 @@ from .database import engine, SessionLocal
 from .models import Base
 from .auth import init_default_user
 from .services.ai_proxy import init_default_ai_configs
+import importlib.util
+
+# 禁用 .pyc 字节码缓存，防止 uvicorn reload 时加载过时的编译缓存
+sys.dont_write_bytecode = True
+
+# 启动时记录 auth 模块加载信息，便于诊断版本问题
+_auth_module_spec = importlib.util.find_spec("app.auth")
+if _auth_module_spec and _auth_module_spec.origin:
+    import os as _os
+
+    _auth_mtime = _os.path.getmtime(_auth_module_spec.origin)
+    logging.getLogger(__name__).info(
+        f"Loaded auth module from {_auth_module_spec.origin} "
+        f"(mtime: {_auth_mtime})"
+    )
+
 from .routers import auth, projects, ai, admin, payments, github
 
 
@@ -147,6 +164,10 @@ def init_database():
     try:
         init_default_user(db)
         init_default_ai_configs(db)
+        logging.getLogger(__name__).info("Database initialized successfully")
+    except Exception:
+        logging.getLogger(__name__).exception("Database initialization failed")
+        raise
     finally:
         db.close()
 

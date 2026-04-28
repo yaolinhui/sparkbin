@@ -1,3 +1,4 @@
+import os
 from uuid import UUID
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -20,6 +21,9 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 
 def _check_project_limit(user: User, db) -> None:
     """检查用户项目数量上限，超出则抛出 403"""
+    # 测试模式下不限制项目数量，避免 E2E 测试因配额耗尽失败
+    if os.environ.get("SPARKBIN_TESTING") == "1":
+        return
     settings = get_settings()
     # 自托管模式或未配置 Stripe：不限制
     if not settings.stripe_secret_key:

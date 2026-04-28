@@ -19,15 +19,16 @@ Most projects die because nobody wants them. SparkBin forces you to validate you
 
 ## Features
 
-- **AI Pet** — A customizable AI companion (10 pets, 4 personalities) that coaches you through each stage with context-aware dialogue. Config persists across sessions
-- **Structured Validation** — Kanban-style validation board with GO/NO-GO gates. No more "build first, validate never"
-- **Brutalist UI** — Zero border-radius, high contrast, JetBrains Mono typography. Dark/Light theme with system preference detection
+- **Pixel Pet** — A pixel-art animated AI companion with idle/blink/happy/celebrate animations that coaches you through each stage. 10 pets, 4 personalities, config persists to database
+- **Structured Validation** — Kanban-style validation board with GO/NO-GO gates and AI-powered validation suggestions (append or overwrite). No more "build first, validate never"
+- **Brutalist UI** — Zero border-radius, high contrast, JetBrains Mono typography. Dark/Light theme with system preference detection. Landing page with grid dot pattern
 - **Built-in Monetization Playground** — Test pricing models with real Stripe checkout flows (test mode). MRR tracking and conversion funnel visualization
-- **GitHub Backup** — Sync project data to your own repository. Your data, your control
-- **Multi-language** — English and Chinese (i18n with localStorage persistence)
+- **GitHub Project Import** — Connect your GitHub account, select a public repository, and let AI analyze the README to suggest the right stage and pre-fill project fields
+- **7-Language Support** — Chinese, Japanese, Korean, Spanish, French, German, English (i18n with localStorage persistence)
 - **Project Blueprint** — Health dashboard showing completion rates, blockers, overdue stages, timeline comparison, and actionable next steps
-- **Multi-Auth** — Local JWT (with access/refresh token rotation), Google OAuth, GitHub OAuth, plus email registration with verification
+- **Multi-Auth** — Local JWT (with access/refresh token rotation), Google OAuth, GitHub OAuth, plus email registration with verification. Honeypot anti-bot protection on registration
 - **Feature Gating** — Free/Pro/Team tiers with configurable limits (projects count, AI calls per month)
+- **Security-First** — Rate limiting, password complexity enforcement, login audit logs, security response headers (CSP/HSTS)
 
 ## Tech Stack
 
@@ -35,9 +36,10 @@ Most projects die because nobody wants them. SparkBin forces you to validate you
 - **Frontend**: React 18, Vite, TypeScript, Tailwind CSS, Zustand
 - **AI Proxy**: DeepSeek, Kimi, Doubao, OpenAI (unified backend proxy with encrypted key storage)
 - **Payments**: Stripe Test Mode (optional)
-- **Auth**: JWT with access/refresh token rotation, bcrypt, rate limiting, login audit logs
-- **OAuth**: Google, GitHub
+- **Auth**: JWT with access/refresh token rotation, bcrypt, rate limiting, login audit logs, honeypot anti-bot
+- **OAuth**: Google, GitHub (for login and project import)
 - **Email**: Resend (optional, for registration/verification)
+- **i18n**: 7 languages (Chinese, Japanese, Korean, Spanish, French, German, English)
 
 ## Quick Start
 

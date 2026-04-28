@@ -17,6 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Free/Pro/Team tier feature gating system
 - AI pet configuration persistence (stored in database)
 - Login audit logging
+- PixelPet pixel-art animated pet system (idle/blink/happy/celebrate animations, 8-bit rendering, integrated into AIChat and ProjectBoard)
+- 7-language i18n support (Chinese, Japanese, Korean, Spanish, French, German, English)
+- `ValidateSuggestModal` for AI-powered validation suggestions with append/overwrite modes
+- Admin AI config page: two-column adaptive layout
+- Logout confirmation dialog with pet retention animation
+- Login modal: grid dot background, micro-animations, real-time password strength indicator
+- Registration honeypot anti-bot protection
+- Project title inline editing
+- Landing page with grid dot pattern
+
+### Changed
+- `LanguageSwitcher` changed from button to dropdown panel, unified placement across all pages
+- Elastic layout fix: replaced `h-full` abuse with `flex-1` for proper viewport filling in Stage components
 
 ### Removed
 - Legacy GitHub backup sync feature (frontend PAT storage was a security risk in multi-user scenarios; will be replaced by backend-proxied project-level repo binding in future)

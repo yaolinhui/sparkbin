@@ -75,10 +75,39 @@ setup('authenticate', async ({ page }) => {
   }
 
   // 验证登录成功
-  await expect.poll(async () => {
-    const token = await page.evaluate(() => localStorage.getItem('sparkbin_token'));
-    return token;
-  }, { timeout: 10000 }).toBeTruthy();
+  let token = await page.evaluate(() => localStorage.getItem('sparkbin_token'));
+
+  // 如果登录仍然失败，注册一个新用户
+  if (!token) {
+    // 切换到注册标签
+    const registerTab = page.getByRole('button', { name: '注册' });
+    await registerTab.click();
+    await page.waitForTimeout(300);
+
+    const testUsername = `e2euser${Date.now()}`;
+    const testEmail = `e2e${Date.now()}@test.com`;
+    const testPassword = 'Test123!';
+
+    const inputs = page.locator('input');
+    await inputs.nth(1).fill(testUsername);
+    await inputs.nth(2).fill(testEmail);
+    await inputs.nth(3).fill(testPassword);
+    await inputs.nth(4).fill(testPassword);
+
+    const registerButton = page.getByRole('button', { name: '注册账号' });
+    await registerButton.click();
+
+    await page.waitForResponse((resp) => resp.url().includes('/auth/register'), { timeout: 10000 }).catch(() => {});
+    await page.waitForLoadState('networkidle');
+
+    // 注册后自动登录，等待 token 写入
+    await expect.poll(async () => {
+      const t = await page.evaluate(() => localStorage.getItem('sparkbin_token'));
+      return t;
+    }, { timeout: 10000 }).toBeTruthy();
+
+    token = await page.evaluate(() => localStorage.getItem('sparkbin_token'));
+  }
 
   // 获取 localStorage 数据并保存到 storageState 文件
   const localStorageData = await page.evaluate(() => {

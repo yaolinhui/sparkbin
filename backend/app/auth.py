@@ -1,3 +1,4 @@
+import logging
 import os
 import hashlib
 import re
@@ -13,6 +14,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from .config import get_settings
 from .database import get_db
 from .models import User, UserRole
+
+logger = logging.getLogger(__name__)
 
 # HTTP Bearer 认证
 security = HTTPBearer()
@@ -80,15 +83,21 @@ def _prehash_password(password: str) -> bytes:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """验证密码（支持 SHA-256+_bcrypt 新方式及直接 bcrypt 旧方式兼容）"""
+    """验证密码（支持 SHA-256+bcrypt 新方式及直接 bcrypt 旧方式兼容）"""
+    if not plain_password or not hashed_password:
+        return False
     try:
         hashed_bytes = hashed_password.encode('utf-8')
         # 先尝试新方式：SHA-256 预哈希 + bcrypt
-        if bcrypt.checkpw(_prehash_password(plain_password), hashed_bytes):
+        prehashed = _prehash_password(plain_password)
+        if bcrypt.checkpw(prehashed, hashed_bytes):
             return True
         # 回退旧方式：直接截断 bcrypt（兼容历史用户）
-        return bcrypt.checkpw(plain_password.encode('utf-8')[:72], hashed_bytes)
-    except Exception:
+        if bcrypt.checkpw(plain_password.encode('utf-8')[:72], hashed_bytes):
+            return True
+        return False
+    except Exception as exc:
+        logger.warning(f"Password verification error: {type(exc).__name__}: {exc}")
         return False
 
 
@@ -233,14 +242,40 @@ async def require_admin(current_user: User = Depends(get_current_user)) -> User:
 
 
 def init_default_user(db: Session):
-    """初始化默认用户（如果不存在）"""
+    """初始化默认用户（如果不存在）；如果存在但哈希不兼容当前算法，自动修复"""
     settings = get_settings()
+
+    # 一致性自检：确保当前进程的 hash_password / verify_password 互相兼容
+    try:
+        _test_hash = hash_password("__self_test__")
+        assert verify_password("__self_test__", _test_hash) is True
+    except Exception as exc:
+        raise RuntimeError(
+            f"CRITICAL: auth module hash/verify inconsistency detected: {exc}. "
+            "Please restart the application and clear __pycache__."
+        ) from exc
 
     existing_user = db.query(User).filter(
         User.username == settings.default_username
     ).first()
 
     if existing_user:
+        # 如果当前默认密码无法通过当前代码验证，说明哈希格式可能不兼容
+        if not verify_password(settings.default_password, existing_user.password_hash):
+            if existing_user.require_password_change:
+                # 用户尚未完成首次登录改密，安全地重置为默认密码
+                logger.warning(
+                    "Admin password hash is incompatible with current verify_password. "
+                    "Resetting to default_password (require_password_change=True)."
+                )
+                existing_user.password_hash = hash_password(settings.default_password)
+                db.commit()
+            else:
+                # 用户已自行修改过密码，不做覆盖，仅记录警告
+                logger.warning(
+                    "Admin password hash failed verification but require_password_change=False. "
+                    "If login fails, ask the admin to use 'Forgot Password' or manually reset the hash."
+                )
         return
 
     # 创建默认用户（第一个用户为管理员，强制首次登录改密）
