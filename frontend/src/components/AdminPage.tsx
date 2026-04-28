@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Server, Key, FileText, Shield, Check, AlertCircle, Cpu } from 'lucide-react';
+import { ArrowLeft, Server, Key, FileText, Shield, Check, AlertCircle, Cpu, Eye, EyeOff } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { aiApi, adminApi, type AIProvider, type AIConfig } from '../services/api';
@@ -51,7 +51,14 @@ export function AdminPage({ onLogout }: AdminPageProps) {
     openai: { base_url: '', api_key: '', default_model: '', is_active: false },
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [lastTestedAt, setLastTestedAt] = useState<Record<AIProvider, Date | null>>({
+    deepseek: null,
+    kimi: null,
+    doubao: null,
+    openai: null,
+  });
 
   // Logs State
   interface LogEntry {
@@ -104,27 +111,29 @@ export function AdminPage({ onLogout }: AdminPageProps) {
     }
   };
 
-  const handleSave = async () => {
-    const config = configs[selectedProvider];
+  const handleSave = async (provider: AIProvider = selectedProvider, silent = false) => {
+    const config = configs[provider];
     if (!config.api_key) {
-      setMessage({ type: 'error', text: '请输入 API Key' });
-      return;
+      if (!silent) setMessage({ type: 'error', text: '请输入 API Key' });
+      return false;
     }
 
-    setIsLoading(true);
-    setMessage(null);
+    if (!silent) setIsLoading(true);
+    if (!silent) setMessage(null);
 
     try {
-      await aiApi.updateConfig(selectedProvider, {
+      await aiApi.updateConfig(provider, {
         ...config,
         is_active: true,
       });
-      setMessage({ type: 'success', text: '配置已保存' });
+      if (!silent) setMessage({ type: 'success', text: '配置已保存' });
       await loadConfigs();
+      return true;
     } catch (err) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : '保存失败' });
+      if (!silent) setMessage({ type: 'error', text: err instanceof Error ? err.message : '保存失败' });
+      return false;
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -136,10 +145,9 @@ export function AdminPage({ onLogout }: AdminPageProps) {
     }
 
     setIsLoading(true);
-    setMessage({ type: 'success', text: '正在测试连接...' });
+    setMessage({ type: 'info', text: '正在测试连接...' });
 
     try {
-      // 使用当前表单值做预览测试，不需要先保存
       const result = await aiApi.testConnection(selectedProvider, {
         base_url: config.base_url,
         api_key: config.api_key,
@@ -147,6 +155,9 @@ export function AdminPage({ onLogout }: AdminPageProps) {
       });
       if (result.success) {
         setMessage({ type: 'success', text: `✓ ${result.message || '连接成功'}` });
+        setLastTestedAt((prev) => ({ ...prev, [selectedProvider]: new Date() }));
+        // 测试成功后自动保存配置
+        await handleSave(selectedProvider, true);
       } else {
         setMessage({ type: 'error', text: `✗ ${result.message || '连接失败'}` });
       }
@@ -254,21 +265,25 @@ export function AdminPage({ onLogout }: AdminPageProps) {
                 </p>
               </div>
 
-              {/* Message */}
+              {/* Message - 固定在表单下方，靠近操作按钮 */}
               {message && (
                 <div
-                  className={`p-3 border mb-4 flex items-center gap-2 ${
+                  className={`p-3 border mb-4 flex items-center gap-2 font-mono text-sm ${
                     message.type === 'success'
-                      ? 'border-brutal-success text-brutal-success'
-                      : 'border-brutal-warning text-brutal-warning'
+                      ? 'border-brutal-success text-brutal-success bg-brutal-success/5'
+                      : message.type === 'info'
+                        ? 'border-brutal-accent text-brutal-accent bg-brutal-accent/5'
+                        : 'border-brutal-warning text-brutal-warning bg-brutal-warning/5'
                   }`}
                 >
                   {message.type === 'success' ? (
-                    <Check className="w-4 h-4" />
+                    <Check className="w-4 h-4 flex-shrink-0" />
+                  ) : message.type === 'info' ? (
+                    <Server className="w-4 h-4 flex-shrink-0 animate-pulse" />
                   ) : (
-                    <AlertCircle className="w-4 h-4" />
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
                   )}
-                  {message.text}
+                  <span className="break-all">{message.text}</span>
                 </div>
               )}
 
@@ -278,22 +293,38 @@ export function AdminPage({ onLogout }: AdminPageProps) {
                   选择提供商
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(Object.keys(PROVIDER_INFO) as AIProvider[]).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setSelectedProvider(p)}
-                      className={`p-3 border text-left transition-colors ${
-                        selectedProvider === p
-                          ? 'border-brutal-accent bg-brutal-accent/10'
-                          : 'border-brutal-border hover:border-brutal-text'
-                      }`}
-                    >
-                      <div className="font-mono font-bold">{PROVIDER_INFO[p].name}</div>
-                      <div className="text-xs text-brutal-muted">
-                        {configs[p].is_active ? '已配置' : '未配置'}
-                      </div>
-                    </button>
-                  ))}
+                  {(Object.keys(PROVIDER_INFO) as AIProvider[]).map((p) => {
+                    const isActive = configs[p].is_active;
+                    const lastTest = lastTestedAt[p];
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setSelectedProvider(p)}
+                        className={`p-3 border text-left transition-colors relative ${
+                          selectedProvider === p
+                            ? 'border-brutal-accent bg-brutal-accent/10'
+                            : 'border-brutal-border hover:border-brutal-text'
+                        }`}
+                      >
+                        {/* 连接状态指示点 */}
+                        <span
+                          className={`absolute top-2 right-2 w-2 h-2 ${
+                            isActive ? 'bg-brutal-success' : 'bg-brutal-muted/40'
+                          }`}
+                          title={isActive ? '已配置' : '未配置'}
+                        />
+                        <div className="font-mono font-bold pr-4">{PROVIDER_INFO[p].name}</div>
+                        <div className="text-xs text-brutal-muted mt-1">
+                          {isActive ? '已配置' : '未配置'}
+                          {lastTest && (
+                            <span className="ml-2 text-brutal-accent">
+                              上次测试: {lastTest.toLocaleTimeString()}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -312,13 +343,23 @@ export function AdminPage({ onLogout }: AdminPageProps) {
                   <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
                     API Key
                   </label>
-                  <input
-                    type="password"
-                    value={currentConfig.api_key}
-                    onChange={(e) => updateCurrentConfig({ api_key: e.target.value })}
-                    placeholder="sk-..."
-                    className="w-full p-3 border border-brutal-border bg-brutal-bg focus:border-brutal-accent transition-colors font-mono text-sm"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showApiKey ? 'text' : 'password'}
+                      value={currentConfig.api_key}
+                      onChange={(e) => updateCurrentConfig({ api_key: e.target.value })}
+                      placeholder="sk-..."
+                      className="w-full p-3 pr-12 border border-brutal-border bg-brutal-bg focus:border-brutal-accent focus:ring-1 focus:ring-brutal-accent focus:outline-none transition-colors font-mono text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-brutal-muted hover:text-brutal-text transition-colors"
+                      title={showApiKey ? '隐藏' : '显示'}
+                    >
+                      {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -338,7 +379,7 @@ export function AdminPage({ onLogout }: AdminPageProps) {
                     value={currentConfig.base_url}
                     onChange={(e) => updateCurrentConfig({ base_url: e.target.value })}
                     placeholder={PROVIDER_INFO[selectedProvider].defaultUrl}
-                    className="w-full p-3 border border-brutal-border bg-brutal-bg focus:border-brutal-accent transition-colors font-mono text-sm"
+                    className="w-full p-3 border border-brutal-border bg-brutal-bg focus:border-brutal-accent focus:ring-1 focus:ring-brutal-accent focus:outline-none transition-colors font-mono text-sm"
                   />
                 </div>
 
@@ -351,24 +392,26 @@ export function AdminPage({ onLogout }: AdminPageProps) {
                     value={currentConfig.default_model}
                     onChange={(e) => updateCurrentConfig({ default_model: e.target.value })}
                     placeholder={PROVIDER_INFO[selectedProvider].defaultModel}
-                    className="w-full p-3 border border-brutal-border bg-brutal-bg focus:border-brutal-accent transition-colors font-mono text-sm"
+                    className="w-full p-3 border border-brutal-border bg-brutal-bg focus:border-brutal-accent focus:ring-1 focus:ring-brutal-accent focus:outline-none transition-colors font-mono text-sm"
                   />
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-3 pt-2">
                   <button
                     onClick={handleTest}
                     disabled={isLoading}
-                    className="flex-1 btn-brutal h-9 py-3 disabled:opacity-50"
+                    className="flex-1 btn-brutal h-10 flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    {isLoading ? '测试中...' : '测试连接'}
+                    <Server className="w-4 h-4" />
+                    {isLoading ? '测试中...' : '测试并保存'}
                   </button>
                   <button
-                    onClick={handleSave}
+                    onClick={() => handleSave()}
                     disabled={isLoading}
-                    className="flex-1 btn-brutal-primary h-9 py-3 disabled:opacity-50"
+                    className="flex-1 btn-brutal-primary h-10 flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    {isLoading ? '保存中...' : '保存配置'}
+                    <Key className="w-4 h-4" />
+                    {isLoading ? '保存中...' : '仅保存'}
                   </button>
                 </div>
               </div>
