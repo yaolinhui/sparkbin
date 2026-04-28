@@ -5,6 +5,8 @@ import { useI18n } from '../i18n/hooks';
 import { aiService, aiApi, type StageStreamMeta } from '../services/ai';
 import { getUserId, authApi, isAuthenticated } from '../services/api';
 import { PET_OPTIONS } from './AIPetConfig.constants';
+import { PixelPet } from './PixelPet';
+import { PIXEL_PET_CATALOG } from './PixelPet.frames';
 import { UpgradePromptModal } from './UpgradePromptModal';
 import type { AIPetConfig } from '../types';
 import type { StageSnapshot } from '../services/api';
@@ -205,9 +207,9 @@ export function AIChat({
   };
 
   const selectedPet = PET_OPTIONS.find((p) => p.id === petConfig?.type) || PET_OPTIONS[0];
-  const petEmoji = selectedPet.emoji;
   const petName = petConfig?.name || selectedPet.name;
   const petColor = selectedPet.color;
+  const petFrames = PIXEL_PET_CATALOG[petConfig?.type || 'cat'] || PIXEL_PET_CATALOG['cat'];
   const personalityEmoji = petConfig?.personality === 'gentle' ? '🌸' :
                            petConfig?.personality === 'rational' ? '📊' :
                            petConfig?.personality === 'zen' ? '🧘' : '⚡';
@@ -428,7 +430,7 @@ export function AIChat({
         >
           <ChevronLeft className="w-4 h-4" />
           <div className="flex flex-col items-center gap-1">
-            <span className="text-3xl">{petEmoji}</span>
+            <PixelPet frames={petFrames} scale={1} animation="idle" />
             <span className="text-xs font-mono [writing-mode:vertical-lr]">{petName}</span>
           </div>
         </button>
@@ -446,13 +448,13 @@ export function AIChat({
           <div className="flex items-center justify-between px-4 py-3 border-b border-brutal-border bg-brutal-surface flex-shrink-0">
             <div className="flex items-center gap-3">
               <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-lg border-2"
+                className="w-8 h-8 rounded-full flex items-center justify-center border-2"
                 style={{
                   backgroundColor: petColor + '20',
                   borderColor: petColor,
                 }}
               >
-                {petEmoji}
+                <PixelPet frames={petFrames} scale={1} animation="idle" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -497,10 +499,10 @@ export function AIChat({
               >
                 {message.role === 'assistant' && (
                   <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-lg"
+                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: petColor + '30' }}
                   >
-                    {petEmoji}
+                    <PixelPet frames={petFrames} scale={1} animation="idle" />
                   </div>
                 )}
                 <div
@@ -677,13 +679,13 @@ export function AIChat({
       <div className="flex items-center gap-3 px-3 py-2 border-b border-brutal-border bg-brutal-bg flex-shrink-0">
         <div className="relative flex-shrink-0">
           <div
-            className="w-10 h-10 rounded-full flex items-center justify-center text-xl border-2"
+            className="w-10 h-10 rounded-full flex items-center justify-center border-2"
             style={{
               backgroundColor: petColor + '20',
               borderColor: petColor,
             }}
           >
-            {petEmoji}
+            <PixelPet frames={petFrames} scale={1} animation="idle" />
           </div>
           <span className="absolute -top-0.5 -right-0.5 text-xs">{personalityEmoji}</span>
         </div>
@@ -744,10 +746,10 @@ export function AIChat({
           >
             {message.role === 'assistant' && (
               <div
-                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-lg"
+                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                 style={{ backgroundColor: petColor + '30' }}
               >
-                {petEmoji}
+                <PixelPet frames={petFrames} scale={1} animation="idle" />
               </div>
             )}
             <div

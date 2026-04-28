@@ -12,6 +12,8 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { ModelSelector } from './ModelSelector';
 import { AIPetConfig } from './AIPetConfig';
+import { PixelPet } from './PixelPet';
+import { PIXEL_PET_CATALOG } from './PixelPet.frames';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { UpgradePromptModal } from './UpgradePromptModal';
 import { PET_OPTIONS, getContextDialogue } from './AIPetConfig.constants';
@@ -191,9 +193,9 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
 
   // 宠物配置
   const selectedPet = PET_OPTIONS.find(p => p.id === petConfig?.type) || PET_OPTIONS[0];
-  const petEmoji = selectedPet.emoji;
   const petName = petConfig?.name || selectedPet.name;
   const petColor = selectedPet.color;
+  const petFrames = PIXEL_PET_CATALOG[petConfig?.type || 'cat'] || PIXEL_PET_CATALOG['cat'];
 
   // 点击宠物显示问候（上下文感知）
   const [isPetBouncing, setIsPetBouncing] = useState(false);
@@ -547,13 +549,13 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
           className={`relative w-16 h-16 bg-brutal-bg border-2 border-brutal-border
                      hover:border-brutal-accent
                      transition-all duration-200
-                     flex items-center justify-center text-4xl ${
+                     flex items-center justify-center ${
                        isPetBouncing ? 'scale-110' : 'animate-pulse-slow'
                      }`}
           style={{ boxShadow: '4px 4px 0px var(--brutal-border)' }}
           title={`${petName} - 点击互动`}
         >
-          {petEmoji}
+          <PixelPet frames={petFrames} scale={2} animation="idle" />
           {/* 性格装饰 */}
           <span className="absolute -top-1 -right-1 text-lg"
           >

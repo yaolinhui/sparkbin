@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import type { AIPetConfig as Config } from '../types';
 import { PET_OPTIONS, PERSONALITY_OPTIONS, VERBOSITY_OPTIONS } from './AIPetConfig.constants';
 import { PixelPet } from './PixelPet';
-import { geometricCat, retroCat, bigPixelCat } from './PixelPet.frames';
+import { PIXEL_PET_CATALOG } from './PixelPet.frames';
 
 interface AIPetConfigProps {
   config: Config | null;
@@ -18,17 +18,12 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
     personality: config?.personality || 'gentle',
     verbosity: config?.verbosity || 'moderate',
   });
-  // Pixel pet preview states
-  const [previewStyle, setPreviewStyle] = useState<'geometric' | 'retro' | 'bigpixel'>('retro');
   const [previewAnim, setPreviewAnim] = useState<'idle' | 'blink' | 'happy'>('idle');
 
   const selectedPet = PET_OPTIONS.find(p => p.id === form.type);
   const selectedPersonality = PERSONALITY_OPTIONS.find(p => p.id === form.personality);
 
-  const previewFrames = previewStyle === 'geometric' ? geometricCat :
-                        previewStyle === 'bigpixel' ? bigPixelCat : retroCat;
-  const previewScale = previewStyle === 'geometric' ? 10 :
-                       previewStyle === 'bigpixel' ? 6 : 8;
+  const petFrames = PIXEL_PET_CATALOG[form.type] || PIXEL_PET_CATALOG['cat'];
 
   const handlePixelPetClick = () => {
     setPreviewAnim('happy');
@@ -72,39 +67,14 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
               className="relative cursor-pointer select-none transition-transform hover:scale-105"
             >
               <PixelPet
-                frames={previewFrames}
-                scale={previewScale}
+                frames={petFrames}
+                scale={4}
                 animation={previewAnim}
               />
               {/* 性格装饰 */}
               <span className="absolute -top-2 -right-2 text-2xl">
                 {selectedPersonality?.emoji}
               </span>
-            </div>
-
-            {/* 风格切换 */}
-            <div className="mt-4 flex gap-2">
-              {[
-                { key: 'geometric' as const, label: '极简' },
-                { key: 'retro' as const, label: '8-bit' },
-                { key: 'bigpixel' as const, label: '大像素' },
-              ].map((s) => (
-                <button
-                  key={s.key}
-                  type="button"
-                  onClick={() => {
-                    setPreviewStyle(s.key);
-                    setPreviewAnim('idle');
-                  }}
-                  className={`px-3 py-1.5 text-xs font-mono font-bold border-2 transition-colors ${
-                    previewStyle === s.key
-                      ? 'border-brutal-accent bg-brutal-accent text-brutal-bg'
-                      : 'border-brutal-text text-brutal-text bg-brutal-bg hover:bg-brutal-text hover:text-brutal-bg'
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
             </div>
 
             <p className="mt-6 text-xs text-brutal-muted font-mono text-center">
