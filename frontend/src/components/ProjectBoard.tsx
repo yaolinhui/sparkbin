@@ -600,37 +600,67 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         feature="projects"
       />
 
-      {/* 退出登录确认对话框 */}
+      {/* 退出登录确认对话框 —— 宠物挽留版 */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-sm border-2 border-brutal-border bg-brutal-surface p-6">
-            <h2 className="text-lg font-mono font-bold text-brutal-text mb-2">确认退出</h2>
-            <p className="text-sm font-mono text-brutal-muted mb-6">
-              确定要退出登录吗？未保存的数据可能会丢失。
-            </p>
-            <div className="flex gap-3">
+          <div className="w-full max-w-sm border-2 border-brutal-border bg-brutal-surface p-6 flex flex-col items-center">
+            {/* 宠物挽留对话气泡 */}
+            <div className="mb-4 relative self-stretch">
+              <div
+                className="px-4 py-3 text-sm font-mono text-center"
+                style={{
+                  backgroundColor: petColor,
+                  color: 'var(--brutal-bg)',
+                  border: '2px solid var(--brutal-text)',
+                  boxShadow: '4px 4px 0px var(--brutal-text)',
+                }}
+              >
+                {getContextDialogue(
+                  petConfig?.type || 'cat',
+                  petConfig?.personality || 'gentle',
+                  { isLeaving: true }
+                )}
+              </div>
+              {/* 气泡尾巴 */}
+              <div
+                className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0"
+                style={{
+                  borderLeft: '8px solid transparent',
+                  borderRight: '8px solid transparent',
+                  borderTop: `8px solid ${petColor}`,
+                }}
+              />
+            </div>
+
+            {/* 宠物动画 */}
+            <div className="w-20 h-20 flex items-center justify-center mb-4">
+              <PixelPet frames={petFrames} scale={3} animation="idle" />
+            </div>
+
+            {/* 操作按钮 */}
+            <div className="flex gap-3 w-full">
               <button
                 onClick={() => setShowLogoutConfirm(false)}
-                className="flex-1 py-3 bg-brutal-bg text-brutal-text font-mono font-bold
-                           border-2 border-brutal-border
-                           hover:border-brutal-accent hover:text-brutal-accent
-                           transition-colors
-                           active:translate-x-[2px] active:translate-y-[2px]"
-              >
-                取消
-              </button>
-              <button
-                onClick={() => {
-                  setShowLogoutConfirm(false);
-                  onLogout();
-                }}
                 className="flex-1 py-3 bg-brutal-accent text-brutal-bg font-mono font-bold
                            border-2 border-brutal-accent
                            hover:bg-brutal-bg hover:text-brutal-accent
                            transition-colors
                            active:translate-x-[2px] active:translate-y-[2px]"
               >
-                确认退出
+                留下陪我
+              </button>
+              <button
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  onLogout();
+                }}
+                className="flex-1 py-3 bg-brutal-bg text-brutal-text font-mono font-bold
+                           border-2 border-brutal-border
+                           hover:border-brutal-accent hover:text-brutal-accent
+                           transition-colors
+                           active:translate-x-[2px] active:translate-y-[2px]"
+              >
+                狠心离开
               </button>
             </div>
           </div>
