@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ArrowRight, Check, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, ArrowRight, Check, Edit2, ChevronDown, ChevronUp, Github } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
 import { useI18n } from '../i18n/hooks';
@@ -16,6 +16,7 @@ interface UnderstandingDimension {
 interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onImportFromGitHub?: () => void;
 }
 
 // AI 宠物 ASCII 形象
@@ -27,7 +28,7 @@ const AI_PET_CAT = `
   (_|   |_)
 `;
 
-export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps) {
+export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: CreateProjectModalProps) {
   const { t } = useI18n();
   const [painPoint, setPainPoint] = useState('');
   const [originalIdea, setOriginalIdea] = useState('');
@@ -273,6 +274,27 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                 >
                   跳过 — 手动输入
                 </button>
+
+                {onImportFromGitHub && (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px bg-brutal-border" />
+                      <span className="text-xs font-mono text-brutal-muted">或</span>
+                      <div className="flex-1 h-px bg-brutal-border" />
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        onImportFromGitHub();
+                        onClose();
+                      }}
+                      className="btn-brutal h-9 w-full py-3 flex items-center justify-center gap-2 text-brutal-muted hover:text-brutal-text hover:border-brutal-accent"
+                    >
+                      <Github className="w-4 h-4" />
+                      <span className="text-xs font-mono">{t('github.import_from_github') || '从 GitHub 导入'}</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}

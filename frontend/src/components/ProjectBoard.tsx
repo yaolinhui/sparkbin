@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Terminal, LogOut, Server, Settings, Cat, ChevronDown, ChevronRight, Lock } from 'lucide-react';
+import { GitHubImportModal } from './GitHubImportModal';
 import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
 import { isAdmin, getUserId, authApi, isAuthenticated } from '../services/api';
@@ -83,6 +84,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   const checkAIConfig = useAIStore((state) => state.checkConfiguration);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
   const [isPetConfigOpen, setIsPetConfigOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [showPetBubble, setShowPetBubble] = useState(false);
@@ -128,6 +130,12 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         .catch(() => {
           // 失败时保持 localStorage 的值
         });
+    }
+
+    // 检查是否刚从 GitHub OAuth 连接成功返回
+    if (sessionStorage.getItem('sparkbin_github_connected') === '1') {
+      sessionStorage.removeItem('sparkbin_github_connected');
+      setIsGitHubModalOpen(true);
     }
   }, [fetchProjects, checkAIConfig, petConfigKey]);
 
@@ -568,6 +576,11 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
       <CreateProjectModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+        onImportFromGitHub={() => setIsGitHubModalOpen(true)}
+      />
+      <GitHubImportModal
+        isOpen={isGitHubModalOpen}
+        onClose={() => setIsGitHubModalOpen(false)}
       />
       <ChangePasswordModal
         isOpen={isChangePasswordOpen}

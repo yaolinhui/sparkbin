@@ -12,7 +12,7 @@ from ..models import User, AIProvider, AIConfig, AICallLog, Project, Stage, Stag
 from ..schemas import (
     AIProviderInfo, AIConfigUpdate, AIChatRequest,
     AIPromoteSuggestRequest, PromoteSuggestionInfo, BaseResponse,
-    IdeaSuggestRequest, IdeaSuggestResponse
+    IdeaSuggestRequest, IdeaSuggestResponse, AITestConfigRequest
 )
 from ..services.ai_proxy import AIProxyService
 from ..services.stage_context import (
@@ -194,12 +194,18 @@ def update_config(
 @router.post("/test/{provider}")
 async def test_ai_config(
     provider: AIProvider,
+    request: AITestConfigRequest | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """测试 AI API 连接"""
+    """测试 AI API 连接（支持传入临时配置做预览测试）"""
     ai_service = AIProxyService(db)
-    result = await ai_service.test_connection(provider)
+    result = await ai_service.test_connection(
+        provider,
+        base_url=request.base_url if request else None,
+        api_key=request.api_key if request else None,
+        model=request.default_model if request else None,
+    )
     return result
 
 
@@ -247,51 +253,53 @@ async def chat_completion(
         ]
 
     async def event_generator():
+        text_buffer: List[str] = []
+        done_chunk: str | None = None
         try:
-            selected_chunks = await _collect_sse_chunks(ai_service, request.provider, merged_messages)
-            selected_text = _extract_content_from_sse_chunks(selected_chunks)
-            retry_used = False
+            generator = ai_service.chat_completion(
+                provider=request.provider, messages=merged_messages, stream=True
+            )
+            async for chunk in generator:
+                if chunk.strip() == "data: [DONE]":
+                    done_chunk = chunk
+                    break
+                yield chunk
+                for line in chunk.splitlines():
+                    stripped = line.strip()
+                    if not stripped.startswith("data: "):
+                        continue
+                    payload = stripped[6:]
+                    if payload == "[DONE]":
+                        continue
+                    try:
+                        data = json.loads(payload)
+                    except json.JSONDecodeError:
+                        continue
+                    delta_content = data.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                    message_content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    text = delta_content or message_content
+                    if text:
+                        text_buffer.append(text)
 
-            if stage_snapshot and selected_text:
-                validation = validate_stage_native_response(selected_text, request.enable_stage_loop)
-                if not validation["valid"]:
-                    retry_used = True
-                    repair_messages = [
-                        *merged_messages,
-                        {
-                            "role": "system",
-                            "content": (
-                                "你的上一条回答格式不完整。"
-                                f"缺失章节: {json.dumps(validation['missing_sections'], ensure_ascii=False)}。"
-                                "请严格按指定章节完整重答，不要省略。"
-                            ),
-                        },
-                    ]
-                    retry_chunks = await _collect_sse_chunks(ai_service, request.provider, repair_messages)
-                    retry_text = _extract_content_from_sse_chunks(retry_chunks)
-                    retry_validation = validate_stage_native_response(retry_text, request.enable_stage_loop)
-                    if retry_validation["valid"] and retry_text:
-                        selected_chunks = retry_chunks
-                        selected_text = retry_text
+            full_text = "".join(text_buffer).strip()
 
-            sync_payload = extract_sync_payload(selected_text) if selected_text else ""
-            sync_payload_structured = extract_sync_payload_structured(selected_text) if selected_text else {}
-            next_question = extract_next_round_question(selected_text) if selected_text else ""
+            sync_payload = extract_sync_payload(full_text) if full_text else ""
+            sync_payload_structured = extract_sync_payload_structured(full_text) if full_text else {}
+            next_question = extract_next_round_question(full_text) if full_text else ""
             meta_event: Dict[str, Any] = {
                 "meta": {
                     "stage_snapshot": stage_snapshot,
                     "sync_payload": sync_payload,
                     "sync_payload_structured": sync_payload_structured,
                     "next_question": next_question,
-                    "retry_used": retry_used,
+                    "retry_used": False,
                 }
             }
             yield f"data: {json.dumps(meta_event, ensure_ascii=False)}\n\n"
 
-            for chunk in selected_chunks:
-                yield chunk
-
-            if not selected_chunks or selected_chunks[-1].strip() != "data: [DONE]":
+            if done_chunk:
+                yield done_chunk
+            else:
                 yield "data: [DONE]\n\n"
         except Exception:
             error_data = json.dumps({"error": "AI 服务暂时不可用，请稍后重试"})

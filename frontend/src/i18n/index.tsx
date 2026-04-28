@@ -48,6 +48,7 @@ const translations = {
       commit_stage: '提交阶段',
       generate_with_ai: 'AI 优化',
       manual_input: '手动输入',
+      confirm_create: '确认创建',
     },
     // Common
     common: {
@@ -89,6 +90,17 @@ const translations = {
       repository: '仓库名称',
       file_path: '文件路径',
       scope_required: '需要 repo 权限',
+      import_title: '从 GitHub 导入',
+      connect_prompt: '需要授权访问你的 GitHub 公开仓库',
+      connect: '连接 GitHub',
+      no_repos: '未找到公开仓库',
+      select_repo: '选择要导入的仓库',
+      loading_repos: '加载仓库中...',
+      ai_analysis: 'AI 分析结果',
+      confidence: '置信度',
+      creating_project: '正在创建项目...',
+      import_from_github: '从 GitHub 导入',
+      repo_imported: '仓库导入成功',
     },
     // AI
     ai: {
@@ -192,6 +204,7 @@ const translations = {
       commit_stage: 'COMMIT_STAGE',
       generate_with_ai: 'OPTIMIZE_WITH_AI',
       manual_input: 'MANUAL_INPUT',
+      confirm_create: 'CONFIRM_CREATE',
     },
     // Common
     common: {
@@ -233,6 +246,17 @@ const translations = {
       repository: 'Repository',
       file_path: 'File_Path',
       scope_required: 'Requires repo scope',
+      import_title: 'Import from GitHub',
+      connect_prompt: 'Authorization required to access your public GitHub repositories',
+      connect: 'Connect GitHub',
+      no_repos: 'No public repositories found',
+      select_repo: 'Select a repository to import',
+      loading_repos: 'Loading repositories...',
+      ai_analysis: 'AI Analysis',
+      confidence: 'Confidence',
+      creating_project: 'Creating project...',
+      import_from_github: 'Import from GitHub',
+      repo_imported: 'Repository imported successfully',
     },
     // AI
     ai: {

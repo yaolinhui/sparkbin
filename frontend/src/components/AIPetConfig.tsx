@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import type { AIPetConfig as Config } from '../types';
-import { PET_OPTIONS, PERSONALITY_OPTIONS, VERBOSITY_OPTIONS, getContextDialogue } from './AIPetConfig.constants';
+import { PET_OPTIONS, PERSONALITY_OPTIONS, VERBOSITY_OPTIONS } from './AIPetConfig.constants';
+import { PixelPet } from './PixelPet';
+import { geometricCat, retroCat, bigPixelCat } from './PixelPet.frames';
 
 interface AIPetConfigProps {
   config: Config | null;
@@ -16,21 +18,21 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
     personality: config?.personality || 'gentle',
     verbosity: config?.verbosity || 'moderate',
   });
-  const [dialogue, setDialogue] = useState(() => {
-    const pet = PET_OPTIONS.find(p => p.id === (config?.type || 'cat'));
-    return pet?.greeting || '';
-  });
-  const [isBouncing, setIsBouncing] = useState(false);
+  // Pixel pet preview states
+  const [previewStyle, setPreviewStyle] = useState<'geometric' | 'retro' | 'bigpixel'>('retro');
+  const [previewAnim, setPreviewAnim] = useState<'idle' | 'blink' | 'happy'>('idle');
 
   const selectedPet = PET_OPTIONS.find(p => p.id === form.type);
   const selectedPersonality = PERSONALITY_OPTIONS.find(p => p.id === form.personality);
 
-  // 点击宠物互动
-  const handlePetClick = () => {
-    setIsBouncing(true);
-    const random = getContextDialogue(form.type, form.personality, {});
-    setDialogue(random);
-    setTimeout(() => setIsBouncing(false), 500);
+  const previewFrames = previewStyle === 'geometric' ? geometricCat :
+                        previewStyle === 'bigpixel' ? bigPixelCat : retroCat;
+  const previewScale = previewStyle === 'geometric' ? 10 :
+                       previewStyle === 'bigpixel' ? 6 : 8;
+
+  const handlePixelPetClick = () => {
+    setPreviewAnim('happy');
+    setTimeout(() => setPreviewAnim('idle'), 1500);
   };
 
   const handleSave = async () => {
@@ -64,46 +66,46 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
               <div className="absolute bottom-10 right-20 text-3xl">✨</div>
             </div>
 
-            {/* 宠物 Emoji - 大且可点击互动 */}
+            {/* 宠物预览 - 像素风 */}
             <div
-              onClick={handlePetClick}
-              className={`relative cursor-pointer select-none transition-transform ${
-                isBouncing ? 'animate-bounce scale-110' : 'hover:scale-105'
-              }`}
-              style={{ fontSize: '120px', lineHeight: 1 }}
+              onClick={handlePixelPetClick}
+              className="relative cursor-pointer select-none transition-transform hover:scale-105"
             >
-              {selectedPet?.emoji}
-              {/* 表情装饰 */}
-              <span className="absolute -top-2 -right-2 text-3xl">
+              <PixelPet
+                frames={previewFrames}
+                scale={previewScale}
+                animation={previewAnim}
+              />
+              {/* 性格装饰 */}
+              <span className="absolute -top-2 -right-2 text-2xl">
                 {selectedPersonality?.emoji}
               </span>
             </div>
 
-            {/* 对话气泡 */}
-            {dialogue && (
-              <div className="mt-6 relative">
-                <div
-                  className="px-4 py-3 rounded-2xl text-sm font-mono text-center max-w-[200px]"
-                  style={{
-                    backgroundColor: selectedPet?.color || '#374151',
-                    color: 'var(--brutal-bg)',
-                    border: '2px solid var(--brutal-text)',
-                    boxShadow: '4px 4px 0px var(--brutal-text)',
+            {/* 风格切换 */}
+            <div className="mt-4 flex gap-2">
+              {[
+                { key: 'geometric' as const, label: '极简' },
+                { key: 'retro' as const, label: '8-bit' },
+                { key: 'bigpixel' as const, label: '大像素' },
+              ].map((s) => (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => {
+                    setPreviewStyle(s.key);
+                    setPreviewAnim('idle');
                   }}
+                  className={`px-3 py-1.5 text-xs font-mono font-bold border-2 transition-colors ${
+                    previewStyle === s.key
+                      ? 'border-brutal-accent bg-brutal-accent text-brutal-bg'
+                      : 'border-brutal-text text-brutal-text bg-brutal-bg hover:bg-brutal-text hover:text-brutal-bg'
+                  }`}
                 >
-                  {dialogue}
-                </div>
-                {/* 气泡小尾巴 */}
-                <div
-                  className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-0 h-0"
-                  style={{
-                    borderLeft: '10px solid transparent',
-                    borderRight: '10px solid transparent',
-                    borderTop: `10px solid ${selectedPet?.color || '#374151'}`,
-                  }}
-                />
-              </div>
-            )}
+                  {s.label}
+                </button>
+              ))}
+            </div>
 
             <p className="mt-6 text-xs text-brutal-muted font-mono text-center">
               点击宠物和它互动！
@@ -146,7 +148,6 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
                       type: pet.id as Config['type'],
                       name: shouldUpdateName ? pet.name : form.name,
                     });
-                    setDialogue(pet.greeting);
                   }}
                     className={`p-2 border-2 text-center transition-all relative ${
                       form.type === pet.id

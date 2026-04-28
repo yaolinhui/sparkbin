@@ -589,15 +589,25 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       }
     }
 
-    // prototype: 原型阶段，检查是否选择了平台或至少有一个功能
+    // prototype: 原型阶段，检查是否选择了平台或有非默认的自定义功能
+    // PrototypeStage 会自动生成3个默认功能（id: '1','2','3'），这些不算用户实质填写
     if (stage === 'prototype') {
       try {
         const data = JSON.parse(trimmed) as {
-          features?: unknown[];
+          features?: Array<{ id?: string; name?: string; notes?: string }>;
           selectedPlatform?: string;
         };
+        if (!!data.selectedPlatform) return true;
         const features = Array.isArray(data.features) ? data.features : [];
-        return features.length > 0 || !!data.selectedPlatform;
+        // 默认 features 的 ID 是 '1','2','3'，notes 是固定的几个值
+        const defaultFeatureIds = ['1', '2', '3'];
+        const defaultNotes = ['基础账户系统', '主要业务逻辑', '用户偏好设置', '继承自想法阶段的解决方案'];
+        const hasCustomFeatures = features.some((f) => {
+          if (!defaultFeatureIds.includes(f.id || '')) return true;
+          if (!defaultNotes.includes(f.notes || '')) return true;
+          return false;
+        });
+        return hasCustomFeatures;
       } catch {
         return false;
       }

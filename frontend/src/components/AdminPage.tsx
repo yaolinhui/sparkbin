@@ -193,13 +193,15 @@ export function AdminPage({ onLogout }: AdminPageProps) {
               <h1 className="text-lg font-bold">系统管理</h1>
             </div>
           </div>
-          <ThemeSwitcher />
-          <button
-            onClick={onLogout}
-            className="btn-brutal h-9 flex items-center gap-2 border-brutal-warning text-brutal-warning"
-          >
-            退出登录
-          </button>
+          <div className="flex items-center gap-3">
+            <ThemeSwitcher />
+            <button
+              onClick={onLogout}
+              className="btn-brutal h-9 flex items-center gap-2 border-brutal-warning text-brutal-warning"
+            >
+              退出登录
+            </button>
+          </div>
         </div>
       </header>
 

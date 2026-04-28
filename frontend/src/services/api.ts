@@ -327,6 +327,9 @@ export const authApi = {
   getOAuthUrl: (provider: 'google' | 'github') =>
     `${API_BASE_URL}/auth/oauth/${provider}`,
 
+  getGitHubConnectUrl: () =>
+    `${API_BASE_URL}/auth/oauth/github/connect`,
+
   // 获取首选 AI 模型
   getPreferredModel: () =>
     request<{ provider: AIProvider | null }>('/auth/preferred-model'),
@@ -513,10 +516,11 @@ export const aiApi = {
       body: JSON.stringify(config),
     }),
 
-  // 测试连接
-  testConnection: (provider: AIProvider) =>
+  // 测试连接（支持传入当前表单值做预览测试）
+  testConnection: (provider: AIProvider, config?: Partial<AIConfig>) =>
     request<{ success: boolean; message: string }>(`/ai/test/${provider}`, {
       method: 'POST',
+      body: JSON.stringify(config || {}),
     }),
 
   // 流式聊天 - 返回 EventSource
@@ -575,6 +579,60 @@ export const aiApi = {
     current_notes: { title: string; content: string }[];
   }) =>
     request<{ notes: { title: string; content: string }[] }>('/ai/idea-suggest', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+// ===== GitHub 导入 API =====
+export interface GitHubRepo {
+  id: number;
+  name: string;
+  full_name: string;
+  description: string | null;
+  language: string | null;
+  stars: number;
+  forks: number;
+  updated_at: string;
+}
+
+export interface GitHubImportPreview {
+  title: string;
+  pain_point: string;
+  original_idea: string;
+  suggested_stage: string;
+  confidence: number;
+  readme_excerpt: string;
+  metadata: {
+    language: string;
+    stars: number;
+    forks: number;
+    open_issues: number;
+  };
+}
+
+export interface GitHubImportCreate {
+  owner: string;
+  repo: string;
+  title: string;
+  pain_point: string;
+  original_idea: string;
+  stage: string;
+  readme_content: string;
+}
+
+export const githubApi = {
+  listRepos: (page = 1, perPage = 30) =>
+    request<GitHubRepo[]>(`/github/repos?page=${page}&per_page=${perPage}`),
+
+  previewImport: (owner: string, repo: string) =>
+    request<GitHubImportPreview>('/github/preview', {
+      method: 'POST',
+      body: JSON.stringify({ owner, repo }),
+    }),
+
+  importProject: (data: GitHubImportCreate) =>
+    request<ProjectDetail>('/github/import', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

@@ -78,6 +78,11 @@ class User(Base):
     # 安全字段
     require_password_change = Column(Boolean, default=False, nullable=False)
 
+    # GitHub 仓库导入（分步授权 token 加密存储）
+    github_access_token_encrypted = Column(Text, nullable=True)
+    github_token_scope = Column(String(50), nullable=True)
+    github_token_updated_at = Column(DateTime, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

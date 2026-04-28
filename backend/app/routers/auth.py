@@ -1,5 +1,6 @@
 import httpx
 import secrets
+from typing import Optional
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
@@ -23,6 +24,7 @@ from ..schemas import (
 )
 from ..models import AIProvider
 from ..config import get_settings
+from ..encryption import get_encryption_manager
 from ..email import send_verification_email, send_password_reset_email
 from sqlalchemy import func
 from datetime import datetime
@@ -527,6 +529,22 @@ def _verify_oauth_state(state: str) -> bool:
     return payload is not None and payload.get("oauth") is True
 
 
+def _create_connect_state(user_id: str) -> str:
+    """生成 GitHub 增量授权 state 参数（包含 user_id，10分钟有效）"""
+    return create_access_token(
+        data={"oauth": "connect", "user_id": user_id},
+        expires_delta=timedelta(minutes=10)
+    )
+
+
+def _verify_connect_state(state: str) -> Optional[dict]:
+    """验证 GitHub 增量授权 state 参数，返回 payload"""
+    payload = decode_token(state, expected_type="access")
+    if payload and payload.get("oauth") == "connect":
+        return payload
+    return None
+
+
 def _generate_username_from_email(email: str, db: Session) -> str:
     """从邮箱生成唯一用户名"""
     base = email.split("@")[0].lower().replace(".", "_")[:40]
@@ -831,3 +849,112 @@ def oauth_github_callback(
     access_token = create_access_token(data=token_data)
     refresh_token = create_refresh_token(data=token_data)
     return _oauth_success_redirect(access_token, refresh_token)
+
+
+# ========== GitHub 增量授权（用于仓库导入）==========
+
+@router.get("/oauth/github/connect")
+def oauth_github_connect_redirect(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """跳转 GitHub OAuth 增量授权页（申请 public_repo 权限）"""
+    settings = get_settings()
+    if not settings.github_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="GitHub OAuth not configured"
+        )
+
+    state = _create_connect_state(str(current_user.id))
+    params = urlencode({
+        "client_id": settings.github_client_id,
+        "redirect_uri": f"{settings.frontend_url}/auth/oauth/github/connect/callback",
+        "scope": "user:email public_repo",
+        "state": state,
+    })
+    return RedirectResponse(url=f"https://github.com/login/oauth/authorize?{params}")
+
+
+@router.get("/oauth/github/connect/callback")
+def oauth_github_connect_callback(
+    code: str,
+    state: str,
+    db: Session = Depends(get_db),
+):
+    """GitHub 增量授权回调——保存更高权限的 access token"""
+    payload = _verify_connect_state(state)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired connect state"
+        )
+
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing user_id in connect state"
+        )
+
+    # 查找用户
+    from uuid import UUID
+    try:
+        user_uuid = UUID(user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid user_id"
+        )
+
+    user = db.query(User).filter(User.id == user_uuid).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    settings = get_settings()
+
+    # 交换 code 获取 access_token
+    token_resp = httpx.post(
+        "https://github.com/login/oauth/access_token",
+        data={
+            "client_id": settings.github_client_id,
+            "client_secret": settings.github_client_secret,
+            "code": code,
+            "redirect_uri": f"{settings.frontend_url}/auth/oauth/github/connect/callback",
+        },
+        headers={"Accept": "application/json"},
+    )
+    if token_resp.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GitHub token exchange failed"
+        )
+
+    token_data = token_resp.json()
+    github_access_token = token_data.get("access_token")
+    scope = token_data.get("scope", "")
+
+    if not github_access_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GitHub token exchange failed"
+        )
+
+    # 加密存储 token
+    try:
+        encrypted_token = get_encryption_manager().encrypt(github_access_token)
+        user.github_access_token_encrypted = encrypted_token
+        user.github_token_scope = scope
+        user.github_token_updated_at = datetime.utcnow()
+        db.commit()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save token: {str(e)}"
+        )
+
+    # 重定向回前端，标记成功
+    return RedirectResponse(url=f"{settings.frontend_url}/?github_connect=success")

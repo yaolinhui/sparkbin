@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- GitHub project import: connect GitHub account via incremental OAuth (`public_repo` scope), select public repository, AI auto-analyzes README/metadata to suggest stage and pre-fill project fields
+- `GitHubImportModal` component with 3-step flow: repo selection → AI preview → project creation
+- Backend GitHub import service with rule-based + AI stage recognition
 - OAuth 2.0 login support (Google and GitHub)
 - Email registration and verification flow
 - Password reset via email

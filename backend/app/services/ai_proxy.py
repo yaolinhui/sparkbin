@@ -23,8 +23,8 @@ _CACHE_TTL = 3600  # 1 小时
 # 默认配置
 DEFAULT_CONFIGS = {
     AIProvider.DEEPSEEK: {
-        "base_url": "https://api.deepseek.com/v1",
-        "model": "deepseek-chat"
+        "base_url": "https://api.deepseek.com",
+        "model": "deepseek-v4-flash"
     },
     AIProvider.KIMI: {
         "base_url": "https://api.moonshot.cn/v1",
@@ -66,35 +66,51 @@ class AIProxyService:
         """解密 API Key"""
         return self.encryption.decrypt(config.api_key_encrypted)
 
-    async def test_connection(self, provider: AIProvider) -> dict:
+    async def test_connection(
+        self,
+        provider: AIProvider,
+        base_url: str | None = None,
+        api_key: str | None = None,
+        model: str | None = None
+    ) -> dict:
         """
         测试 AI API 配置（实际调用 API 验证）
+        如果传入 base_url/api_key/model，则使用传入值做临时测试（不读数据库）
         返回: {"success": bool, "message": str}
         """
         try:
-            config = self.get_active_config(provider)
-            api_key = self.decrypt_api_key(config)
+            if api_key is not None:
+                # 使用传入值做临时测试
+                test_api_key = api_key
+                test_base_url = base_url or DEFAULT_CONFIGS[provider]["base_url"]
+                test_model = model or DEFAULT_CONFIGS[provider]["model"]
+            else:
+                # 从数据库读取已保存的配置
+                config = self.get_active_config(provider)
+                test_api_key = self.decrypt_api_key(config)
+                test_base_url = config.base_url
+                test_model = config.default_model
 
             # 本地验证 API Key 格式
-            if not api_key or len(api_key) < 10:
+            if not test_api_key or len(test_api_key) < 10:
                 return {"success": False, "message": "API Key 格式无效"}
 
             # 验证 URL 格式
-            if not config.base_url.startswith("http"):
+            if not test_base_url.startswith("http"):
                 return {"success": False, "message": "Base URL 格式无效"}
 
             # 验证模型名称
-            if not config.default_model:
+            if not test_model:
                 return {"success": False, "message": "模型名称不能为空"}
 
             # 实际调用 API 进行验证
             headers = {
-                "Authorization": f"Bearer {api_key}",
+                "Authorization": f"Bearer {test_api_key}",
                 "Content-Type": "application/json"
             }
 
             payload = {
-                "model": config.default_model,
+                "model": test_model,
                 "messages": [{"role": "user", "content": "Hi"}],
                 "stream": False,
                 "max_tokens": 5  # 限制响应长度，仅用于测试
@@ -102,18 +118,15 @@ class AIProxyService:
 
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
-                    f"{config.base_url}/chat/completions",
+                    f"{test_base_url}/chat/completions",
                     headers=headers,
                     json=payload
                 )
 
                 if response.status_code == 200:
-                    result = response.json()
-                    content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-                    if content:
-                        return {"success": True, "message": f"API 连接成功 ({provider.value})"}
-                    else:
-                        return {"success": False, "message": "API 返回空响应，请检查模型配置"}
+                    # HTTP 200 即认为连接成功，不要求 content 非空
+                    # 某些模型（如 DeepSeek V4）对极简测试请求可能返回空 content
+                    return {"success": True, "message": f"API 连接成功 ({provider.value})"}
                 elif response.status_code == 401:
                     return {"success": False, "message": "API Key 无效或已过期"}
                 elif response.status_code == 404:
@@ -172,6 +185,8 @@ class AIProxyService:
         completion_tokens = 0
         status = "success"
         error_msg = ""
+        first_chunk_at: float | None = None
+        request_start = time.time()
 
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
@@ -190,11 +205,13 @@ class AIProxyService:
                             detail=f"AI API error: {error_text}"
                         )
 
-                    # 使用 aiter_text 更可靠地处理 SSE 流
                     chunk_count = 0
                     data_count = 0
                     async for chunk in response.aiter_text():
                         chunk_count += 1
+                        if first_chunk_at is None:
+                            first_chunk_at = time.time() - request_start
+                            logger.info(f"TTFT for {provider.value}: {first_chunk_at:.3f}s")
                         for line in chunk.split('\n'):
                             line = line.strip()
                             if not line:
@@ -203,20 +220,18 @@ class AIProxyService:
                                 data_count += 1
                                 data = line[6:]
                                 if data == "[DONE]":
-                                    logger.info(f"Stream completed: received {chunk_count} chunks, {data_count} data lines, {completion_tokens} tokens")
+                                    logger.info(f"Stream completed: received {chunk_count} chunks, {data_count} data lines, {completion_tokens} tokens, TTFT={first_chunk_at:.3f}s")
                                     yield "data: [DONE]\n\n"
                                     break
 
                                 try:
                                     parsed = json.loads(data)
-                                    # 处理流式响应格式 (delta)
                                     delta = parsed.get("choices", [{}])[0].get("delta", {})
                                     content = delta.get("content", "")
 
                                     if content:
                                         completion_tokens += len(content) // 4
 
-                                    # 转发原始数据
                                     yield f"data: {data}\n\n"
                                 except json.JSONDecodeError as e:
                                     logger.warning(f"Failed to parse JSON: {e}, data: {data[:100]}")
@@ -252,7 +267,6 @@ class AIProxyService:
             yield f"data: {error_data}\n\n"
             yield "data: [DONE]\n\n"
         finally:
-            # 记录调用日志
             log = AICallLog(
                 user_id=self.user_id,
                 provider=provider,
@@ -260,8 +274,10 @@ class AIProxyService:
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 status=status,
-                error_msg=error_msg[:500]  # 限制长度
+                error_msg=error_msg[:500]
             )
+            if first_chunk_at is not None:
+                logger.info(f"AICallLog TTFT: provider={provider.value}, ttft={first_chunk_at:.3f}s")
             self.db.add(log)
             self.db.commit()
 

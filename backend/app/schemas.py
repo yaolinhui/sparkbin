@@ -226,6 +226,12 @@ class AIConfigUpdate(BaseModel):
     is_active: bool = True
 
 
+class AITestConfigRequest(BaseModel):
+    base_url: str | None = None
+    api_key: str | None = None
+    default_model: str | None = None
+
+
 class AIChatRequest(BaseModel):
     provider: AIProvider
     messages: List[dict]  # [{"role": "user", "content": "..."}, ...]
@@ -290,6 +296,43 @@ class SubscriptionStatusResponse(BaseModel):
 class ExportData(BaseModel):
     projects: List[ProjectDetail]
     exported_at: datetime
+
+
+# ========== GitHub 导入 ==========
+class GitHubRepoInfo(BaseModel):
+    id: int
+    name: str
+    full_name: str
+    description: Optional[str] = None
+    language: Optional[str] = None
+    stars: int = 0
+    forks: int = 0
+    updated_at: str
+
+
+class GitHubImportPreviewRequest(BaseModel):
+    owner: str = Field(..., min_length=1)
+    repo: str = Field(..., min_length=1)
+
+
+class GitHubImportPreviewResponse(BaseModel):
+    title: str
+    pain_point: str
+    original_idea: str
+    suggested_stage: str
+    confidence: int = Field(..., ge=1, le=10)
+    readme_excerpt: str
+    metadata: dict
+
+
+class GitHubImportCreateRequest(BaseModel):
+    owner: str = Field(..., min_length=1)
+    repo: str = Field(..., min_length=1)
+    title: str = Field(..., min_length=1, max_length=255)
+    pain_point: str = ""
+    original_idea: str = ""
+    stage: str = "idea"
+    readme_content: str = ""
 
 
 # ========== AI 日志 ==========

@@ -27,6 +27,7 @@ function OAuthHandler({ onLogin }: { onLogin: (resp?: { access_token: string; re
     const oauthSuccess = searchParams.get('oauth_success');
     const accessToken = searchParams.get('access_token');
     const refreshToken = searchParams.get('refresh_token');
+    const githubConnect = searchParams.get('github_connect');
 
     if (oauthSuccess === '1' && accessToken && refreshToken) {
       setAuthToken(accessToken);
@@ -34,6 +35,12 @@ function OAuthHandler({ onLogin }: { onLogin: (resp?: { access_token: string; re
       // 清除 URL 中的 token 参数
       setSearchParams({}, { replace: true });
       onLogin({ access_token: accessToken, refresh_token: refreshToken });
+    }
+
+    if (githubConnect === 'success') {
+      // GitHub 连接成功，清除 URL 参数并标记 session
+      sessionStorage.setItem('sparkbin_github_connected', '1');
+      setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams, onLogin]);
 

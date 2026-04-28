@@ -19,7 +19,7 @@ from .database import engine, SessionLocal
 from .models import Base
 from .auth import init_default_user
 from .services.ai_proxy import init_default_ai_configs
-from .routers import auth, projects, ai, admin, payments
+from .routers import auth, projects, ai, admin, payments, github
 
 
 class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
@@ -111,6 +111,12 @@ def _ensure_sqlite_columns():
         if "require_password_change" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN require_password_change BOOLEAN DEFAULT 0"))
             conn.execute(text("UPDATE users SET require_password_change = 0"))
+        if "github_access_token_encrypted" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN github_access_token_encrypted TEXT"))
+        if "github_token_scope" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN github_token_scope VARCHAR(50)"))
+        if "github_token_updated_at" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN github_token_updated_at DATETIME"))
         conn.commit()
 
     # projects 表
@@ -189,6 +195,7 @@ app.include_router(projects.router)
 app.include_router(ai.router)
 app.include_router(admin.router)
 app.include_router(payments.router)
+app.include_router(github.router)
 
 
 @app.get("/")

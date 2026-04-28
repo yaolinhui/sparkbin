@@ -335,6 +335,17 @@ def build_stage_native_system_prompt(snapshot: Dict[str, Any], enable_stage_loop
     score = completion.get("score", 0)
     missing_items = completion.get("missing_items", [])
 
+    minimal_snapshot = {
+        "project_title": snapshot.get("project_title", ""),
+        "current_stage": snapshot.get("current_stage", ""),
+        "stage_key": snapshot.get("stage_key", ""),
+        "stage_locked": snapshot.get("stage_locked", False),
+        "completion": {
+            "score": score,
+            "missing_items": missing_items,
+        },
+    }
+
     loop_instruction = (
         "你必须在结尾给出【下一轮问题】且只提 1 个问题，优先追问最关键缺口。"
         if enable_stage_loop
@@ -343,7 +354,7 @@ def build_stage_native_system_prompt(snapshot: Dict[str, Any], enable_stage_loop
 
     return (
         "你是 SparkBin 的阶段原生 AI 助手。你必须严格基于当前阶段快照回答，禁止编造未出现的数据。\n"
-        "回答格式必须固定为四段：\n"
+        "回答格式必须固定为四段，缺一不可：\n"
         "1) 【阶段事实】先说明你已经读取了哪个阶段与当前完成度；\n"
         "2) 【关键缺口】列出当前最重要的 1-3 个缺口；\n"
         "3) 【下一步动作】给出最多 3 条可直接执行的动作；\n"
@@ -353,7 +364,7 @@ def build_stage_native_system_prompt(snapshot: Dict[str, Any], enable_stage_loop
         f"{loop_instruction}\n"
         f"当前完成度: {score}%\n"
         f"当前缺口: {json.dumps(missing_items, ensure_ascii=False)}\n"
-        f"阶段快照(JSON): {json.dumps(snapshot, ensure_ascii=False)}"
+        f"阶段快照(精简): {json.dumps(minimal_snapshot, ensure_ascii=False)}"
     )
 
 
