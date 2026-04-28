@@ -99,6 +99,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   const [filter, setFilter] = useState<'all' | 'active' | 'paused' | 'archived'>('all');
   const [isArchivedExpanded, setIsArchivedExpanded] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [quota, setQuota] = useState<{
     ai_calls_used_this_month: number;
     ai_calls_limit: number;
@@ -315,7 +316,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                   <span className="text-xs font-mono">改密</span>
                 </button>
                 <button
-                  onClick={onLogout}
+                  onClick={() => setShowLogoutConfirm(true)}
                   className="btn-brutal h-9 flex items-center gap-2"
                   title="Logout"
                 >
@@ -598,6 +599,44 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         onClose={() => setShowUpgradeModal(false)}
         feature="projects"
       />
+
+      {/* 退出登录确认对话框 */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-sm border-2 border-brutal-border bg-brutal-surface p-6">
+            <h2 className="text-lg font-mono font-bold text-brutal-text mb-2">确认退出</h2>
+            <p className="text-sm font-mono text-brutal-muted mb-6">
+              确定要退出登录吗？未保存的数据可能会丢失。
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 py-3 bg-brutal-bg text-brutal-text font-mono font-bold
+                           border-2 border-brutal-border
+                           hover:border-brutal-accent hover:text-brutal-accent
+                           transition-colors
+                           active:translate-x-[2px] active:translate-y-[2px]"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  onLogout();
+                }}
+                className="flex-1 py-3 bg-brutal-accent text-brutal-bg font-mono font-bold
+                           border-2 border-brutal-accent
+                           hover:bg-brutal-bg hover:text-brutal-accent
+                           transition-colors
+                           active:translate-x-[2px] active:translate-y-[2px]"
+              >
+                确认退出
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isPetConfigOpen && (
         <AIPetConfig
           config={petConfig}
