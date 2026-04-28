@@ -15,7 +15,13 @@ const STAGES = [
 
 export function LandingPage({ onEnter }: LandingPageProps) {
   return (
-    <div className="min-h-[100dvh] bg-brutal-bg flex flex-col items-center justify-center p-4">
+    <div
+      className="min-h-[100dvh] bg-brutal-bg flex flex-col items-center justify-center p-4"
+      style={{
+        backgroundImage: 'radial-gradient(circle, color-mix(in srgb, var(--brutal-text) 18%, transparent) 2px, transparent 2px)',
+        backgroundSize: '28px 28px',
+      }}
+    >
       <div className="w-full max-w-2xl">
         {/* Brand */}
         <div className="border-2 border-brutal-border bg-brutal-surface p-8 text-center mb-6">
