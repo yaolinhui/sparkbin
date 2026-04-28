@@ -3,6 +3,7 @@ import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from typing import Dict, Any
+from urllib.parse import urlparse
 
 from ..database import get_db
 from ..auth import get_current_user
@@ -22,6 +23,15 @@ settings = get_settings()
 stripe.api_key = settings.stripe_secret_key
 
 
+def _is_allowed_redirect_url(url: str) -> bool:
+    """校验 redirect URL 域名白名单"""
+    allowed_domains = {
+        urlparse(settings.frontend_url).netloc,
+    }
+    parsed = urlparse(url)
+    return parsed.scheme in ("http", "https") and parsed.netloc in allowed_domains
+
+
 @router.post("/create-checkout-session", response_model=CheckoutSessionResponse)
 def create_checkout_session(
     request: CreateCheckoutRequest,
@@ -39,6 +49,17 @@ def create_checkout_session(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="至少选择一个定价档位",
+        )
+
+    if not _is_allowed_redirect_url(request.success_url):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="success_url 域名不在白名单中"
+        )
+    if not _is_allowed_redirect_url(request.cancel_url):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="cancel_url 域名不在白名单中"
         )
 
     # 取第一个 item 作为主要订阅项（当前 MVP 只支持单档位订阅）

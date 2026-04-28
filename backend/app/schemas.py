@@ -16,6 +16,7 @@ class BaseResponse(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+    captcha_answer: Optional[str] = None
 
 
 class LoginResponse(BaseModel):
@@ -57,6 +58,10 @@ class TokenPairResponse(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+
+class OAuthUnbindRequest(BaseModel):
+    provider: str = Field(..., pattern="^(google|github)$")
 
 
 # ========== 用户 ==========

@@ -134,6 +134,9 @@ def _ensure_sqlite_columns():
             conn.execute(text("ALTER TABLE users ADD COLUMN github_token_scope VARCHAR(50)"))
         if "github_token_updated_at" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN github_token_updated_at DATETIME"))
+        if "token_version" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0 NOT NULL"))
+            conn.execute(text("UPDATE users SET token_version = 0"))
         conn.commit()
 
     # projects 表

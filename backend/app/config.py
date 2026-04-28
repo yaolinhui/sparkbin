@@ -55,15 +55,24 @@ _DEFAULT_ENCRYPTION_KEY = "your-32-byte-encryption-key-here!"
 def get_settings() -> Settings:
     settings = Settings()
 
-    if settings.secret_key == _DEFAULT_SECRET_KEY:
+    if not settings.secret_key or settings.secret_key == _DEFAULT_SECRET_KEY:
         raise ValueError(
-            "SECURITY ERROR: SECRET_KEY is using the default value. "
+            "SECURITY ERROR: SECRET_KEY is not set or is using the default value. "
             "Please set a strong SECRET_KEY in your .env file before starting the application."
         )
-    if settings.encryption_key == _DEFAULT_ENCRYPTION_KEY:
+    if len(settings.secret_key) < 32:
         raise ValueError(
-            "SECURITY ERROR: ENCRYPTION_KEY is using the default value. "
+            "SECURITY ERROR: SECRET_KEY must be at least 32 characters long."
+        )
+
+    if not settings.encryption_key or settings.encryption_key == _DEFAULT_ENCRYPTION_KEY:
+        raise ValueError(
+            "SECURITY ERROR: ENCRYPTION_KEY is not set or is using the default value. "
             "Please set a strong ENCRYPTION_KEY in your .env file before starting the application."
+        )
+    if len(settings.encryption_key) < 32:
+        raise ValueError(
+            "SECURITY ERROR: ENCRYPTION_KEY must be at least 32 characters long."
         )
 
     return settings

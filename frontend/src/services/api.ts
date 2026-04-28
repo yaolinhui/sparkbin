@@ -350,6 +350,8 @@ export const authApi = {
       pet_config: { type: string; name: string; personality: string; verbosity: string } | null;
       theme_preference: string | null;
       require_password_change: boolean;
+      oauth_provider: string | null;
+      oauth_id: string | null;
       quota: {
         ai_calls_used_this_month: number;
         ai_calls_limit: number;
@@ -416,6 +418,17 @@ export const authApi = {
     request<{ message: string }>('/auth/me/pet-config', {
       method: 'PUT',
       body: JSON.stringify(config),
+    }),
+
+  // 获取 OAuth 绑定授权 URL
+  getOAuthBindUrl: (provider: 'google' | 'github') =>
+    `${API_BASE_URL}/auth/oauth/${provider}/bind`,
+
+  // 解绑 OAuth 账号
+  unbindOAuth: (provider: 'google' | 'github') =>
+    request<{ message: string }>('/auth/oauth/unbind', {
+      method: 'POST',
+      body: JSON.stringify({ provider }),
     }),
 };
 

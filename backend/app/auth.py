@@ -25,6 +25,77 @@ _auth_attempts: dict[str, deque] = {}
 _MAX_LOGIN_ATTEMPTS = 5
 _LOGIN_WINDOW_SECONDS = 300  # 5分钟
 
+# 内存中的验证码存储: {"{ip}": (answer, expire_timestamp)}
+_captcha_store: dict[str, tuple[str, float]] = {}
+_CAPTCHA_TTL_SECONDS = 300  # 5分钟
+
+
+def generate_captcha(ip: str) -> dict:
+    """生成纯文本数学验证码（1-20 的加法）"""
+    import random
+    a = random.randint(1, 10)
+    b = random.randint(1, 10)
+    answer = str(a + b)
+    question = f"{a} + {b}"
+    answer_hash = hashlib.sha256(answer.encode("utf-8")).hexdigest()
+    expire_at = datetime.utcnow().timestamp() + _CAPTCHA_TTL_SECONDS
+    _captcha_store[ip] = (answer, expire_at)
+    return {"question": question, "answer_hash": answer_hash}
+
+
+def verify_captcha(ip: str, answer: str) -> bool:
+    """验证验证码答案，验证后清除记录"""
+    stored = _captcha_store.get(ip)
+    if not stored:
+        return False
+    correct_answer, expire_at = stored
+    now = datetime.utcnow().timestamp()
+    del _captcha_store[ip]
+    if now > expire_at:
+        return False
+    return answer.strip() == correct_answer
+
+
+def _get_client_ip(request: Request) -> str:
+    """获取客户端真实 IP（支持代理环境）"""
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
+    return request.client.host if request.client else "unknown"
+
+
+def get_login_attempts_remaining(request: Request) -> int:
+    """计算当前 IP 在登录动作上还剩下几次尝试机会"""
+    if _is_rate_limit_disabled():
+        return _MAX_LOGIN_ATTEMPTS
+    client_ip = _get_client_ip(request)
+    key = f"{client_ip}:登录"
+    attempts = _auth_attempts.get(key)
+    if not attempts:
+        return _MAX_LOGIN_ATTEMPTS
+    now = datetime.utcnow().timestamp()
+    while attempts and attempts[0] < now - _LOGIN_WINDOW_SECONDS:
+        attempts.popleft()
+    return max(0, _MAX_LOGIN_ATTEMPTS - len(attempts))
+
+
+def is_captcha_required(request: Request) -> bool:
+    """判断当前 IP 是否需要验证码（5 分钟内失败 >= 2 次）"""
+    if _is_rate_limit_disabled():
+        return False
+    client_ip = _get_client_ip(request)
+    key = f"{client_ip}:登录"
+    attempts = _auth_attempts.get(key)
+    if not attempts:
+        return False
+    now = datetime.utcnow().timestamp()
+    while attempts and attempts[0] < now - _LOGIN_WINDOW_SECONDS:
+        attempts.popleft()
+    return len(attempts) >= 2
+
 
 def _is_rate_limit_disabled() -> bool:
     return os.environ.get("SPARKBIN_TESTING") == "1"
@@ -35,7 +106,7 @@ def check_rate_limit(request: Request, action: str) -> None:
     if _is_rate_limit_disabled():
         return
 
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = _get_client_ip(request)
     key = f"{client_ip}:{action}"
     now = datetime.utcnow().timestamp()
 
@@ -48,10 +119,13 @@ def check_rate_limit(request: Request, action: str) -> None:
         attempts.popleft()
 
     if len(attempts) >= _MAX_LOGIN_ATTEMPTS:
+        # 动态计算 Retry-After：距离最早一次尝试过期还剩多少秒
+        oldest_attempt = attempts[0]
+        retry_after = max(1, int(oldest_attempt + _LOGIN_WINDOW_SECONDS - now))
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"{action}尝试次数过多，请5分钟后重试",
-            headers={"Retry-After": str(_LOGIN_WINDOW_SECONDS)},
+            detail=f"{action}尝试次数过多，请{retry_after}秒后重试",
+            headers={"Retry-After": str(retry_after)},
         )
 
 
@@ -60,7 +134,7 @@ def record_rate_limit_failure(request: Request, action: str) -> None:
     if _is_rate_limit_disabled():
         return
 
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = _get_client_ip(request)
     key = f"{client_ip}:{action}"
     if key not in _auth_attempts:
         _auth_attempts[key] = deque()
@@ -113,30 +187,31 @@ _ACCESS_TOKEN_EXPIRE_MINUTES = 15
 _REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 
-def _create_token(data: dict, expires_delta: timedelta, token_type: str) -> str:
+def _create_token(data: dict, expires_delta: timedelta, token_type: str, token_version: int = 0) -> str:
     """创建 JWT Token（内部通用）"""
     settings = get_settings()
     to_encode = data.copy()
     to_encode.update({
         "exp": datetime.utcnow() + expires_delta,
         "type": token_type,
+        "ver": token_version,
     })
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm="HS256")
     return encoded_jwt
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None, token_version: int = 0) -> str:
     """创建 Access Token（默认15分钟）"""
     if expires_delta is None:
         expires_delta = timedelta(minutes=_ACCESS_TOKEN_EXPIRE_MINUTES)
-    return _create_token(data, expires_delta, "access")
+    return _create_token(data, expires_delta, "access", token_version)
 
 
-def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None, token_version: int = 0) -> str:
     """创建 Refresh Token（默认7天）"""
     if expires_delta is None:
         expires_delta = timedelta(days=_REFRESH_TOKEN_EXPIRE_DAYS)
-    return _create_token(data, expires_delta, "refresh")
+    return _create_token(data, expires_delta, "refresh", token_version)
 
 
 def decode_token(token: str, expected_type: Optional[str] = None) -> Optional[dict]:
@@ -225,6 +300,15 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # 校验 token_version
+    token_ver = payload.get("ver", 0)
+    if token_ver != user.token_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

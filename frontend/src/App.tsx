@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import type { FutureConfig } from 'react-router-dom';
 import { ProjectBoard } from './components/ProjectBoard';
 import { ProjectDetail } from './components/ProjectDetail';
@@ -21,28 +21,35 @@ const routerFuture: FutureConfig = {
 };
 
 function OAuthHandler({ onLogin }: { onLogin: (resp?: { access_token: string; refresh_token: string }) => void }) {
-  const [searchParams, setSearchParams] = useSearchParams();
-
   useEffect(() => {
-    const oauthSuccess = searchParams.get('oauth_success');
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-    const githubConnect = searchParams.get('github_connect');
+    // 从 URL fragment 读取 OAuth 参数
+    const hash = window.location.hash.slice(1); // 去掉开头的 #
+    const params = new URLSearchParams(hash);
+    const oauthSuccess = params.get('oauth_success');
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    const githubConnect = params.get('github_connect');
+    const oauthBindSuccess = params.get('oauth_bind_success');
 
     if (oauthSuccess === '1' && accessToken && refreshToken) {
       setAuthToken(accessToken);
       setRefreshToken(refreshToken);
-      // 清除 URL 中的 token 参数
-      setSearchParams({}, { replace: true });
+      // 清除 URL fragment
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
       onLogin({ access_token: accessToken, refresh_token: refreshToken });
     }
 
     if (githubConnect === 'success') {
-      // GitHub 连接成功，清除 URL 参数并标记 session
+      // GitHub 连接成功，清除 URL fragment 并标记 session
       sessionStorage.setItem('sparkbin_github_connected', '1');
-      setSearchParams({}, { replace: true });
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
-  }, [searchParams, setSearchParams, onLogin]);
+
+    if (oauthBindSuccess === '1') {
+      sessionStorage.setItem('sparkbin_oauth_bind_success', '1');
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  }, [onLogin]);
 
   return null;
 }
@@ -66,6 +73,20 @@ function AppRoutes() {
 
     const checkAuth = async () => {
       if (isAuthenticated()) {
+        // 前置校验：token 格式必须是合法 JWT（header.payload.signature）
+        const token = localStorage.getItem('sparkbin_token');
+        const isValidJwt = token ? /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token) : false;
+        if (!isValidJwt) {
+          clearAuthToken();
+          stopTokenRefreshTimer();
+          setCachedRole(null);
+          setUserRole(null);
+          setIsLoggedIn(false);
+          setRequirePasswordChange(false);
+          setIsChecking(false);
+          return;
+        }
+
         try {
           const me = await authApi.getMe();
           setCachedRole(me.role);
@@ -191,6 +212,7 @@ function AppRoutes() {
             path="/admin"
             element={userRole === 'admin' ? <AdminPage onLogout={handleLogout} /> : <Navigate to="/" replace />}
           />
+          <Route path="/profile" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       )}
