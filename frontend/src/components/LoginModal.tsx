@@ -183,8 +183,8 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     <div
       className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       style={{
-        backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.1) 1.5px, transparent 1.5px)',
-        backgroundSize: '32px 32px',
+        backgroundImage: 'radial-gradient(circle, color-mix(in srgb, var(--brutal-text) 18%, transparent) 2px, transparent 2px)',
+        backgroundSize: '28px 28px',
       }}
     >
       <div className="w-full max-w-md border-2 border-brutal-border bg-brutal-surface">
