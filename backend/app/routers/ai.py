@@ -7,7 +7,7 @@ import logging
 from uuid import UUID
 
 from ..database import get_db
-from ..auth import get_current_user
+from ..auth import get_current_user, require_admin
 from ..models import User, AIProvider, AIConfig, AICallLog, Project, Stage, StageKey
 from ..schemas import (
     AIProviderInfo, AIConfigUpdate, AIChatRequest,
@@ -114,7 +114,7 @@ def list_providers(
     config_map = {c.provider: c for c in configs}
 
     providers = []
-    for provider in [AIProvider.DEEPSEEK, AIProvider.KIMI, AIProvider.DOUBAO, AIProvider.OPENAI]:
+    for provider in [AIProvider.DEEPSEEK, AIProvider.KIMI, AIProvider.DOUBAO, AIProvider.OPENAI, AIProvider.OLLAMA]:
         config = config_map.get(provider)
         providers.append(AIProviderInfo(
             provider=provider,
@@ -127,7 +127,7 @@ def list_providers(
 
 @router.get("/configs")
 def list_configs(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """获取所有 AI 配置（隐藏真实 API Key）"""
@@ -149,7 +149,7 @@ def list_configs(
 def update_config(
     provider: AIProvider,
     request: AIConfigUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """更新 AI 配置"""
@@ -157,12 +157,17 @@ def update_config(
 
     encryption = get_encryption_manager()
 
+    # Ollama 允许空 API Key
+    api_key_to_store = request.api_key
+    if provider == AIProvider.OLLAMA and not api_key_to_store:
+        api_key_to_store = ""
+
     if not config:
         # 创建新配置
         config = AIConfig(
             provider=provider,
             base_url=request.base_url,
-            api_key_encrypted=encryption.encrypt(request.api_key),
+            api_key_encrypted=encryption.encrypt(api_key_to_store),
             default_model=request.default_model,
             is_active=request.is_active
         )
@@ -177,7 +182,7 @@ def update_config(
         }
 
         config.base_url = request.base_url
-        config.api_key_encrypted = encryption.encrypt(request.api_key)
+        config.api_key_encrypted = encryption.encrypt(api_key_to_store)
         config.default_model = request.default_model
         config.is_active = request.is_active
 
@@ -195,7 +200,7 @@ def update_config(
 async def test_ai_config(
     provider: AIProvider,
     request: AITestConfigRequest | None = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """测试 AI API 连接（支持传入临时配置做预览测试）"""
@@ -373,6 +378,13 @@ async def generate_promote_suggestions(
     )
 
     if hasattr(request, 'project_id') and request.project_id:
+        project = db.query(Project).filter(
+            Project.id == request.project_id,
+            Project.user_id == current_user.id,
+            Project.deleted_at.is_(None)
+        ).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
         suggestion.project_id = request.project_id
         db.add(suggestion)
         db.commit()
@@ -416,6 +428,12 @@ def list_call_logs(
     db: Session = Depends(get_db)
 ):
     """获取 AI 调用日志"""
+    max_limit = 1000
+    if limit < 1:
+        limit = 1
+    elif limit > max_limit:
+        limit = max_limit
+
     logs = db.query(AICallLog).filter(
         AICallLog.user_id == current_user.id
     ).order_by(
@@ -434,3 +452,31 @@ def list_call_logs(
         }
         for log in logs
     ]
+
+
+@router.get("/ollama/models")
+async def list_ollama_models(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取本地 Ollama 可用模型列表（仅管理员）"""
+    if current_user.role.value != "admin":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    config = db.query(AIConfig).filter(AIConfig.provider == AIProvider.OLLAMA).first()
+    base_url = config.base_url if config else "http://localhost:11434"
+
+    # 移除 /v1 后缀（Ollama 原生 API 在 /api/tags）
+    native_base = base_url.replace("/v1", "").rstrip("/")
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(f"{native_base}/api/tags")
+            if response.status_code == 200:
+                data = response.json()
+                models = [m.get("name", "") for m in data.get("models", [])]
+                return {"models": models, "base_url": native_base}
+            else:
+                return {"models": [], "base_url": native_base, "error": f"HTTP {response.status_code}"}
+    except Exception as e:
+        return {"models": [], "base_url": native_base, "error": str(e)}

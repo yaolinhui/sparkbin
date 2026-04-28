@@ -15,8 +15,31 @@ from ..encryption import get_encryption_manager
 # 配置日志
 logger = logging.getLogger(__name__)
 
-# 简单内存缓存：{(provider, cache_key): (timestamp, result)}
-_idea_suggestion_cache: Dict[tuple, tuple] = {}
+# 有界 LRU 缓存，防止内存耗尽 DoS
+class _LRUCache:
+    def __init__(self, capacity: int = 128):
+        self.capacity = capacity
+        self._cache: dict = {}
+        self._order: list = []
+
+    def get(self, key: str):
+        if key in self._cache:
+            self._order.remove(key)
+            self._order.append(key)
+            return self._cache[key]
+        return None
+
+    def put(self, key: str, value) -> None:
+        if key in self._cache:
+            self._order.remove(key)
+        elif len(self._order) >= self.capacity:
+            oldest = self._order.pop(0)
+            del self._cache[oldest]
+        self._cache[key] = value
+        self._order.append(key)
+
+
+_idea_suggestion_cache = _LRUCache(capacity=128)
 _CACHE_TTL = 3600  # 1 小时
 
 
@@ -37,6 +60,10 @@ DEFAULT_CONFIGS = {
     AIProvider.OPENAI: {
         "base_url": "https://api.openai.com/v1",
         "model": "gpt-4"
+    },
+    AIProvider.OLLAMA: {
+        "base_url": "http://localhost:11434/v1",
+        "model": "llama3.2"
     }
 }
 
@@ -116,7 +143,7 @@ class AIProxyService:
                 "max_tokens": 5  # 限制响应长度，仅用于测试
             }
 
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
                 response = await client.post(
                     f"{test_base_url}/chat/completions",
                     headers=headers,
@@ -163,15 +190,16 @@ class AIProxyService:
         config = self.get_active_config(provider)
         api_key = self.decrypt_api_key(config)
 
-        # 验证 API Key 是否有效
-        if not api_key or len(api_key) < 10:
+        # 验证 API Key 是否有效（Ollama 本地模型不需要 API Key）
+        if provider != AIProvider.OLLAMA and (not api_key or len(api_key) < 10):
             logger.error(f"Invalid API Key for provider {provider.value}: key length = {len(api_key) if api_key else 0}")
             raise HTTPException(status_code=400, detail=f"API Key not configured or invalid for {provider.value}")
 
         headers = {
-            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
+        if provider != AIProvider.OLLAMA:
+            headers["Authorization"] = f"Bearer {api_key}"
 
         payload = {
             "model": config.default_model,
@@ -189,7 +217,7 @@ class AIProxyService:
         request_start = time.time()
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=60.0, follow_redirects=False) as client:
                 async with client.stream(
                     "POST",
                     f"{config.base_url}/chat/completions",
@@ -328,7 +356,7 @@ class AIProxyService:
         error_msg = ""
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=60.0, follow_redirects=False) as client:
                 response = await client.post(
                     f"{config.base_url}/chat/completions",
                     headers=headers,
@@ -449,7 +477,7 @@ class AIProxyService:
         error_msg = ""
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=60.0, follow_redirects=False) as client:
                 response = await client.post(
                     f"{config.base_url}/chat/completions",
                     headers=headers,
@@ -487,7 +515,7 @@ class AIProxyService:
                         })
 
                 # 写入缓存（使用与 provider 无关的缓存键）
-                _idea_suggestion_cache[cache_key] = (time.time(), validated_notes)
+                _idea_suggestion_cache.put(cache_key, (time.time(), validated_notes))
                 return validated_notes
 
         except json.JSONDecodeError:
@@ -572,7 +600,7 @@ def init_default_ai_configs(db: Session):
     encryption = get_encryption_manager()
     empty_key = encryption.encrypt("")  # 加密空字符串
 
-    for provider in [AIProvider.DEEPSEEK, AIProvider.KIMI, AIProvider.DOUBAO, AIProvider.OPENAI]:
+    for provider in [AIProvider.DEEPSEEK, AIProvider.KIMI, AIProvider.DOUBAO, AIProvider.OPENAI, AIProvider.OLLAMA]:
         existing = db.query(AIConfig).filter(AIConfig.provider == provider).first()
         if not existing:
             default = DEFAULT_CONFIGS[provider]

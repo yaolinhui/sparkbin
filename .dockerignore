@@ -1,0 +1,49 @@
+# Git
+.git/
+.gitignore
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env*
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+
+# Backend
+backend/__pycache__/
+backend/**/*.py[cod]
+backend/**/*$py.class
+backend/.pytest_cache/
+backend/.venv/
+backend/venv/
+backend/env/
+backend/*.db
+backend/*.sqlite
+backend/*.sqlite3
+backend/*.log
+backend/alembic/versions/*.pyc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation / Misc
+*.md
+!README.md
+!SELF_HOSTING.md
+docs/
+prompts/
+
+# Local env
+.env
+.env.*
+
+# Claude Code
+.claude/

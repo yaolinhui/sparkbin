@@ -6,7 +6,7 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { aiApi, adminApi, type AIProvider, type AIConfig } from '../services/api';
 // i18n reserved for future use
 
-const PROVIDER_INFO: Record<AIProvider, { name: string; desc: string; defaultUrl: string; defaultModel: string }> = {
+const PROVIDER_INFO: Record<AIProvider, { name: string; desc: string; defaultUrl: string; defaultModel: string; noApiKey?: boolean }> = {
   deepseek: {
     name: 'DeepSeek',
     desc: 'DeepSeek Chat API',
@@ -31,6 +31,13 @@ const PROVIDER_INFO: Record<AIProvider, { name: string; desc: string; defaultUrl
     defaultUrl: 'https://api.openai.com/v1',
     defaultModel: 'gpt-4',
   },
+  ollama: {
+    name: 'Ollama (本地)',
+    desc: '本地部署的 AI 模型，无需 API Key',
+    defaultUrl: 'http://localhost:11434/v1',
+    defaultModel: 'llama3.2',
+    noApiKey: true,
+  },
 };
 
 interface AdminPageProps {
@@ -49,6 +56,7 @@ export function AdminPage({ onLogout }: AdminPageProps) {
     kimi: { base_url: '', api_key: '', default_model: '', is_active: false },
     doubao: { base_url: '', api_key: '', default_model: '', is_active: false },
     openai: { base_url: '', api_key: '', default_model: '', is_active: false },
+    ollama: { base_url: '', api_key: '', default_model: '', is_active: false },
   });
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
@@ -58,6 +66,7 @@ export function AdminPage({ onLogout }: AdminPageProps) {
     kimi: null,
     doubao: null,
     openai: null,
+    ollama: null,
   });
 
   // Logs State
@@ -113,7 +122,8 @@ export function AdminPage({ onLogout }: AdminPageProps) {
 
   const handleSave = async (provider: AIProvider = selectedProvider, silent = false) => {
     const config = configs[provider];
-    if (!config.api_key) {
+    const info = PROVIDER_INFO[provider];
+    if (!info.noApiKey && !config.api_key) {
       if (!silent) setMessage({ type: 'error', text: '请输入 API Key' });
       return false;
     }
@@ -139,7 +149,8 @@ export function AdminPage({ onLogout }: AdminPageProps) {
 
   const handleTest = async () => {
     const config = configs[selectedProvider];
-    if (!config.api_key) {
+    const info = PROVIDER_INFO[selectedProvider];
+    if (!info.noApiKey && !config.api_key) {
       setMessage({ type: 'error', text: '请输入 API Key' });
       return;
     }
@@ -323,25 +334,31 @@ export function AdminPage({ onLogout }: AdminPageProps) {
 
                     <div>
                       <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
-                        API Key
+                        {PROVIDER_INFO[selectedProvider].noApiKey ? 'API Key (无需填写)' : 'API Key'}
                       </label>
-                      <div className="relative">
-                        <input
-                          type={showApiKey ? 'text' : 'password'}
-                          value={currentConfig.api_key}
-                          onChange={(e) => updateCurrentConfig({ api_key: e.target.value })}
-                          placeholder="sk-..."
-                          className="w-full p-3 pr-12 border border-brutal-border bg-brutal-bg focus:border-brutal-accent focus:ring-1 focus:ring-brutal-accent focus:outline-none transition-colors font-mono text-sm"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowApiKey((v) => !v)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-brutal-muted hover:text-brutal-text transition-colors"
-                          title={showApiKey ? '隐藏' : '显示'}
-                        >
-                          {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
+                      {PROVIDER_INFO[selectedProvider].noApiKey ? (
+                        <div className="p-3 border border-brutal-border bg-brutal-bg text-brutal-muted font-mono text-sm">
+                          Ollama 本地模型无需 API Key
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <input
+                            type={showApiKey ? 'text' : 'password'}
+                            value={currentConfig.api_key}
+                            onChange={(e) => updateCurrentConfig({ api_key: e.target.value })}
+                            placeholder="sk-..."
+                            className="w-full p-3 pr-12 border border-brutal-border bg-brutal-bg focus:border-brutal-accent focus:ring-1 focus:ring-brutal-accent focus:outline-none transition-colors font-mono text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowApiKey((v) => !v)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-brutal-muted hover:text-brutal-text transition-colors"
+                            title={showApiKey ? '隐藏' : '显示'}
+                          >
+                            {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

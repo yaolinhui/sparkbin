@@ -1,13 +1,63 @@
 # Self-Hosting Guide
 
-## Requirements
+## Quick Start (Docker) - Recommended
+
+The fastest way to self-host SparkBin is with Docker Compose. No manual Python/Node installation required.
+
+### 1. Clone and Configure
+
+```bash
+git clone https://github.com/yaolinhui/sparkbin.git
+cd sparkbin
+
+# Copy environment template
+cp .env.example .env
+
+# Edit .env - at minimum change these:
+# SECRET_KEY=your-random-32-char-key
+# ENCRYPTION_KEY=your-random-32-char-key
+# DEFAULT_PASSWORD=your-secure-password
+```
+
+### 2. Launch
+
+```bash
+docker compose up -d
+```
+
+### 3. Access
+
+- Open http://localhost
+- Login with `admin` / the `DEFAULT_PASSWORD` you set
+- **Important**: Change the default password immediately after first login
+
+### 4. Upgrade
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+### 5. Backup
+
+```bash
+# Database backup
+docker exec sparkbin-postgres pg_dump -U sparkbin sparkbin > backup.sql
+
+# Restore
+docker exec -i sparkbin-postgres psql -U sparkbin sparkbin < backup.sql
+```
+
+---
+
+## Manual Setup (Development / Advanced)
+
+### Requirements
 
 - Python 3.11+
 - Node.js 18+
 - SQLite (built-in) or PostgreSQL 14+
 - Git
-
-## Quick Start (Development)
 
 ### 1. Clone the Repository
 
@@ -108,6 +158,18 @@ To use AI features, configure at least one provider in the Admin dashboard (`/ad
 
 API keys are encrypted at rest using Fernet (your `ENCRYPTION_KEY`).
 
+### Local AI with Ollama (Self-Hosted / Offline)
+
+SparkBin supports running AI completely offline via Ollama:
+
+1. Uncomment the `ollama` service in `docker-compose.yml`
+2. Start the stack: `docker compose up -d`
+3. Pull a model: `docker exec -it sparkbin-ollama ollama pull llama3.2`
+4. In Admin -> AI Service Configuration, enable "Ollama (Local)"
+5. Set Base URL to `http://ollama:11434` (Docker internal network)
+
+No API keys required. All project data stays on your server.
+
 ### GitHub Backup
 
 Add to `.env`:
@@ -155,7 +217,24 @@ FRONTEND_URL=http://localhost:5173
 
 ## Production Deployment
 
-### 1. Use Production ASGI Server
+### Docker Production
+
+Use the production compose file with pre-built images and Caddy auto-HTTPS:
+
+```bash
+# 1. Configure your domain in docker/Caddyfile
+cp docker/Caddyfile.example docker/Caddyfile
+# Edit: replace example.com with your domain
+
+# 2. Set production environment variables in .env
+
+# 3. Deploy
+docker compose -f docker-compose.production.yml up -d
+```
+
+### Manual Production
+
+#### 1. Use Production ASGI Server
 
 Do **not** use `python start.py` with `reload=True` in production.
 
@@ -170,7 +249,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 ```
 
-### 2. Nginx Reverse Proxy Example
+#### 2. Nginx Reverse Proxy Example
 
 ```nginx
 server {
@@ -209,7 +288,7 @@ server {
 }
 ```
 
-### 3. Enable HTTPS Security Headers
+#### 3. Enable HTTPS Security Headers
 
 Edit `backend/app/main.py` and update the HSTS header:
 
@@ -221,7 +300,7 @@ response.headers["Strict-Transport-Security"] = "max-age=0"
 response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
 ```
 
-### 4. Production Checklist
+#### 4. Production Checklist
 
 - [ ] Changed `SECRET_KEY` from default
 - [ ] Changed `ENCRYPTION_KEY` from default
@@ -250,6 +329,13 @@ git pull origin master
 alembic upgrade head
 
 # Restart backend
+```
+
+For Docker:
+```bash
+docker compose pull
+docker compose up -d
+# Migrations run automatically on container start
 ```
 
 ---
@@ -282,8 +368,17 @@ npx playwright install  # Download browsers
 npm run test:e2e
 ```
 
----
+### Docker: "connection refused" to postgres
 
-## Docker (Community Contribution Welcome)
+Wait for postgres healthcheck to pass. The backend depends on postgres being healthy.
 
-A Dockerfile and docker-compose.yml are welcome contributions. If you create one, please submit a PR.
+```bash
+docker compose logs -f postgres
+```
+
+### Docker: "Permission denied" on volumes (Linux)
+
+```bash
+# Fix ownership for postgres data
+sudo chown -R 999:999 ./postgres_data
+```

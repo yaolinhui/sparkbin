@@ -1,0 +1,90 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: sparkbin-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sparkbin
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: sparkbin
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sparkbin -d sparkbin"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sparkbin-net
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: sparkbin-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://sparkbin:changeme@postgres:5432/sparkbin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - sparkbin-net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+    container_name: sparkbin-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - sparkbin-net
+
+  # Optional: Ollama for local AI (uncomment to enable)
+  # ollama:
+  #   image: ollama/ollama
+  #   container_name: sparkbin-ollama
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   # Uncomment for NVIDIA GPU support
+  #   # runtime: nvidia
+  #   # environment:
+  #   #   NVIDIA_VISIBLE_DEVICES: all
+  #   networks:
+  #     - sparkbin-net
+
+  # Optional: Caddy reverse proxy with auto HTTPS (for production with domain)
+  # caddy:
+  #   image: caddy:2-alpine
+  #   container_name: sparkbin-caddy
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./docker/Caddyfile:/etc/caddy/Caddyfile
+  #     - caddy_data:/data
+  #     - caddy_config:/config
+  #   networks:
+  #     - sparkbin-net
+
+volumes:
+  postgres_data:
+  # ollama_data:
+  # caddy_data:
+  # caddy_config:
+
+networks:
+  sparkbin-net:
+    driver: bridge

@@ -56,6 +56,10 @@ export function getRefreshToken(): string | null {
   return refreshToken;
 }
 
+export function clearRememberedUsername() {
+  localStorage.removeItem('sparkbin_remembered_username');
+}
+
 export function startTokenRefreshTimer() {
   stopTokenRefreshTimer();
   // 每 14 分钟自动刷新一次（access token 有效期 15 分钟）
@@ -75,26 +79,48 @@ async function refreshAccessToken(): Promise<boolean> {
   const token = getRefreshToken();
   if (!token) return false;
 
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: token }),
-    });
+  const tryRefresh = async (): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: token }),
+      });
 
-    if (!response.ok) {
+      if (!response.ok) {
+        return false;
+      }
+
+      const data = await response.json() as LoginResponse;
+      if (data.access_token) {
+        setAuthToken(data.access_token);
+        if (data.refresh_token) {
+          setRefreshToken(data.refresh_token);
+        }
+        return true;
+      }
+      return false;
+    } catch {
       return false;
     }
+  };
 
-    const data = await response.json() as LoginResponse;
-    if (data.access_token) {
-      setAuthToken(data.access_token);
-      return true;
+  // 最多尝试 3 次（首次 + 2 次重试），间隔 1 秒
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const ok = await tryRefresh();
+    if (ok) return true;
+    if (attempt < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
-    return false;
-  } catch {
-    return false;
   }
+
+  // 全部失败：清理状态并触发未授权回调
+  clearAuthToken();
+  stopTokenRefreshTimer();
+  if (onUnauthorizedCallback) {
+    onUnauthorizedCallback();
+  }
+  return false;
 }
 
 export function getAuthToken(): string | null {
@@ -119,6 +145,18 @@ export function getUserId(): string | null {
 
 export function setOnUnauthorized(callback: (() => void) | null) {
   onUnauthorizedCallback = callback;
+}
+
+export class ApiError extends Error {
+  status: number;
+  headers: Record<string, string>;
+
+  constructor(message: string, status: number, headers: Record<string, string> = {}) {
+    super(message);
+    this.status = status;
+    this.headers = headers;
+    this.name = 'ApiError';
+  }
 }
 
 function extractErrorMessage(responseText: string, statusCode: number): string {
@@ -170,9 +208,10 @@ function extractErrorMessage(responseText: string, statusCode: number): string {
 // 通用请求函数
 async function request<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit & { __retry?: boolean } = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
+  const isRetry = options.__retry ?? false;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -192,14 +231,28 @@ async function request<T>(
     // 登录/注册的 401 是正常业务错误，不走 refresh 逻辑
     if (endpoint === '/auth/login' || endpoint === '/auth/register') {
       const responseText = await response.text();
-      throw new Error(extractErrorMessage(responseText, 401));
+      const headers: Record<string, string> = {};
+      response.headers.forEach((value, key) => { headers[key] = value; });
+      throw new ApiError(extractErrorMessage(responseText, 401), 401, headers);
+    }
+
+    // 避免无限重试：已经重试过一次则直接登出
+    if (isRetry) {
+      clearAuthToken();
+      stopTokenRefreshTimer();
+      if (onUnauthorizedCallback) {
+        onUnauthorizedCallback();
+      } else {
+        window.location.href = '/login';
+      }
+      throw new Error('Unauthorized');
     }
 
     // 尝试用 refresh token 刷新 access token
     const refreshed = await refreshAccessToken();
     if (refreshed) {
-      // 重试原请求
-      return request(endpoint, options);
+      // 重试原请求（标记为已重试）
+      return request(endpoint, { ...options, __retry: true });
     }
 
     // 刷新失败，执行登出逻辑
@@ -215,7 +268,9 @@ async function request<T>(
 
   if (!response.ok) {
     const responseText = await response.text();
-    throw new Error(extractErrorMessage(responseText, response.status));
+    const headers: Record<string, string> = {};
+    response.headers.forEach((value, key) => { headers[key] = value; });
+    throw new ApiError(extractErrorMessage(responseText, response.status), response.status, headers);
   }
 
   // 处理空响应
@@ -230,6 +285,7 @@ async function request<T>(
 export interface LoginRequest {
   username: string;
   password: string;
+  captcha_answer?: string;
 }
 
 export interface LoginResponse {
@@ -326,6 +382,9 @@ export const authApi = {
 
   getOAuthUrl: (provider: 'google' | 'github') =>
     `${API_BASE_URL}/auth/oauth/${provider}`,
+
+  getCaptcha: () =>
+    request<{ question: string; answer_hash: string }>('/auth/captcha'),
 
   getGitHubConnectUrl: () =>
     `${API_BASE_URL}/auth/oauth/github/connect`,
@@ -463,7 +522,7 @@ export const projectsApi = {
 };
 
 // ===== AI API =====
-export type AIProvider = 'deepseek' | 'kimi' | 'doubao' | 'openai';
+export type AIProvider = 'deepseek' | 'kimi' | 'doubao' | 'openai' | 'ollama';
 
 export interface AIProviderInfo {
   provider: AIProvider;

@@ -1,10 +1,30 @@
 # SparkBin
 
+[![Build](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/yaolinhui/sparkbin)
+[![License](https://img.shields.io/badge/license-Elastic%202.0-blue)](./LICENSE)
+[![Docker](https://img.shields.io/badge/docker-ready-blue)](./SELF_HOSTING.md)
+
 An AI-native project coach for indie hackers and vibe coders. **Validate before you build.** From idea to monetization in 6 structured stages.
 
 [Live Demo](https://sparkbin.dev) · [Self-Hosting Guide](./SELF_HOSTING.md) · [Contributing](./CONTRIBUTING.md)
 
 ![Demo](docs/assets/demo.gif)
+
+## Quick Start (Docker)
+
+The fastest way to run SparkBin locally:
+
+```bash
+git clone https://github.com/yaolinhui/sparkbin.git
+cd sparkbin
+cp .env.example .env
+# Edit .env: set SECRET_KEY, ENCRYPTION_KEY, DEFAULT_PASSWORD
+docker compose up -d
+# Open http://localhost
+# Login: admin / your-DEFAULT_PASSWORD
+```
+
+See [SELF_HOSTING.md](./SELF_HOSTING.md) for manual setup, production deployment, and Ollama local AI configuration.
 
 ## Why SparkBin?
 
@@ -24,6 +44,7 @@ Most projects die because nobody wants them. SparkBin forces you to validate you
 - **Brutalist UI** — Zero border-radius, high contrast, JetBrains Mono typography. Dark/Light theme with system preference detection. Landing page with grid dot pattern
 - **Built-in Monetization Playground** — Test pricing models with real Stripe checkout flows (test mode). MRR tracking and conversion funnel visualization
 - **GitHub Project Import** — Connect your GitHub account, select a public repository, and let AI analyze the README to suggest the right stage and pre-fill project fields
+- **Local AI with Ollama** — Run AI completely offline. No API keys, no data leaving your server. Supports llama3.2, qwen2.5, and any Ollama-compatible model
 - **7-Language Support** — Chinese, Japanese, Korean, Spanish, French, German, English (i18n with localStorage persistence)
 - **Project Blueprint** — Health dashboard showing completion rates, blockers, overdue stages, timeline comparison, and actionable next steps
 - **Multi-Auth** — Local JWT (with access/refresh token rotation), Google OAuth, GitHub OAuth, plus email registration with verification. Honeypot anti-bot protection on registration
@@ -32,58 +53,15 @@ Most projects die because nobody wants them. SparkBin forces you to validate you
 
 ## Tech Stack
 
-- **Backend**: Python 3.11+, FastAPI, SQLAlchemy 2.0, Alembic, SQLite/PostgreSQL
+- **Backend**: Python 3.11+, FastAPI, SQLAlchemy 2.0, Alembic, PostgreSQL (production) / SQLite (development)
 - **Frontend**: React 18, Vite, TypeScript, Tailwind CSS, Zustand
-- **AI Proxy**: DeepSeek, Kimi, Doubao, OpenAI (unified backend proxy with encrypted key storage)
+- **AI Proxy**: DeepSeek, Kimi, Doubao, OpenAI, **Ollama** (unified backend proxy with encrypted key storage)
 - **Payments**: Stripe Test Mode (optional)
 - **Auth**: JWT with access/refresh token rotation, bcrypt, rate limiting, login audit logs, honeypot anti-bot
 - **OAuth**: Google, GitHub (for login and project import)
 - **Email**: Resend (optional, for registration/verification)
 - **i18n**: 7 languages (Chinese, Japanese, Korean, Spanish, French, German, English)
-
-## Quick Start
-
-### Option 1: Use SparkBin Cloud (Recommended)
-
-Visit [sparkbin.dev](https://sparkbin.dev) and start immediately. Free plan available.
-
-### Option 2: Self-Host
-
-```bash
-# Clone
-git clone https://github.com/yaolinhui/sparkbin.git
-cd sparkbin
-
-# Backend
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env
-# Edit .env with your SECRET_KEY and DEFAULT_PASSWORD
-python start.py
-
-# Frontend (new terminal)
-cd frontend
-npm install
-npm run dev
-```
-
-See [SELF_HOSTING.md](./SELF_HOSTING.md) for production deployment details.
-
-## Pricing
-
-SparkBin is **open source and free to self-host**.
-
-For a managed solution, try **SparkBin Cloud**:
-
-| Plan | Price | Projects | AI Calls/Month |
-|------|-------|----------|----------------|
-| Free | $0 | 3 | 30 |
-| Pro | $9/mo | Unlimited | 500 |
-| Team | $29/mo | Unlimited | 2000 |
-
-Self-hosted users have no limits — you bring your own AI API keys.
+- **Container**: Docker, Docker Compose, Nginx
 
 ## Screenshots
 
@@ -120,4 +98,6 @@ See [SECURITY.md](./SECURITY.md) for vulnerability reporting and security best p
 
 ## License
 
-[MIT](./LICENSE)
+[Elastic License 2.0](./LICENSE)
+
+You are free to use, modify, and self-host SparkBin. The Elastic License prevents cloud providers from offering SparkBin as a managed service without permission, protecting the project's sustainability while keeping it open for individual developers and small teams.

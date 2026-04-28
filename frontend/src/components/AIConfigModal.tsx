@@ -8,7 +8,7 @@ interface AIConfigModalProps {
   onClose: () => void;
 }
 
-const PROVIDER_INFO: Record<AIProvider, { name: string; desc: string; defaultUrl: string; defaultModel: string }> = {
+const PROVIDER_INFO: Record<AIProvider, { name: string; desc: string; defaultUrl: string; defaultModel: string; noApiKey?: boolean }> = {
   deepseek: {
     name: 'DeepSeek',
     desc: 'DeepSeek Chat API',
@@ -33,6 +33,13 @@ const PROVIDER_INFO: Record<AIProvider, { name: string; desc: string; defaultUrl
     defaultUrl: 'https://api.openai.com/v1',
     defaultModel: 'gpt-4',
   },
+  ollama: {
+    name: 'Ollama (本地)',
+    desc: '本地部署的 AI 模型，无需 API Key',
+    defaultUrl: 'http://localhost:11434/v1',
+    defaultModel: 'llama3.2',
+    noApiKey: true,
+  },
 };
 
 export function AIConfigModal({ isOpen, onClose }: AIConfigModalProps) {
@@ -45,6 +52,7 @@ export function AIConfigModal({ isOpen, onClose }: AIConfigModalProps) {
     kimi: { base_url: '', api_key: '', default_model: '', is_active: false },
     doubao: { base_url: '', api_key: '', default_model: '', is_active: false },
     openai: { base_url: '', api_key: '', default_model: '', is_active: false },
+    ollama: { base_url: '', api_key: '', default_model: '', is_active: false },
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -67,6 +75,7 @@ export function AIConfigModal({ isOpen, onClose }: AIConfigModalProps) {
         kimi: { base_url: '', api_key: '', default_model: '', is_active: false },
         doubao: { base_url: '', api_key: '', default_model: '', is_active: false },
         openai: { base_url: '', api_key: '', default_model: '', is_active: false },
+        ollama: { base_url: '', api_key: '', default_model: '', is_active: false },
       };
 
       configs.forEach((c) => {
@@ -107,7 +116,7 @@ export function AIConfigModal({ isOpen, onClose }: AIConfigModalProps) {
   };
 
   const handleTest = async () => {
-    if (!currentConfig.api_key) {
+    if (!PROVIDER_INFO[selectedProvider].noApiKey && !currentConfig.api_key) {
       setTestResult('error');
       setTestError('请先输入 API Key');
       return;
@@ -136,7 +145,7 @@ export function AIConfigModal({ isOpen, onClose }: AIConfigModalProps) {
   };
 
   const handleSave = async () => {
-    if (!currentConfig.api_key) {
+    if (!PROVIDER_INFO[selectedProvider].noApiKey && !currentConfig.api_key) {
       setSaveMessage('请输入 API Key');
       return;
     }
@@ -241,15 +250,21 @@ export function AIConfigModal({ isOpen, onClose }: AIConfigModalProps) {
           {/* API Key */}
           <div>
             <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
-              API Key
+              {PROVIDER_INFO[selectedProvider].noApiKey ? 'API Key (无需填写)' : 'API Key'}
             </label>
-            <input
-              type="password"
-              value={currentConfig.api_key}
-              onChange={(e) => updateCurrentConfig({ api_key: e.target.value })}
-              placeholder="sk-..."
-              className="w-full p-3 border border-brutal-border bg-brutal-bg focus:border-brutal-accent transition-colors font-mono text-sm"
-            />
+            {PROVIDER_INFO[selectedProvider].noApiKey ? (
+              <div className="p-3 border border-brutal-border bg-brutal-bg text-brutal-muted font-mono text-sm">
+                Ollama 本地模型无需 API Key
+              </div>
+            ) : (
+              <input
+                type="password"
+                value={currentConfig.api_key}
+                onChange={(e) => updateCurrentConfig({ api_key: e.target.value })}
+                placeholder="sk-..."
+                className="w-full p-3 border border-brutal-border bg-brutal-bg focus:border-brutal-accent transition-colors font-mono text-sm"
+              />
+            )}
           </div>
 
           {/* Base URL */}

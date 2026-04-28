@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Docker support**: Full containerization with `docker-compose.yml`, multi-stage frontend build, Nginx reverse proxy, PostgreSQL with health checks
+- **Ollama local AI**: Run AI completely offline without API keys. Supports any Ollama-compatible model via OpenAI-compatible API. Optional `ollama` service in Docker Compose
+- `.env.example` with all configuration options documented
 - GitHub project import: connect GitHub account via incremental OAuth (`public_repo` scope), select public repository, AI auto-analyzes README/metadata to suggest stage and pre-fill project fields
 - `GitHubImportModal` component with 3-step flow: repo selection → AI preview → project creation
 - Backend GitHub import service with rule-based + AI stage recognition

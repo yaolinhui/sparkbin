@@ -1,7 +1,7 @@
 // AI Service - Backend Proxy Mode
 // 所有 AI 调用都通过后端代理，前端不接触 API Key
 
-export type AIProvider = 'deepseek' | 'kimi' | 'doubao' | 'openai';
+export type AIProvider = 'deepseek' | 'kimi' | 'doubao' | 'openai' | 'ollama';
 
 export interface KimiMessage {
   role: 'system' | 'user' | 'assistant';
@@ -37,6 +37,7 @@ export const AI_PROVIDER_NAMES: Record<AIProvider, string> = {
   kimi: 'Kimi',
   doubao: '豆包',
   openai: 'OpenAI',
+  ollama: 'Ollama (本地)',
 };
 
 // API 交互接口 - 从 api.ts 导入
@@ -65,7 +66,7 @@ export function setCurrentProvider(provider: AIProvider) {
 
 // 初始化时读取保存的 provider
 const savedProvider = localStorage.getItem('sparkbin_ai_provider_v2') as AIProvider | null;
-if (savedProvider && ['deepseek', 'kimi', 'doubao', 'openai'].includes(savedProvider)) {
+if (savedProvider && ['deepseek', 'kimi', 'doubao', 'openai', 'ollama'].includes(savedProvider)) {
   currentProvider = savedProvider;
 }
 

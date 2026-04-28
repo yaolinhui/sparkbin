@@ -11,7 +11,18 @@ Thank you for your interest in contributing! This project is built by and for in
 
 ## Development Workflow
 
-### Backend
+### Option 1: Docker (Fastest)
+
+```bash
+cd sparkbin
+cp .env.example .env
+# Edit .env with your keys
+docker compose up -d
+```
+
+### Option 2: Manual
+
+#### Backend
 
 ```bash
 cd backend
@@ -19,7 +30,7 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 python start.py
 ```
 
-### Frontend
+#### Frontend
 
 ```bash
 cd frontend
@@ -40,8 +51,8 @@ cd frontend && npx tsc --noEmit
 
 ### Before Submitting a PR
 
-1. Ensure the backend starts without errors: `cd backend && python start.py`
-2. Ensure frontend TypeScript compiles: `cd frontend && npx tsc --noEmit`
+1. Ensure the backend starts without errors: `cd backend && python -c "import app.main; print('ok')"`
+2. Ensure frontend TypeScript compiles: `cd frontend && npm run build`
 3. Run E2E tests if your change affects UI flows: `cd frontend && npx playwright test`
 4. Test your changes manually in the browser
 5. Update documentation if your change affects setup or usage

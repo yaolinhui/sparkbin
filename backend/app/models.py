@@ -39,6 +39,7 @@ class AIProvider(str, enum.Enum):
     KIMI = "kimi"
     DOUBAO = "doubao"
     OPENAI = "openai"
+    OLLAMA = "ollama"
 
 
 class UserRole(str, enum.Enum):
@@ -77,6 +78,7 @@ class User(Base):
 
     # 安全字段
     require_password_change = Column(Boolean, default=False, nullable=False)
+    token_version = Column(Integer, default=0, nullable=False)  # 用于使旧 token 失效
 
     # GitHub 仓库导入（分步授权 token 加密存储）
     github_access_token_encrypted = Column(Text, nullable=True)
