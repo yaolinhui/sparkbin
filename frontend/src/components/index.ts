@@ -12,3 +12,4 @@ export { LoginModal } from './LoginModal';
 export { AdminPage } from './AdminPage';
 export { ModelSelector } from './ModelSelector';
 export { ModelSelectorModal } from './ModelSelectorModal';
+export { AgentCockpit } from './AgentCockpit';

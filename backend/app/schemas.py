@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from uuid import UUID
 from pydantic import BaseModel, Field
 
@@ -365,6 +365,48 @@ class GitHubImportCreateRequest(BaseModel):
     original_idea: str = ""
     stage: str = "idea"
     readme_content: str = ""
+
+
+# ========== Agent 驾驶舱 ==========
+class AgentRunRequest(BaseModel):
+    project_id: UUID
+    strategy: str = "router"  # router | parallel_all | sequential
+    provider: Optional[AIProvider] = None
+
+
+class AgentTaskInfo(BaseModel):
+    id: UUID
+    agent_type: str
+    status: str
+    provider: Optional[str] = None
+    model: str = ""
+    error: str = ""
+
+    class Config:
+        from_attributes = True
+
+
+class AgentRunStatus(BaseModel):
+    run_id: UUID
+    status: str
+    strategy: str
+    summary: str = ""
+    created_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    results: Dict[str, Any] = Field(default_factory=dict)
+    tasks: List[AgentTaskInfo] = Field(default_factory=list)
+
+
+class AgentRunHistoryItem(BaseModel):
+    run_id: UUID
+    status: str
+    strategy: str
+    summary: str
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
 
 
 # ========== AI 日志 ==========

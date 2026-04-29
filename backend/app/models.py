@@ -200,6 +200,47 @@ class LoginAuditLog(Base):
     user = relationship("User")
 
 
+# Agent 执行运行表（多 Agent 并行任务跟踪）
+class AgentRun(Base):
+    __tablename__ = "agent_runs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    status = Column(String(20), default="running", nullable=False)  # running / completed / failed / cancelled
+    trigger = Column(String(50), default="manual", nullable=False)  # manual / auto / scheduled
+    strategy = Column(String(50), default="parallel", nullable=False)  # parallel / sequential / router
+    summary = Column(Text, default="")  # 运行总结
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    completed_at = Column(DateTime, nullable=True)
+
+    user = relationship("User")
+    project = relationship("Project")
+    tasks = relationship("AgentTask", back_populates="run", cascade="all, delete-orphan")
+
+
+# Agent 单任务表
+class AgentTask(Base):
+    __tablename__ = "agent_tasks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id = Column(UUID(as_uuid=True), ForeignKey("agent_runs.id"), nullable=False)
+    agent_type = Column(String(50), nullable=False)  # router / idea / validate / prototype / ship / grow / monetize / analyst
+    status = Column(String(20), default="pending", nullable=False)  # pending / running / completed / failed
+    provider = Column(Enum(AIProvider), nullable=False)
+    model = Column(String(100), nullable=False)
+    prompt_tokens = Column(Integer, default=0)
+    completion_tokens = Column(Integer, default=0)
+    input_preview = Column(Text, default="")  # 输入摘要
+    output_result = Column(Text, default="")  # 输出结果（JSON）
+    error_msg = Column(Text, default="")
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    run = relationship("AgentRun", back_populates="tasks")
+
+
 # 操作日志表
 class OperationLog(Base):
     __tablename__ = "operation_logs"

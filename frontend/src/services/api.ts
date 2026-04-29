@@ -681,6 +681,65 @@ export const aiApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // 验证阶段建议
+  suggestValidate: (data: {
+    project_id?: string;
+    title: string;
+    pain_point: string;
+    original_idea: string;
+    current_items: { title: string; description: string; method: string }[];
+    current_tools: { type: string; title: string; content: string }[];
+  }) =>
+    request<{
+      items: { title: string; description: string; method: string }[];
+      tools: { type: string; title: string; content: string }[];
+      analysis: string;
+    }>('/ai/validate-suggest', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Agent 驾驶舱
+  runAgent: (data: {
+    project_id: string;
+    strategy?: string;
+    provider?: string;
+  }) =>
+    request<{
+      run_id: string;
+      status: string;
+      strategy: string;
+      summary: string;
+      results: Record<string, unknown>;
+    }>('/ai/agent/run', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getAgentRun: (runId: string) =>
+    request<{
+      run_id: string;
+      status: string;
+      strategy: string;
+      summary: string;
+      created_at: string | null;
+      completed_at: string | null;
+      results: Record<string, unknown>;
+      tasks: { id: string; agent_type: string; status: string; provider: string | null; model: string; error: string }[];
+    }>(`/ai/agent/run/${runId}`),
+
+  listAgentRuns: (projectId?: string, limit = 20) => {
+    const qs = projectId ? `?project_id=${projectId}&limit=${limit}` : `?limit=${limit}`;
+    return request<{
+      run_id: string;
+      status: string;
+      strategy: string;
+      summary: string;
+      created_at: string;
+      completed_at: string | null;
+    }[]>(`/ai/agent/runs${qs}`);
+  },
 };
 
 // ===== GitHub 导入 API =====

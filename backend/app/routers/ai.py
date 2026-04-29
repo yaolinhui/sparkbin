@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import json
 import logging
 from uuid import UUID
@@ -13,7 +13,8 @@ from ..schemas import (
     AIProviderInfo, AIConfigUpdate, AIChatRequest,
     AIPromoteSuggestRequest, PromoteSuggestionInfo, BaseResponse,
     IdeaSuggestRequest, IdeaSuggestResponse, AITestConfigRequest,
-    ValidateSuggestRequest, ValidateSuggestResponse
+    ValidateSuggestRequest, ValidateSuggestResponse,
+    AgentRunRequest, AgentRunStatus, AgentRunHistoryItem,
 )
 from ..services.ai_proxy import AIProxyService
 from ..services.stage_context import (
@@ -23,6 +24,7 @@ from ..services.stage_context import (
     extract_sync_payload,
     extract_sync_payload_structured,
     extract_next_round_question,
+    evaluate_stage_content,
 )
 from ..services.logger import OperationLogger
 from ..encryption import get_encryption_manager
@@ -511,3 +513,145 @@ async def list_ollama_models(
                 return {"models": [], "base_url": native_base, "error": f"HTTP {response.status_code}"}
     except Exception as e:
         return {"models": [], "base_url": native_base, "error": str(e)}
+
+
+# ========== Agent 驾驶舱接口 ==========
+
+@router.post("/agent/run", response_model=AgentRunStatus)
+async def run_agent_cockpit(
+    request: AgentRunRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    启动 Agent 驾驶舱运行。
+
+    根据 strategy 参数选择执行模式：
+    - router: 先由 RouterAgent 分析项目状态，再并行调用选中的 Specialist（推荐）
+    - parallel_all: 同时启动所有 7 个 Specialist（演示用，Token 消耗较大）
+    - sequential: 串行执行（最低并发，最省 Token）
+    """
+    from uuid import UUID
+    from ..models import Project, Stage
+    from ..agents import AgentOrchestrator
+    from ..services.stage_context import evaluate_stage_content
+
+    # 检查配额
+    _check_ai_quota(current_user, db)
+
+    project = db.query(Project).filter(
+        Project.id == request.project_id,
+        Project.user_id == current_user.id,
+        Project.deleted_at.is_(None)
+    ).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # 收集所有阶段数据
+    stages = db.query(Stage).filter(Stage.project_id == project.id).all()
+    stage_map = {s.stage_key.value: s for s in stages}
+
+    stage_evaluations = {}
+    for sk in ["idea", "validate", "prototype", "ship", "grow", "monetize"]:
+        stage = stage_map.get(sk)
+        from ..models import StageKey
+        try:
+            key_enum = StageKey(sk)
+        except ValueError:
+            continue
+        content = stage.content if stage else ""
+        stage_evaluations[sk] = evaluate_stage_content(key_enum, content)
+
+    # 构建项目快照
+    project_snapshot = {
+        "id": str(project.id),
+        "title": project.title,
+        "pain_point": project.pain_point,
+        "original_idea": project.original_idea,
+        "current_stage": project.current_stage.value,
+        "stages": {
+            sk: {
+                "content": stage_map.get(sk, Stage(content="", stage_key=StageKey(sk), project_id=project.id)).content or "",
+                "is_locked": stage_map.get(sk, Stage(content="", stage_key=StageKey(sk), project_id=project.id)).is_locked if stage_map.get(sk) else False,
+            }
+            for sk in ["idea", "validate", "prototype", "ship", "grow", "monetize"]
+        },
+    }
+
+    # 启动编排器
+    orchestrator = AgentOrchestrator(db, user_id=str(current_user.id))
+    result = await orchestrator.run(
+        project=project_snapshot,
+        stage_evaluations=stage_evaluations,
+        strategy=request.strategy,
+        preferred_provider=request.provider,
+    )
+
+    return AgentRunStatus(
+        run_id=UUID(result["run_id"]),
+        status=result["status"],
+        strategy=result["strategy"],
+        summary=result.get("summary", ""),
+        results=result.get("results", {}),
+    )
+
+
+@router.get("/agent/run/{run_id}", response_model=AgentRunStatus)
+def get_agent_run_status(
+    run_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """查询 Agent 运行状态"""
+    from ..agents import AgentOrchestrator
+
+    orchestrator = AgentOrchestrator(db, user_id=str(current_user.id))
+    status = orchestrator.get_run_status(run_id)
+
+    if not status:
+        raise HTTPException(status_code=404, detail="Agent run not found")
+
+    from uuid import UUID
+    return AgentRunStatus(
+        run_id=UUID(status["run_id"]),
+        status=status["status"],
+        strategy=status["strategy"],
+        summary=status.get("summary", ""),
+        created_at=status.get("created_at"),
+        completed_at=status.get("completed_at"),
+        results=status.get("results", {}),
+        tasks=status.get("tasks", []),
+    )
+
+
+@router.get("/agent/runs", response_model=List[AgentRunHistoryItem])
+def list_agent_runs(
+    project_id: Optional[str] = None,
+    limit: int = 20,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取当前用户的 Agent 运行历史"""
+    from ..models import AgentRun
+
+    query = db.query(AgentRun).filter(AgentRun.user_id == current_user.id)
+    if project_id:
+        from uuid import UUID
+        try:
+            query = query.filter(AgentRun.project_id == UUID(project_id))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid project_id")
+
+    runs = query.order_by(AgentRun.created_at.desc()).limit(max(1, min(limit, 100))).all()
+
+    return [
+        AgentRunHistoryItem(
+            run_id=r.id,
+            status=r.status,
+            strategy=r.strategy,
+            summary=r.summary,
+            created_at=r.created_at,
+            completed_at=r.completed_at,
+        )
+        for r in runs
+    ]

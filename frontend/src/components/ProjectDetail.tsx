@@ -43,7 +43,7 @@ function useBlocker(shouldBlock: boolean) {
 
   return { state, proceed, reset, location };
 }
-import { ArrowLeft, Pause, Play, Archive, LogOut, MoreVertical, Sun, Moon, GitGraph, Trash2, Pencil } from 'lucide-react';
+import { ArrowLeft, Pause, Play, Archive, LogOut, MoreVertical, Sun, Moon, GitGraph, Trash2, Pencil, Cpu } from 'lucide-react';
 import { useTheme } from '../theme/hooks';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -60,6 +60,7 @@ import { ShipStage } from './ShipStage';
 import { GrowStage } from './GrowStage';
 import { MonetizeStage } from './MonetizeStage';
 import { ProjectBlueprint } from './ProjectBlueprint';
+import { AgentCockpit } from './AgentCockpit';
 import { type StageKey, type ProjectStatus } from '../types';
 
 interface ProjectDetailProps {
@@ -382,6 +383,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const [viewingStage, setViewingStage] = useState<StageKey | null>(null); // 正在查看的阶段（可切换）
   const [isAIChatCollapsed, setIsAIChatCollapsed] = useState(false); // AI 聊天折叠状态
   const [showBlueprint, setShowBlueprint] = useState(false); // 项目蓝图显示状态
+  const [showAgentCockpit, setShowAgentCockpit] = useState(false); // Agent 驾驶舱显示状态
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -960,6 +962,14 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 <GitGraph className="w-4 h-4" />
                 <span className="hidden sm:inline text-xs">蓝图</span>
               </button>
+              <button
+                onClick={() => setShowAgentCockpit(true)}
+                className="btn-brutal h-9 flex items-center gap-2 text-brutal-success border-brutal-success"
+                title="AI Agent 驾驶舱"
+              >
+                <Cpu className="w-4 h-4" />
+                <span className="hidden sm:inline text-xs">Agent</span>
+              </button>
               {renderStatusButton()}
               {project.status !== 'archived' && (
                 <button
@@ -1365,6 +1375,15 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
             setViewingStage(stage);
             setShowBlueprint(false);
           }}
+        />
+      )}
+
+      {/* Agent Cockpit Modal */}
+      {showAgentCockpit && (
+        <AgentCockpit
+          project={project}
+          isOpen={showAgentCockpit}
+          onClose={() => setShowAgentCockpit(false)}
         />
       )}
 
