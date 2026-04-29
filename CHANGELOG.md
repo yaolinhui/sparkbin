@@ -45,6 +45,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Password complexity validation
 - Security response headers (CSP, HSTS, X-Frame-Options, Referrer-Policy)
 - Default SECRET_KEY and ENCRYPTION_KEY validation at startup
+- **Security audit P0+P1**: AI config admin-only enforcement, Stripe open redirect whitelist, OAuth account takeover protection (409 conflict check), promotion suggestion horizontal privilege fix, Token Version mechanism, Refresh Token Rotation, OAuth State one-time validation, proxy real IP detection, httpx redirect disabled, HTML email escaping, sensitive log regex masking
+- **Frontend performance optimization**: React.lazy route loading, Vite page-level code splitting, AIChat SSE 200ms throttling, ProjectCard React.memo, API GET 3s cache, ProjectDetail request cancellation + isLoading deadlock fix, RichTextEditor useMemo extensions
+- **DotGridBackground**: Canvas 2D spring physics ripple effect for LoginModal and LandingPage
+- **ProfilePage**: Independent user profile management component
+- **Landing site**: Next.js standalone marketing website with i18n (`landing/`)
+- License changed from MIT to Elastic License 2.0
 
 ## [0.2.0] - 2026-04-27
 

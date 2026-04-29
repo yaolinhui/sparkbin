@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Lock, User, AlertCircle, Loader2, X, Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
 import { authApi, setAuthToken, setRefreshToken, ApiError } from '../services/api';
 import { DotGridBackground } from './DotGridBackground';
+import type { DotGridBackgroundRef } from './DotGridBackground';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -60,6 +61,18 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
   const [captchaAnswer, setCaptchaAnswer] = useState('');
   const [lockoutSeconds, setLockoutSeconds] = useState<number | null>(null);
   const [isLocked, setIsLocked] = useState(false);
+
+  const gridRef = useRef<DotGridBackgroundRef>(null);
+
+  const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    const rect = e.target.getBoundingClientRect();
+    const container = e.target.closest('.fixed.inset-0');
+    if (!container) return;
+    const containerRect = container.getBoundingClientRect();
+    const x = rect.left + rect.width / 2 - containerRect.left;
+    const y = rect.top + rect.height / 2 - containerRect.top;
+    gridRef.current?.addPulse(x, y, 3.5);
+  };
 
   // 弹窗打开时加载记住的用户名
   useEffect(() => {
@@ -282,7 +295,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     <div
       className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
     >
-      <DotGridBackground />
+      <DotGridBackground ref={gridRef} />
       <div className="w-full max-w-md border-2 border-brutal-border bg-brutal-surface">
         {/* Header */}
         <div className="p-6 border-b-2 border-brutal-border bg-brutal-text relative">
