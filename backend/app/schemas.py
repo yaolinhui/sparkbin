@@ -271,6 +271,33 @@ class IdeaSuggestResponse(BaseModel):
     notes: List[NoteSuggestion]
 
 
+class ValidationItemSuggestion(BaseModel):
+    title: str
+    description: str
+    method: str = "survey"  # interview | survey | community | competitor
+
+
+class ValidationToolSuggestion(BaseModel):
+    type: str  # survey | interview | community | competitor
+    title: str
+    content: str
+
+
+class ValidateSuggestRequest(BaseModel):
+    project_id: Optional[UUID] = None
+    title: str
+    pain_point: str
+    original_idea: str = ""
+    current_items: List[ValidationItemSuggestion] = []
+    current_tools: List[ValidationToolSuggestion] = []
+
+
+class ValidateSuggestResponse(BaseModel):
+    items: List[ValidationItemSuggestion]
+    tools: List[ValidationToolSuggestion]
+    analysis: str = ""
+
+
 # ========== 支付 ==========
 class CheckoutItem(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)

@@ -549,3 +549,5 @@ export function AdminPage({ onLogout }: AdminPageProps) {
     </div>
   );
 }
+
+export default AdminPage;

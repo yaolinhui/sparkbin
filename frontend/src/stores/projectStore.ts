@@ -25,7 +25,7 @@ interface ProjectActions {
 }
 
 // 转换后端项目数据为前端格式
-function convertProjectDetailToProject(detail: ProjectDetail): Project {
+export function convertProjectDetailToProject(detail: ProjectDetail): Project {
   const stages: Record<string, Stage | PromoteStage> = {};
 
   detail.stages.forEach((stage) => {

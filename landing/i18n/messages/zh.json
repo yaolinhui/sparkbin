@@ -1,0 +1,124 @@
+{
+  "nav": {
+    "stages": "流程",
+    "features": "功能",
+    "pricing": "定价",
+    "opensource": "开源",
+    "docs": "文档",
+    "github": "GitHub",
+    "enter": "进入系统"
+  },
+  "hero": {
+    "badge": "AI-NATIVE PROJECT COACH",
+    "title1": "VALIDATE",
+    "title2": "BEFORE YOU BUILD",
+    "subtitle": "为独立开发者打造的六阶段项目工作流工具。从想法到变现，用 AI 辅助每一步决策。",
+    "ctaPrimary": "免费开始",
+    "ctaSecondary": "Star on GitHub",
+    "trust": {
+      "opensource": "开源 MIT",
+      "selfhost": "自托管免费",
+      "aiproxy": "AI 后端代理"
+    }
+  },
+  "stages": {
+    "label": "WORKFLOW",
+    "title": "六阶段：从想法到变现",
+    "subtitle": "不是待办清单，是一套经过验证的独立开发者工作流。每个阶段有明确的进入标准和退出条件。",
+    "items": [
+      { "num": "01", "label": "IDEA", "labelZh": "想法", "desc": "记录灵感，评估可行性，用 AI 快速生成竞品分析报告。" },
+      { "num": "02", "label": "VALIDATE", "labelZh": "验证", "desc": "GO/NO-GO 决策机制，用数据验证需求，避免构建没人要的产品。" },
+      { "num": "03", "label": "PROTOTYPE", "labelZh": "原型", "desc": "AI 辅助生成 MVP 方案、技术选型建议和多平台推广文案。" },
+      { "num": "04", "label": "SHIP", "labelZh": "发布", "desc": "项目管理看板，追踪发布 checklist，确保不遗漏关键步骤。" },
+      { "num": "05", "label": "GROW", "labelZh": "增长", "desc": "多平台内容矩阵管理，追踪增长实验，用 AI 优化文案。" },
+      { "num": "06", "label": "MONETIZE", "labelZh": "变现", "desc": "定价策略模拟器，收入预测，找到最适合的商业模式。" }
+    ]
+  },
+  "features": {
+    "label": "FEATURES",
+    "title": "不止是一个看板",
+    "subtitle": "AI 不是附加功能，而是贯穿每个阶段的基础设施。",
+    "items": [
+      { "title": "AI 宠物教练", "desc": "每个项目配备专属 AI 教练，根据当前阶段提供针对性建议。" },
+      { "title": "GO/NO-GO 决策", "desc": "结构化验证框架，用数据驱动决策，避免情绪化投入。" },
+      { "title": "多平台文案生成", "desc": "一键生成 Twitter、小红书、即刻、ProductHunt 的推广文案。" },
+      { "title": "变现模拟器", "desc": "输入预期用户数和定价，AI 预测收入曲线和回本周期。" },
+      { "title": "项目蓝图", "desc": "自动生成项目结构文档、技术栈推荐和开发里程碑。" },
+      { "title": "GitHub 备份", "desc": "项目数据自动同步到 GitHub Discussions，确保数据自主可控。" }
+    ]
+  },
+  "deployment": {
+    "label": "DEPLOYMENT",
+    "title": "两种使用方式，同样完整体验",
+    "subtitle": "我们相信开源不是商业的妥协，而是信任的起点。",
+    "selfHosted": {
+      "title": "SELF-HOSTED",
+      "badge": "MIT LICENSE",
+      "desc": "代码完全开源，数据自主可控。适合有技术能力的团队和个人。",
+      "features": ["无限 AI 调用（自备 API Key）", "完整功能，无功能限制", "数据存储在本地", "社区支持"]
+    },
+    "cloud": {
+      "title": "SPARKBIN CLOUD",
+      "badge": "SAAS",
+      "desc": "零配置，开箱即用。自动更新，托管 AI 后端，专注产品开发。",
+      "features": ["零配置部署", "自动更新", "托管 AI 后端", "邮件支持"]
+    }
+  },
+  "pricing": {
+    "label": "PRICING",
+    "title": "简单透明的定价",
+    "subtitle": "自托管用户完全免费。Cloud 版按使用量付费，没有隐藏费用。",
+    "tiers": [
+      {
+        "name": "Free",
+        "price": "$0",
+        "period": "/月",
+        "desc": "适合个人开发者和小型项目",
+        "features": ["最多 3 个项目", "基础 AI 教练", "GO/NO-GO 决策", "社区支持"]
+      },
+      {
+        "name": "Pro",
+        "price": "$9",
+        "period": "/月",
+        "desc": "适合全职独立开发者和初创团队",
+        "features": ["无限项目", "高级 AI 教练（GPT-4级）", "变现模拟器", "多平台文案生成", "优先支持"]
+      },
+      {
+        "name": "Team",
+        "price": "$29",
+        "period": "/月",
+        "desc": "适合小团队协作",
+        "features": ["Pro 全部功能", "团队协作（最多 5 人）", "共享项目蓝图", "专属 AI 模型配置", "邮件支持"]
+      }
+    ]
+  },
+  "cta": {
+    "title": "你的下一个 Side Project，值得被认真对待",
+    "subtitle": "大多数项目死于\"没人需要\"。SparkBin 用结构化的六阶段流程和 AI 教练，帮你验证想法、降低试错成本。",
+    "primary": "免费开始",
+    "secondary": "在 GitHub 上查看"
+  },
+  "footer": {
+    "brand": "AI-native project coach for indie hackers.",
+    "product": "产品",
+    "features": "功能特性",
+    "pricing": "定价",
+    "enter": "进入系统",
+    "resources": "资源",
+    "docs": "文档",
+    "selfhosting": "自托管指南",
+    "contributing": "贡献指南",
+    "opensource": "开源",
+    "github": "GitHub 仓库",
+    "license": "MIT License",
+    "security": "安全政策",
+    "privacy": "隐私政策",
+    "copyright": "SPARKBIN © 2026 — MIT Licensed",
+    "builtWith": "Built with React + FastAPI + Brutalist design"
+  },
+  "notFound": {
+    "title": "404 NOT FOUND",
+    "subtitle": "这个页面不存在，但它值得被验证。",
+    "backHome": "返回首页"
+  }
+}

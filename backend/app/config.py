@@ -42,7 +42,12 @@ class Settings(BaseSettings):
     github_client_secret: str = ""
     frontend_url: str = "http://localhost:5173"  # OAuth 回调和邮件链接基础地址
 
+    # HTTP 代理配置（用于后端访问外部 API，如 Google/GitHub）
+    http_proxy: str = ""
+    https_proxy: str = ""
+
     class Config:
+        # 自动加载 .env 文件中的配置
         env_file = ".env"
         env_file_encoding = "utf-8"
 

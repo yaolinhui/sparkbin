@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pause, Archive, ArrowRight, Calendar } from 'lucide-react';
 import { useI18n, useStageLabel, useStatusLabel } from '../i18n/hooks';
@@ -34,7 +35,7 @@ const STAGE_NUMBERS: Record<StageKey, string> = {
   monetize: '06',
 };
 
-export function ProjectCard({ project, index, compact }: ProjectCardProps) {
+export const ProjectCard = memo(function ProjectCard({ project, index, compact }: ProjectCardProps) {
   const navigate = useNavigate();
   const { t } = useI18n();
   const stageLabel = useStageLabel(project.currentStage);
@@ -159,4 +160,6 @@ export function ProjectCard({ project, index, compact }: ProjectCardProps) {
       </div>
     </div>
   );
-}
+});
+
+export default ProjectCard;

@@ -3,24 +3,32 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
 // 兼容 BrowserRouter 的 useBlocker（React Router v6 data router 专用 hook 的 polyfill）
 function useBlocker(shouldBlock: boolean) {
-  const navigate = useNavigate();
   const location = useLocation();
   const [state, setState] = useState<'unblocked' | 'blocked'>('unblocked');
   const retryRef = useRef<(() => void) | null>(null);
+  const ignoringPopState = useRef(false);
 
   useEffect(() => {
     if (!shouldBlock) return;
 
     const handlePopState = () => {
+      if (ignoringPopState.current) return;
       setState('blocked');
-      retryRef.current = () => navigate(document.location.pathname + document.location.search);
+      // 继续时真正执行后退（pushState 额外加了一条当前记录，所以 go(-1) 即可回到上一页）
+      retryRef.current = () => {
+        ignoringPopState.current = true;
+        window.history.go(-1);
+        setTimeout(() => {
+          ignoringPopState.current = false;
+        }, 100);
+      };
       // 阻止实际导航，将用户留在当前页面
       window.history.pushState(null, '', location.pathname + location.search);
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [shouldBlock, location, navigate]);
+  }, [shouldBlock, location]);
 
   const proceed = useCallback(() => {
     setState('unblocked');
@@ -39,9 +47,8 @@ import { ArrowLeft, Pause, Play, Archive, LogOut, MoreVertical, Sun, Moon, GitGr
 import { useTheme } from '../theme/hooks';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { LanguageSwitcher } from './LanguageSwitcher';
-import { useProjectStore } from '../stores/projectStore';
+import { useProjectStore, convertProjectDetailToProject } from '../stores/projectStore';
 import { useI18n, useStatusLabel, useStageLabel } from '../i18n/hooks';
-import type { Project, Stage } from "../types";
 import { StageFlow } from './StageFlow';
 import { RichTextEditor } from './RichTextEditor';
 import { AIChat } from './AIChat';
@@ -462,54 +469,48 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     // 如果没有项目数据，或 stages 为空对象（从列表页导航过来），需要获取完整详情
     const needsFetch = !project || !project.stages || Object.keys(project.stages).length === 0;
 
-    if (needsFetch) {
-      setIsLoading(true);
-      setFetchError(null);
-
-      // 使用 projectsApi.get 获取完整详情（包含所有 stages）
-      projectsApi.get(id)
-        .then((detail) => {
-          // 更新 store 中的项目数据
-          useProjectStore.setState((state) => ({
-            projects: [
-              ...state.projects.filter((p) => p.id !== id),
-              {
-                id: detail.id,
-                title: detail.title,
-                painPoint: detail.pain_point,
-                originalIdea: detail.original_idea || '',
-                status: detail.status,
-                currentStage: detail.current_stage,
-                stages: detail.stages.reduce((acc, s) => {
-                  acc[s.stage_key] = {
-                    content: s.content,
-                    completedAt: s.completed_at,
-                    isLocked: s.is_locked,
-                  };
-                  return acc;
-                }, {} as Record<string, Stage> as unknown as Project["stages"]),
-                createdAt: detail.created_at,
-                updatedAt: detail.updated_at,
-              },
-            ],
-          }));
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          console.error('Failed to fetch project:', err);
-          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-          if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
-            setFetchError('无法连接到服务器，请检查后端是否已启动');
-          } else if (errorMessage.includes('404')) {
-            setFetchError('项目不存在');
-          } else if (errorMessage.includes('401')) {
-            setFetchError('登录已过期，请重新登录');
-          } else {
-            setFetchError(`加载失败: ${errorMessage}`);
-          }
-          setIsLoading(false);
-        });
+    if (!needsFetch) {
+      setIsLoading(false);
+      return;
     }
+
+    let cancelled = false;
+    setIsLoading(true);
+    setFetchError(null);
+
+    // 使用 projectsApi.get 获取完整详情（包含所有 stages）
+    projectsApi.get(id)
+      .then((detail) => {
+        if (cancelled) return;
+        // 更新 store 中的项目数据
+        const updatedProject = convertProjectDetailToProject(detail);
+        useProjectStore.setState((state) => ({
+          projects: [
+            ...state.projects.filter((p) => p.id !== id),
+            updatedProject,
+          ],
+        }));
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Failed to fetch project:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+          setFetchError('无法连接到服务器，请检查后端是否已启动');
+        } else if (errorMessage.includes('404')) {
+          setFetchError('项目不存在');
+        } else if (errorMessage.includes('401')) {
+          setFetchError('登录已过期，请重新登录');
+        } else {
+          setFetchError(`加载失败: ${errorMessage}`);
+        }
+        setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [id, project]);
 
   // 计算当前阶段和标签 - 必须在条件返回之前
@@ -1383,3 +1384,5 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     </div>
   );
 }
+
+export default ProjectDetail;

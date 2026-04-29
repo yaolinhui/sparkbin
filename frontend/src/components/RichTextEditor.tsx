@@ -1,7 +1,7 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { Bold, Italic, List, ListOrdered } from 'lucide-react';
 import { useI18n } from '../i18n/hooks';
 
@@ -21,7 +21,7 @@ export function RichTextEditor({
   onDirtyChange,
 }: RichTextEditorProps) {
   const { t } = useI18n();
-  const finalPlaceholder = placeholder || `// ${t('placeholder.enter_notes')}`;
+  const finalPlaceholder = useMemo(() => placeholder || `// ${t('placeholder.enter_notes')}`, [placeholder, t]);
   const initialContentRef = useRef(content || '<p></p>');
 
   // content 外部变化时（如切换阶段），重置 initialContentRef
@@ -29,18 +29,20 @@ export function RichTextEditor({
     initialContentRef.current = content || '<p></p>';
   }, [content]);
 
+  const extensions = useMemo(() => [
+    StarterKit.configure({
+      heading: {
+        levels: [1, 2, 3],
+      },
+    }),
+    Placeholder.configure({
+      placeholder: finalPlaceholder,
+      showOnlyWhenEditable: true,
+    }),
+  ], [finalPlaceholder]);
+
   const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
-      }),
-      Placeholder.configure({
-        placeholder: finalPlaceholder,
-        showOnlyWhenEditable: true,
-      }),
-    ],
+    extensions,
     content: content || '<p></p>',
     editable: !readonly,
     onUpdate: ({ editor }) => {

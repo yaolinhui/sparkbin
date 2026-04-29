@@ -1,4 +1,5 @@
 ﻿// Backend API Service
+// Cache-bust: 2026-04-29
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Token 和角色管理
@@ -205,13 +206,32 @@ function extractErrorMessage(responseText: string, statusCode: number): string {
   return responseText.trim() || `HTTP ${statusCode}`;
 }
 
+// 简易 GET 请求缓存（3 秒 TTL）
+interface CacheEntry {
+  data: unknown;
+  expiresAt: number;
+}
+const _apiCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 3000;
+
 // 通用请求函数
 async function request<T>(
   endpoint: string,
-  options: RequestInit & { __retry?: boolean } = {}
+  options: RequestInit & { __retry?: boolean; __skipCache?: boolean } = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   const isRetry = options.__retry ?? false;
+  const skipCache = options.__skipCache ?? false;
+  const isGet = !options.method || options.method === 'GET';
+  const cacheKey = `${url}:${authToken || ''}`;
+
+  // GET 请求优先读缓存
+  if (isGet && !skipCache) {
+    const cached = _apiCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.data as T;
+    }
+  }
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -278,7 +298,14 @@ async function request<T>(
     return null as T;
   }
 
-  return response.json();
+  const result = await response.json() as T;
+
+  // GET 请求写入缓存
+  if (isGet && !skipCache) {
+    _apiCache.set(cacheKey, { data: result, expiresAt: Date.now() + CACHE_TTL_MS });
+  }
+
+  return result;
 }
 
 // ===== 认证 API =====

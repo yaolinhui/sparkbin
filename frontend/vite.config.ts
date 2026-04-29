@@ -9,6 +9,16 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) {
+            // 将大型页面级组件拆分为独立 chunk
+            if (id.includes('/src/components/ProjectDetail.tsx')) {
+              return 'project-detail';
+            }
+            if (id.includes('/src/components/AdminPage.tsx')) {
+              return 'admin-page';
+            }
+            if (id.includes('/src/components/AIChat.tsx')) {
+              return 'ai-chat';
+            }
             return;
           }
 
@@ -22,6 +32,10 @@ export default defineConfig({
 
           if (id.includes('@tiptap')) {
             return 'tiptap';
+          }
+
+          if (id.includes('react-markdown') || id.includes('rehype-sanitize')) {
+            return 'markdown';
           }
 
           if (id.includes('@dnd-kit')) {

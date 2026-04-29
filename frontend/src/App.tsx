@@ -1,14 +1,17 @@
-import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import type { FutureConfig } from 'react-router-dom';
-import { ProjectBoard } from './components/ProjectBoard';
-import { ProjectDetail } from './components/ProjectDetail';
-import { AdminPage } from './components/AdminPage';
 import { LoginModal } from './components/LoginModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { LandingPage } from './components/LandingPage';
+
+// 懒加载页面级组件
+const ProjectBoard = lazy(() => import('./components/ProjectBoard'));
+const ProjectDetail = lazy(() => import('./components/ProjectDetail'));
+const AdminPage = lazy(() => import('./components/AdminPage'));
+const ProfilePage = lazy(() => import('./components/ProfilePage'));
 import {
   authApi, clearAuthToken, isAuthenticated, setCachedRole, setCachedUserId, setOnUnauthorized,
   setRefreshToken, startTokenRefreshTimer, stopTokenRefreshTimer, setAuthToken,
@@ -56,6 +59,7 @@ function OAuthHandler({ onLogin }: { onLogin: (resp?: { access_token: string; re
 
 function AppRoutes() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(true);
@@ -140,12 +144,11 @@ function AppRoutes() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await authApi.logout();
-    } catch {
-      // 忽略错误
-    }
+  const handleLogout = () => {
+    // 先发 logout 请求（不 await），确保带上当前 token
+    authApi.logout().catch(() => {});
+
+    // 立即清空本地状态并跳转，避免后端 API 延迟导致页面卡住
     clearAuthToken();
     stopTokenRefreshTimer();
     setCachedRole(null);
@@ -153,7 +156,18 @@ function AppRoutes() {
     setUserRole(null);
     setIsLoggedIn(false);
     setShowLogin(true);
+    navigate('/', { replace: true });
   };
+
+  // 页面加载占位
+  const pageFallback = (
+    <div className="min-h-screen bg-brutal-bg flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-brutal-accent border-t-transparent animate-spin mx-auto mb-4" />
+        <p className="font-mono text-brutal-muted">Loading page...</p>
+      </div>
+    </div>
+  );
 
   // 公共路由（无需登录）
   const publicPaths = ['/verify-email', '/reset-password'];
@@ -205,16 +219,18 @@ function AppRoutes() {
       )}
 
       {isLoggedIn && !requirePasswordChange && !isPublicPath && (
-        <Routes>
-          <Route path="/" element={<ProjectBoard onLogout={handleLogout} />} />
-          <Route path="/project/:id" element={<ProjectDetail onLogout={handleLogout} />} />
-          <Route
-            path="/admin"
-            element={userRole === 'admin' ? <AdminPage onLogout={handleLogout} /> : <Navigate to="/" replace />}
-          />
-          <Route path="/profile" element={<Navigate to="/" replace />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense fallback={pageFallback}>
+          <Routes>
+            <Route path="/" element={<ProjectBoard onLogout={handleLogout} />} />
+            <Route path="/project/:id" element={<ProjectDetail onLogout={handleLogout} />} />
+            <Route
+              path="/admin"
+              element={userRole === 'admin' ? <AdminPage onLogout={handleLogout} /> : <Navigate to="/" replace />}
+            />
+            <Route path="/profile" element={<ProfilePage onLogout={handleLogout} />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       )}
     </>
   );

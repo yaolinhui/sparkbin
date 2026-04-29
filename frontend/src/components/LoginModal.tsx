@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Lock, User, AlertCircle, Loader2, X, Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
 import { authApi, setAuthToken, setRefreshToken, ApiError } from '../services/api';
+import { DotGridBackground } from './DotGridBackground';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -107,21 +108,6 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     }
   }, [isOpen, rememberMe]);
 
-  if (!isOpen) return null;
-
-  const resetErrors = () => setError(null);
-
-  // 获取验证码
-  const fetchCaptcha = async () => {
-    try {
-      const data = await authApi.getCaptcha();
-      setCaptchaQuestion(data.question);
-      setCaptchaAnswer('');
-    } catch {
-      setCaptchaQuestion(null);
-    }
-  };
-
   // 锁定倒计时
   useEffect(() => {
     if (lockoutSeconds === null || lockoutSeconds <= 0) {
@@ -141,6 +127,21 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     }, 1000);
     return () => clearInterval(timer);
   }, [lockoutSeconds]);
+
+  if (!isOpen) return null;
+
+  const resetErrors = () => setError(null);
+
+  // 获取验证码
+  const fetchCaptcha = async () => {
+    try {
+      const data = await authApi.getCaptcha();
+      setCaptchaQuestion(data.question);
+      setCaptchaAnswer('');
+    } catch {
+      setCaptchaQuestion(null);
+    }
+  };
 
   const formatCountdown = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -280,11 +281,8 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
   return (
     <div
       className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      style={{
-        backgroundImage: 'radial-gradient(circle, color-mix(in srgb, var(--brutal-text) 18%, transparent) 2px, transparent 2px)',
-        backgroundSize: '28px 28px',
-      }}
     >
+      <DotGridBackground />
       <div className="w-full max-w-md border-2 border-brutal-border bg-brutal-surface">
         {/* Header */}
         <div className="p-6 border-b-2 border-brutal-border bg-brutal-text relative">

@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 
 from .config import get_settings, get_cors_origins
 
-# 配置日志
+# 配置日志（代理配置已更新）
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'

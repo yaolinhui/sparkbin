@@ -1,0 +1,124 @@
+{
+  "nav": {
+    "stages": "Workflow",
+    "features": "Features",
+    "pricing": "Pricing",
+    "opensource": "Open Source",
+    "docs": "Docs",
+    "github": "GitHub",
+    "enter": "Get Started"
+  },
+  "hero": {
+    "badge": "AI-NATIVE PROJECT COACH",
+    "title1": "VALIDATE",
+    "title2": "BEFORE YOU BUILD",
+    "subtitle": "A 6-stage workflow tool for indie hackers. From idea to monetization, AI assists every decision.",
+    "ctaPrimary": "Get Started",
+    "ctaSecondary": "Star on GitHub",
+    "trust": {
+      "opensource": "Open Source MIT",
+      "selfhost": "Free Self-Hosting",
+      "aiproxy": "AI Backend Proxy"
+    }
+  },
+  "stages": {
+    "label": "WORKFLOW",
+    "title": "6 Stages: From Idea to Monetization",
+    "subtitle": "Not a todo list. A proven indie hacker workflow with clear entry and exit criteria for each stage.",
+    "items": [
+      { "num": "01", "label": "IDEA", "labelZh": "Idea", "desc": "Capture inspiration, assess feasibility, use AI to quickly generate competitive analysis." },
+      { "num": "02", "label": "VALIDATE", "labelZh": "Validate", "desc": "GO/NO-GO decision framework. Validate demand with data before building something nobody wants." },
+      { "num": "03", "label": "PROTOTYPE", "labelZh": "Prototype", "desc": "AI-assisted MVP planning, tech stack recommendations, and multi-platform launch copy." },
+      { "num": "04", "label": "SHIP", "labelZh": "Ship", "desc": "Project management board with launch checklist to ensure nothing critical is missed." },
+      { "num": "05", "label": "GROW", "labelZh": "Grow", "desc": "Multi-platform content matrix, growth experiment tracking, AI-optimized copy." },
+      { "num": "06", "label": "MONETIZE", "labelZh": "Monetize", "desc": "Pricing strategy simulator, revenue forecasting, find the right business model." }
+    ]
+  },
+  "features": {
+    "label": "FEATURES",
+    "title": "More Than a Kanban Board",
+    "subtitle": "AI is not an add-on. It is infrastructure woven into every stage.",
+    "items": [
+      { "title": "AI Pet Coach", "desc": "Each project gets a dedicated AI coach providing stage-specific guidance." },
+      { "title": "GO/NO-GO Decisions", "desc": "Structured validation framework. Data-driven decisions, not emotional ones." },
+      { "title": "Multi-Platform Copy", "desc": "One-click generation for Twitter, Reddit, ProductHunt, and more." },
+      { "title": "Monetization Simulator", "desc": "Input expected users and pricing. AI predicts revenue curves and payback periods." },
+      { "title": "Project Blueprint", "desc": "Auto-generated project structure docs, tech stack recommendations, and milestones." },
+      { "title": "GitHub Backup", "desc": "Project data syncs to GitHub Discussions. Your data, your control." }
+    ]
+  },
+  "deployment": {
+    "label": "DEPLOYMENT",
+    "title": "Two Ways to Use, Same Full Experience",
+    "subtitle": "We believe open source is not a compromise on business, but the foundation of trust.",
+    "selfHosted": {
+      "title": "SELF-HOSTED",
+      "badge": "MIT LICENSE",
+      "desc": "Fully open source. Data under your control. Ideal for technical teams and individuals.",
+      "features": ["Unlimited AI calls (bring your own API key)", "Full features, no limitations", "Local data storage", "Community support"]
+    },
+    "cloud": {
+      "title": "SPARKBIN CLOUD",
+      "badge": "SAAS",
+      "desc": "Zero-config, ready to use. Auto updates, managed AI backend. Focus on building products.",
+      "features": ["Zero-config deployment", "Auto updates", "Managed AI backend", "Email support"]
+    }
+  },
+  "pricing": {
+    "label": "PRICING",
+    "title": "Simple, Transparent Pricing",
+    "subtitle": "Self-hosted is completely free. Cloud is pay-as-you-go with no hidden fees.",
+    "tiers": [
+      {
+        "name": "Free",
+        "price": "$0",
+        "period": "/mo",
+        "desc": "For individual developers and small projects",
+        "features": ["Up to 3 projects", "Basic AI coach", "GO/NO-GO decisions", "Community support"]
+      },
+      {
+        "name": "Pro",
+        "price": "$9",
+        "period": "/mo",
+        "desc": "For full-time indie hackers and early teams",
+        "features": ["Unlimited projects", "Advanced AI coach (GPT-4 level)", "Monetization simulator", "Multi-platform copy generation", "Priority support"]
+      },
+      {
+        "name": "Team",
+        "price": "$29",
+        "period": "/mo",
+        "desc": "For small teams collaborating",
+        "features": ["Everything in Pro", "Team collaboration (up to 5)", "Shared project blueprints", "Custom AI model config", "Email support"]
+      }
+    ]
+  },
+  "cta": {
+    "title": "Your Next Side Project Deserves to Be Taken Seriously",
+    "subtitle": "Most projects die because \"nobody needs it.\" SparkBin uses a structured 6-stage workflow and AI coach to validate ideas and reduce trial costs.",
+    "primary": "Get Started",
+    "secondary": "View on GitHub"
+  },
+  "footer": {
+    "brand": "AI-native project coach for indie hackers.",
+    "product": "Product",
+    "features": "Features",
+    "pricing": "Pricing",
+    "enter": "Get Started",
+    "resources": "Resources",
+    "docs": "Documentation",
+    "selfhosting": "Self-Hosting Guide",
+    "contributing": "Contributing",
+    "opensource": "Open Source",
+    "github": "GitHub Repository",
+    "license": "MIT License",
+    "security": "Security Policy",
+    "privacy": "Privacy Policy",
+    "copyright": "SPARKBIN © 2026 — MIT Licensed",
+    "builtWith": "Built with React + FastAPI + Brutalist design"
+  },
+  "notFound": {
+    "title": "404 NOT FOUND",
+    "subtitle": "This page does not exist, but it deserves to be validated.",
+    "backHome": "Back to Home"
+  }
+}

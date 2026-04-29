@@ -46,8 +46,8 @@ _CACHE_TTL = 3600  # 1 小时
 # 默认配置
 DEFAULT_CONFIGS = {
     AIProvider.DEEPSEEK: {
-        "base_url": "https://api.deepseek.com",
-        "model": "deepseek-v4-flash"
+        "base_url": "https://api.deepseek.com/v1",
+        "model": "deepseek-chat"
     },
     AIProvider.KIMI: {
         "base_url": "https://api.moonshot.cn/v1",
@@ -179,7 +179,9 @@ class AIProxyService:
         self,
         provider: AIProvider,
         messages: List[Dict[str, str]],
-        stream: bool = True
+        stream: bool = True,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> AsyncGenerator[str, None]:
         """
         统一的聊天接口，支持流式返回
@@ -206,6 +208,10 @@ class AIProxyService:
             "messages": messages,
             "stream": stream
         }
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
+        if temperature is not None:
+            payload["temperature"] = temperature
 
         # logger.info(f"Sending request to {config.base_url}/chat/completions with model {config.default_model}")
 
@@ -308,6 +314,48 @@ class AIProxyService:
                 logger.info(f"AICallLog TTFT: provider={provider.value}, ttft={first_chunk_at:.3f}s")
             self.db.add(log)
             self.db.commit()
+
+    async def chat_completion_with_fallback(
+        self,
+        provider: AIProvider,
+        messages: List[Dict[str, str]],
+        stream: bool = True,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
+    ) -> AsyncGenerator[str, None]:
+        """
+        聊天接口（带 provider fallback），一个 provider 失败自动尝试下一个
+        """
+        providers_to_try = [provider]
+        for p in [AIProvider.DEEPSEEK, AIProvider.KIMI, AIProvider.DOUBAO, AIProvider.OPENAI]:
+            if p not in providers_to_try:
+                providers_to_try.append(p)
+
+        last_error = ""
+        for p in providers_to_try:
+            try:
+                async for chunk in self.chat_completion(
+                    provider=p,
+                    messages=messages,
+                    stream=stream,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                ):
+                    yield chunk
+                return
+            except HTTPException as e:
+                last_error = e.detail
+                logger.warning(f"Provider {p.value} failed in chat: {e.detail}, trying fallback...")
+                continue
+            except Exception as e:
+                last_error = str(e) or f"{p.value} API 调用失败"
+                logger.warning(f"Provider {p.value} failed unexpectedly in chat: {last_error}, trying fallback...")
+                continue
+
+        # 所有 provider 都失败
+        error_data = json.dumps({"error": f"AI 服务暂时不可用，已尝试所有模型。最后错误: {last_error}"})
+        yield f"data: {error_data}\n\n"
+        yield "data: [DONE]\n\n"
 
     async def generate_promote_suggestions(
         self,
@@ -593,6 +641,142 @@ class AIProxyService:
             status_code=503,
             detail=f"AI 服务暂时不可用，已尝试所有模型。最后错误: {last_error}"
         )
+
+
+    async def generate_validate_suggestions(
+        self,
+        provider: AIProvider,
+        title: str,
+        pain_point: str,
+        original_idea: str,
+        current_items: List[Dict[str, str]],
+        current_tools: List[Dict[str, str]]
+    ) -> Dict[str, Any]:
+        """
+        生成验证阶段建议（验证项 + 验证工具 + 分析）
+        返回：{"items": [...], "tools": [...], "analysis": "..."}
+        """
+        config = self.get_active_config(provider)
+        api_key = self.decrypt_api_key(config)
+
+        items_text = "\n".join(
+            f"- [{i.get('method', 'survey')}] {i['title']}: {i['description']}" for i in current_items
+        ) if current_items else "（暂无）"
+
+        tools_text = "\n".join(
+            f"- [{t.get('type', 'survey')}] {t['title']}: {t['content'][:100]}..." for t in current_tools
+        ) if current_tools else "（暂无）"
+
+        prompt = f"""你是一个资深用户研究顾问，擅长帮助创业者设计低成本、高信度的需求验证方案。
+
+项目：{title}
+痛点：{pain_point}
+原始想法：{original_idea or '未填写'}
+
+当前验证项：
+{items_text}
+
+当前验证工具：
+{tools_text}
+
+请根据以上信息，生成验证阶段建议。必须返回 JSON 格式，不要包含其他内容：
+{{
+    "items": [
+        {{"title": "...", "description": "...", "method": "survey"}},
+        {{"title": "...", "description": "...", "method": "interview"}}
+    ],
+    "tools": [
+        {{"type": "survey", "title": "...", "content": "..."}},
+        {{"type": "interview", "title": "...", "content": "..."}}
+    ],
+    "analysis": "简要分析建议"
+}}
+
+要求：
+1. 验证项 2-5 个，覆盖痛点真实性、付费意愿、场景真实性、竞品分析等维度
+2. 验证工具 1-3 个，与验证项对应
+3. 每个验证项描述不超过 50 字
+4. 工具内容要可直接使用（问卷问题、访谈提纲等）
+5. 如果已有验证项/工具，优先补充缺失维度，不要重复
+6. 用中文回复"""
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": config.default_model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "max_tokens": 1200,
+            "temperature": 0.5
+        }
+
+        prompt_tokens = len(prompt) // 4
+        completion_tokens = 0
+        status = "success"
+        error_msg = ""
+
+        try:
+            async with httpx.AsyncClient(timeout=60.0, follow_redirects=False) as client:
+                response = await client.post(
+                    f"{config.base_url}/chat/completions",
+                    headers=headers,
+                    json=payload
+                )
+
+                if response.status_code != 200:
+                    status = "error"
+                    error_msg = f"HTTP {response.status_code}: {response.text}"
+                    raise HTTPException(
+                        status_code=response.status_code,
+                        detail=f"AI API error: {response.text}"
+                    )
+
+                result = response.json()
+                content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                completion_tokens = len(content) // 4
+
+                # 清理可能的 markdown 代码块
+                if "```json" in content:
+                    content = content.split("```json")[1].split("```")[0]
+                elif "```" in content:
+                    content = content.split("```")[1].split("```")[0]
+
+                parsed = json.loads(content.strip())
+                return {
+                    "items": parsed.get("items", []),
+                    "tools": parsed.get("tools", []),
+                    "analysis": parsed.get("analysis", "")
+                }
+
+        except json.JSONDecodeError:
+            logger.error(f"Failed to parse AI response as JSON: {content[:200]}")
+            return {"items": [], "tools": [], "analysis": ""}
+        except Exception as e:
+            import sys
+            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+            status = "error"
+            error_msg = str(e) or f"{provider.value} API 调用失败"
+            raise HTTPException(
+                status_code=503,
+                detail=f"AI 服务暂时不可用: {error_msg}"
+            )
+        finally:
+            log = AICallLog(
+                user_id=self.user_id,
+                provider=provider,
+                model=config.default_model,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                status=status,
+                error_msg=error_msg[:500]
+            )
+            self.db.add(log)
+            self.db.commit()
 
 
 def init_default_ai_configs(db: Session):

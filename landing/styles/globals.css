@@ -1,0 +1,244 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   THEME VARIABLES - Dark (Default)
+   ============================================ */
+:root {
+  --brutal-bg: #0a0a0a;
+  --brutal-surface: #1a1a1a;
+  --brutal-surface-hover: #1f1f1f;
+  --brutal-border: #2a2a2a;
+  --brutal-border-hover: #3a3a3a;
+  --brutal-text: #ffffff;
+  --brutal-text-secondary: #a0a0a0;
+  --brutal-muted: #666666;
+  --brutal-accent: #00d4ff;
+  --brutal-accent-hover: #33ddff;
+  --brutal-success: #22c55e;
+  --brutal-warning: #f97316;
+  --brutal-error: #ef4444;
+
+  --bg-grid-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ============================================
+   THEME VARIABLES - Light
+   ============================================ */
+[data-theme="light"] {
+  --brutal-bg: #f5f3ef;
+  --brutal-surface: #faf9f7;
+  --brutal-surface-hover: #f0ede8;
+  --brutal-border: #d4d0c8;
+  --brutal-border-hover: #b8b4ac;
+  --brutal-text: #1a1a1a;
+  --brutal-text-secondary: #4a4a4a;
+  --brutal-muted: #8a8680;
+  --brutal-accent: #005fcc;
+  --brutal-accent-hover: #3388ff;
+  --brutal-success: #2d8659;
+  --brutal-warning: #c2410c;
+  --brutal-error: #dc2626;
+
+  --bg-grid-color: rgba(0, 0, 0, 0.08);
+}
+
+/* ============================================
+   GLOBAL RESETS
+   ============================================ */
+* {
+  border-radius: 0 !important;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--brutal-bg);
+  color: var(--brutal-text);
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+  position: relative;
+}
+
+/* Fixed dot grid background using pseudo-element to avoid
+   background-attachment: fixed performance issues (GPU compositing lag,
+   black screen on some browsers/GPUs) */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(circle at center, var(--bg-grid-color) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--brutal-bg);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--brutal-border);
+  border: 1px solid var(--brutal-bg);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--brutal-muted);
+}
+
+::selection {
+  background-color: var(--brutal-accent);
+  color: var(--brutal-text);
+}
+
+[data-theme="light"] ::selection {
+  background-color: var(--brutal-accent);
+  color: #ffffff;
+}
+
+/* ============================================
+   FOCUS STATES
+   ============================================ */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--brutal-accent);
+  outline-offset: -2px;
+}
+
+/* ============================================
+   BRUTALIST BUTTONS
+   ============================================ */
+.btn-brutal {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--brutal-border);
+  background-color: var(--brutal-surface);
+  color: var(--brutal-text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 75ms ease-out;
+  cursor: pointer;
+}
+
+.btn-brutal:hover {
+  background-color: var(--brutal-surface-hover);
+  border-color: var(--brutal-accent);
+}
+
+.btn-brutal:active {
+  background-color: var(--brutal-text);
+  color: var(--brutal-bg);
+}
+
+.btn-brutal:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-brutal-primary {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--brutal-accent);
+  background-color: var(--brutal-accent);
+  color: var(--brutal-bg);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 75ms ease-out;
+  cursor: pointer;
+}
+
+[data-theme="light"] .btn-brutal-primary {
+  background-color: var(--brutal-text);
+  border-color: var(--brutal-text);
+  color: var(--brutal-bg);
+}
+
+[data-theme="light"] .btn-brutal-primary:hover {
+  background-color: var(--brutal-accent-hover);
+  border-color: var(--brutal-accent-hover);
+}
+
+.btn-brutal-primary:hover {
+  background-color: var(--brutal-bg);
+  color: var(--brutal-accent);
+}
+
+.btn-brutal-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   TAILWIND CUSTOM UTILITIES
+   ============================================ */
+.bg-brutal-bg { background-color: var(--brutal-bg); }
+.bg-brutal-surface { background-color: var(--brutal-surface); }
+.bg-brutal-surface-hover { background-color: var(--brutal-surface-hover); }
+.border-brutal-border { border-color: var(--brutal-border); }
+.border-brutal-border-hover { border-color: var(--brutal-border-hover); }
+.border-brutal-accent { border-color: var(--brutal-accent); }
+.border-brutal-success { border-color: var(--brutal-success); }
+.border-brutal-warning { border-color: var(--brutal-warning); }
+.border-brutal-muted { border-color: var(--brutal-muted); }
+
+.text-brutal-text { color: var(--brutal-text); }
+.text-brutal-text-secondary { color: var(--brutal-text-secondary); }
+.text-brutal-muted { color: var(--brutal-muted); }
+.text-brutal-accent { color: var(--brutal-accent); }
+.text-brutal-success { color: var(--brutal-success); }
+.text-brutal-warning { color: var(--brutal-warning); }
+
+.hover\:bg-brutal-border:hover { background-color: var(--brutal-border); }
+.hover\:bg-brutal-text:hover { background-color: var(--brutal-text); }
+.hover\:text-brutal-bg:hover { color: var(--brutal-bg); }
+.hover\:border-brutal-text:hover { border-color: var(--brutal-text); }
+.hover\:border-brutal-accent:hover { border-color: var(--brutal-accent); }
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 300ms ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

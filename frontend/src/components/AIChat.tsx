@@ -185,6 +185,8 @@ export function AIChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const fullscreenInputRef = useRef<HTMLTextAreaElement>(null);
+  const streamingContentRef = useRef('');
+  const streamingUpdateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const petConfigKey = `sparkbin_pet_config_${getUserId() || 'guest'}`;
 
@@ -363,6 +365,20 @@ export function AIChat({
       abortControllerRef.current = new AbortController();
 
       let fullContent = '';
+      streamingContentRef.current = '';
+
+      // 启动 200ms 节流定时器，避免每 chunk 都触发 setState
+      streamingUpdateTimerRef.current = setInterval(() => {
+        if (streamingContentRef.current !== fullContent) {
+          fullContent = streamingContentRef.current;
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === aiMessage.id ? { ...msg, content: fullContent } : msg
+            )
+          );
+        }
+      }, 200);
+
       for await (const chunk of aiService.chatCompletionStream(kimiMessages, {
         projectId,
         stageKey: stage,
@@ -391,18 +407,25 @@ export function AIChat({
           }
         },
       })) {
-        fullContent += chunk;
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === aiMessage.id ? { ...msg, content: fullContent } : msg
-          )
-        );
+        streamingContentRef.current += chunk;
       }
 
+      // 流结束：清除定时器并强制刷新最终内容
+      if (streamingUpdateTimerRef.current) {
+        clearInterval(streamingUpdateTimerRef.current);
+        streamingUpdateTimerRef.current = null;
+      }
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === aiMessage.id ? { ...msg, content: streamingContentRef.current } : msg
+        )
+      );
+
+      const finalContent = streamingContentRef.current;
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === aiMessage.id && !msg.nextQuestion
-            ? { ...msg, nextQuestion: extractNextQuestionFromContent(fullContent) }
+            ? { ...msg, nextQuestion: extractNextQuestionFromContent(finalContent) }
             : msg
         )
       );
@@ -424,6 +447,10 @@ export function AIChat({
       }
       setMessages((prev) => prev.filter((msg) => msg.id !== aiMessage.id));
     } finally {
+      if (streamingUpdateTimerRef.current) {
+        clearInterval(streamingUpdateTimerRef.current);
+        streamingUpdateTimerRef.current = null;
+      }
       setIsThinking(false);
       abortControllerRef.current = null;
     }

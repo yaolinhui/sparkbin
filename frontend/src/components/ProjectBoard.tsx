@@ -111,7 +111,8 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   const [oauthProvider, setOauthProvider] = useState<string | null>(null);
   const { toast, showToast, hideToast } = useToast();
 
-  // 初始加载
+  // 初始加载（仅执行一次，避免 store action 引用变化导致重复请求）
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchProjects();
     checkAIConfig(); // 检查 AI 配置状态
@@ -161,7 +162,10 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         })
         .catch(() => {});
     }
-  }, [fetchProjects, checkAIConfig, petConfigKey, showToast]);
+  // petConfigKey 由 userId 派生，登录后不会改变；showToast 是稳定引用
+  // fetchProjects / checkAIConfig 来自 Zustand，首次挂载时即确定
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Stats
   const { activeProjects, archivedProjects, pausedProjects } = useMemo(() => {
@@ -337,12 +341,12 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                   <span className="text-xs font-mono">改密</span>
                 </button>
                 <button
-                  onClick={() => setIsAccountModalOpen(true)}
+                  onClick={() => navigate('/profile')}
                   className="btn-brutal h-9 flex items-center gap-2"
-                  title="账号设置"
+                  title="个人资料"
                 >
                   <User className="w-4 h-4" />
-                  <span className="text-xs font-mono">账号</span>
+                  <span className="text-xs font-mono">资料</span>
                 </button>
                 <button
                   onClick={() => setShowLogoutConfirm(true)}
@@ -849,3 +853,5 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
     </div>
   );
 }
+
+export default ProjectBoard;

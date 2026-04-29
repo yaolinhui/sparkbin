@@ -12,7 +12,8 @@ from ..models import User, AIProvider, AIConfig, AICallLog, Project, Stage, Stag
 from ..schemas import (
     AIProviderInfo, AIConfigUpdate, AIChatRequest,
     AIPromoteSuggestRequest, PromoteSuggestionInfo, BaseResponse,
-    IdeaSuggestRequest, IdeaSuggestResponse, AITestConfigRequest
+    IdeaSuggestRequest, IdeaSuggestResponse, AITestConfigRequest,
+    ValidateSuggestRequest, ValidateSuggestResponse
 )
 from ..services.ai_proxy import AIProxyService
 from ..services.stage_context import (
@@ -261,8 +262,9 @@ async def chat_completion(
         text_buffer: List[str] = []
         done_chunk: str | None = None
         try:
-            generator = ai_service.chat_completion(
-                provider=request.provider, messages=merged_messages, stream=True
+            generator = ai_service.chat_completion_with_fallback(
+                provider=request.provider, messages=merged_messages, stream=True,
+                max_tokens=1200, temperature=0.7
             )
             async for chunk in generator:
                 if chunk.strip() == "data: [DONE]":
@@ -419,6 +421,35 @@ async def generate_idea_suggestions(
     )
 
     return IdeaSuggestResponse(notes=suggestions)
+
+
+@router.post("/validate-suggest", response_model=ValidateSuggestResponse)
+async def generate_validate_suggestions(
+    request: ValidateSuggestRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """生成验证阶段建议（验证项 + 验证工具 + 分析）"""
+    _check_ai_quota(current_user, db)
+    ai_service = AIProxyService(db, user_id=str(current_user.id))
+
+    # 使用用户首选模型，如果没有则默认使用 DeepSeek
+    provider = current_user.preferred_model or AIProvider.DEEPSEEK
+
+    suggestions = await ai_service.generate_validate_suggestions(
+        provider=provider,
+        title=request.title,
+        pain_point=request.pain_point,
+        original_idea=request.original_idea,
+        current_items=[{"title": i.title, "description": i.description, "method": i.method} for i in request.current_items],
+        current_tools=[{"type": t.type, "title": t.title, "content": t.content} for t in request.current_tools]
+    )
+
+    return ValidateSuggestResponse(
+        items=suggestions["items"],
+        tools=suggestions["tools"],
+        analysis=suggestions["analysis"]
+    )
 
 
 @router.get("/call-logs")
