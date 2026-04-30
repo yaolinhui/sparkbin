@@ -351,6 +351,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
+                    onFocus={handleInputFocus}
                     className="w-full pl-10 pr-3 py-3 border border-brutal-border bg-brutal-bg
                                focus:border-brutal-accent focus:outline-none
                                font-mono text-sm transition-colors"
@@ -371,6 +372,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    onFocus={handleInputFocus}
                     className="w-full pl-10 pr-10 py-3 border border-brutal-border bg-brutal-bg
                                focus:border-brutal-accent focus:outline-none
                                font-mono text-sm transition-colors"
@@ -408,6 +410,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                       type="text"
                       value={captchaAnswer}
                       onChange={(e) => setCaptchaAnswer(e.target.value)}
+                      onFocus={handleInputFocus}
                       className="flex-1 px-3 py-2 border border-brutal-border bg-brutal-bg
                                  focus:border-brutal-accent focus:outline-none
                                  font-mono text-sm transition-colors"
@@ -542,6 +545,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                   type="text"
                   value={regUsername}
                   onChange={(e) => setRegUsername(e.target.value)}
+                  onFocus={handleInputFocus}
                   className="w-full pl-10 pr-3 py-3 border border-brutal-border bg-brutal-bg
                              focus:border-brutal-accent focus:outline-none font-mono text-sm"
                   placeholder="3-50 个字符"
@@ -559,6 +563,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                   type="email"
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
+                  onFocus={handleInputFocus}
                   className="w-full pl-10 pr-3 py-3 border border-brutal-border bg-brutal-bg
                              focus:border-brutal-accent focus:outline-none font-mono text-sm"
                   placeholder="your@email.com"
@@ -576,6 +581,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                   type={showPassword ? 'text' : 'password'}
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
+                  onFocus={handleInputFocus}
                   className="w-full pl-10 pr-10 py-3 border border-brutal-border bg-brutal-bg
                              focus:border-brutal-accent focus:outline-none font-mono text-sm"
                   placeholder="输入密码"
@@ -621,6 +627,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                 type={showPassword ? 'text' : 'password'}
                 value={regConfirm}
                 onChange={(e) => setRegConfirm(e.target.value)}
+                onFocus={handleInputFocus}
                 className="w-full px-3 py-3 border border-brutal-border bg-brutal-bg
                            focus:border-brutal-accent focus:outline-none font-mono text-sm"
                 placeholder="再次输入密码"
@@ -679,6 +686,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                       type="email"
                       value={forgotEmail}
                       onChange={(e) => setForgotEmail(e.target.value)}
+                      onFocus={handleInputFocus}
                       className="w-full pl-10 pr-3 py-3 border border-brutal-border bg-brutal-bg
                                  focus:border-brutal-accent focus:outline-none font-mono text-sm"
                       placeholder="your@email.com"

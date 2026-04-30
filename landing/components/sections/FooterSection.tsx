@@ -1,28 +1,41 @@
-'use client';
-
-import { useTranslations } from 'next-intl';
 import { Lock, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 
-export function FooterSection() {
-  const t = useTranslations('footer');
+interface FooterSectionProps {
+  brand: string;
+  product: string;
+  features: string;
+  pricing: string;
+  enter: string;
+  resources: string;
+  docs: string;
+  selfhosting: string;
+  contributing: string;
+  opensource: string;
+  github: string;
+  license: string;
+  security: string;
+  copyright: string;
+  builtWith: string;
+}
 
+export function FooterSection(props: FooterSectionProps) {
   const productLinks = [
-    { label: t('features'), href: '#features' },
-    { label: t('pricing'), href: '#pricing' },
-    { label: t('enter'), href: 'https://app.sparkbin.dev' },
+    { label: props.features, href: '#features' },
+    { label: props.pricing, href: '#pricing' },
+    { label: props.enter, href: 'https://app.sparkbin.dev' },
   ];
 
   const resourceLinks = [
-    { label: t('docs'), href: '/docs/' },
-    { label: t('selfhosting'), href: 'https://github.com/yaolinhui/sparkbin/blob/main/SELF_HOSTING.md' },
-    { label: t('contributing'), href: 'https://github.com/yaolinhui/sparkbin/blob/main/CONTRIBUTING.md' },
+    { label: props.docs, href: '/docs/' },
+    { label: props.selfhosting, href: 'https://github.com/yaolinhui/sparkbin/blob/main/SELF_HOSTING.md' },
+    { label: props.contributing, href: 'https://github.com/yaolinhui/sparkbin/blob/main/CONTRIBUTING.md' },
   ];
 
   const openSourceLinks = [
-    { label: t('github'), href: 'https://github.com/yaolinhui/sparkbin' },
-    { label: t('license'), href: 'https://github.com/yaolinhui/sparkbin/blob/main/LICENSE' },
-    { label: t('security'), href: 'https://github.com/yaolinhui/sparkbin/blob/main/SECURITY.md' },
+    { label: props.github, href: 'https://github.com/yaolinhui/sparkbin' },
+    { label: props.license, href: 'https://github.com/yaolinhui/sparkbin/blob/main/LICENSE' },
+    { label: props.security, href: 'https://github.com/yaolinhui/sparkbin/blob/main/SECURITY.md' },
   ];
 
   return (
@@ -40,14 +53,14 @@ export function FooterSection() {
               </span>
             </div>
             <p className="text-xs font-mono" style={{ color: 'var(--brutal-muted)' }}>
-              {t('brand')}
+              {props.brand}
             </p>
           </div>
 
           {/* Product */}
           <div>
             <h4 className="text-xs font-mono font-bold tracking-widest mb-3" style={{ color: 'var(--brutal-text)' }}>
-              {t('product')}
+              {props.product}
             </h4>
             <ul className="space-y-2">
               {productLinks.map((link) => (
@@ -79,7 +92,7 @@ export function FooterSection() {
           {/* Resources */}
           <div>
             <h4 className="text-xs font-mono font-bold tracking-widest mb-3" style={{ color: 'var(--brutal-text)' }}>
-              {t('resources')}
+              {props.resources}
             </h4>
             <ul className="space-y-2">
               {resourceLinks.map((link) => (
@@ -102,7 +115,7 @@ export function FooterSection() {
           {/* Open Source */}
           <div>
             <h4 className="text-xs font-mono font-bold tracking-widest mb-3" style={{ color: 'var(--brutal-text)' }}>
-              {t('opensource')}
+              {props.opensource}
             </h4>
             <ul className="space-y-2">
               {openSourceLinks.map((link) => (
@@ -129,10 +142,10 @@ export function FooterSection() {
           style={{ borderColor: 'var(--brutal-border)' }}
         >
           <p className="text-[10px] font-mono" style={{ color: 'var(--brutal-muted)' }}>
-            {t('copyright')}
+            {props.copyright}
           </p>
           <p className="text-[10px] font-mono" style={{ color: 'var(--brutal-muted)' }}>
-            {t('builtWith')}
+            {props.builtWith}
           </p>
         </div>
       </div>

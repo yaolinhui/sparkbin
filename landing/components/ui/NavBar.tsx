@@ -23,11 +23,11 @@ export function NavBar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navLinks = [
+  const navLinks: Array<{ href: string; label: string; external?: boolean }> = [
     { href: '#stages', label: t('stages') },
     { href: '#features', label: t('features') },
     { href: '#pricing', label: t('pricing') },
-    { href: '#opensource', label: t('opensource') },
+    { href: 'https://github.com/yaolinhui/sparkbin', label: t('opensource'), external: true },
   ];
 
   const scrollToSection = (href: string) => {
@@ -62,20 +62,34 @@ export function NavBar() {
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-6">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={(e) => {
-                  e.preventDefault();
-                  scrollToSection(link.href);
-                }}
-                className="text-xs font-mono transition-colors hover:text-brutal-text"
-                style={{ color: 'var(--brutal-text-secondary)' }}
-              >
-                {link.label}
-              </a>
-            ))}
+            {navLinks.map((link) =>
+              link.external ? (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs font-mono transition-colors hover:text-brutal-text"
+                  style={{ color: 'var(--brutal-text-secondary)' }}
+                >
+                  {link.label}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              ) : (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollToSection(link.href);
+                  }}
+                  className="text-xs font-mono transition-colors hover:text-brutal-text"
+                  style={{ color: 'var(--brutal-text-secondary)' }}
+                >
+                  {link.label}
+                </a>
+              )
+            )}
             <a
               href="https://github.com/yaolinhui/sparkbin"
               target="_blank"
@@ -129,20 +143,34 @@ export function NavBar() {
           style={{ borderColor: 'var(--brutal-border)', backgroundColor: 'var(--brutal-bg)' }}
         >
           <div className="flex flex-col gap-3">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={(e) => {
-                  e.preventDefault();
-                  scrollToSection(link.href);
-                }}
-                className="text-sm font-mono py-2"
-                style={{ color: 'var(--brutal-text-secondary)' }}
-              >
-                {link.label}
-              </a>
-            ))}
+            {navLinks.map((link) =>
+              link.external ? (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-sm font-mono py-2"
+                  style={{ color: 'var(--brutal-text-secondary)' }}
+                >
+                  {link.label}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              ) : (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollToSection(link.href);
+                  }}
+                  className="text-sm font-mono py-2"
+                  style={{ color: 'var(--brutal-text-secondary)' }}
+                >
+                  {link.label}
+                </a>
+              )
+            )}
             <a
               href="https://github.com/yaolinhui/sparkbin"
               target="_blank"

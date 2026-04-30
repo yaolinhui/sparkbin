@@ -159,8 +159,8 @@ body {
 }
 
 .btn-brutal:active {
-  background-color: var(--brutal-text);
-  color: var(--brutal-bg);
+  background-color: var(--brutal-surface-hover);
+  border-color: var(--brutal-text);
 }
 
 .btn-brutal:disabled {

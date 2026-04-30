@@ -1,25 +1,26 @@
-'use client';
-
-import { useTranslations } from 'next-intl';
 import { Lightbulb, CheckCircle, Hammer, Rocket, TrendingUp, DollarSign, ArrowRight } from 'lucide-react';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 
 const ICONS = [Lightbulb, CheckCircle, Hammer, Rocket, TrendingUp, DollarSign];
 
-export function StagesSection() {
-  const t = useTranslations('stages');
-  const items = t.raw('items') as Array<{
+interface StagesSectionProps {
+  label: string;
+  title: string;
+  subtitle: string;
+  items: Array<{
     num: string;
     label: string;
     labelZh: string;
     desc: string;
   }>;
+}
 
+export function StagesSection({ label, title, subtitle, items }: StagesSectionProps) {
   return (
     <section id="stages" className="py-16 md:py-24" style={{ backgroundColor: 'var(--brutal-bg)' }}>
       <div className="max-w-container mx-auto px-4 md:px-8">
-        <SectionHeader label={t('label')} title={t('title')} subtitle={t('subtitle')} />
+        <SectionHeader label={label} title={title} subtitle={subtitle} />
 
         {/* Desktop: horizontal flow */}
         <div className="hidden lg:grid lg:grid-cols-6 gap-4">

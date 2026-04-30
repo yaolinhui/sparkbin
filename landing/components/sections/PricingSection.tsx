@@ -1,24 +1,27 @@
-'use client';
-
-import { useTranslations } from 'next-intl';
 import { Check } from 'lucide-react';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 
-export function PricingSection() {
-  const t = useTranslations('pricing');
-  const tiers = t.raw('tiers') as Array<{
+interface PricingSectionProps {
+  label: string;
+  title: string;
+  subtitle: string;
+  tiers: Array<{
     name: string;
     price: string;
     period: string;
     desc: string;
     features: string[];
   }>;
+  ctaPro: string;
+  ctaFree: string;
+}
 
+export function PricingSection({ label, title, subtitle, tiers, ctaPro, ctaFree }: PricingSectionProps) {
   return (
     <section id="pricing" className="py-16 md:py-24" style={{ backgroundColor: 'var(--brutal-surface)' }}>
       <div className="max-w-container mx-auto px-4 md:px-8">
-        <SectionHeader label={t('label')} title={t('title')} subtitle={t('subtitle')} />
+        <SectionHeader label={label} title={title} subtitle={subtitle} />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {tiers.map((tier, i) => {
@@ -69,7 +72,7 @@ export function PricingSection() {
                       color: isPro ? 'var(--brutal-bg)' : 'var(--brutal-accent)',
                     }}
                   >
-                    {isPro ? 'Start Pro Trial' : 'Get Started'}
+                    {isPro ? ctaPro : ctaFree}
                   </a>
                 </div>
               </ScrollReveal>

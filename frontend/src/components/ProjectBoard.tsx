@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Plus, Terminal, LogOut, Server, Settings, Cat, ChevronDown, ChevronRight, Lock, User } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import { GitHubImportModal } from './GitHubImportModal';
@@ -69,7 +69,6 @@ function SectionHeader({ title, index }: { title: string; index: number }) {
 }
 
 export function ProjectBoard({ onLogout }: ProjectBoardProps) {
-  const navigate = useNavigate();
   const { t } = useI18n();
   const stageLabelMap: Record<string, string> = {
     idea: t('stage.idea'),
@@ -314,6 +313,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                 <ThemeSwitcher />
                 <LanguageSwitcher />
                 <button
+                  type="button"
                   onClick={() => setIsPetConfigOpen(true)}
                   className="btn-brutal h-9 flex items-center gap-2"
                   title="AI 宠物配置"
@@ -322,17 +322,18 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                   <span className="text-xs font-mono">宠物</span>
                 </button>
                 {isAdmin() && (
-                  <button
-                    onClick={() => navigate('/admin')}
+                  <Link
+                    to="/admin"
                     className="btn-brutal h-9 flex items-center gap-2"
                     title="系统管理"
                   >
                     <Settings className="w-4 h-4" />
                     <span className="text-xs font-mono">管理</span>
-                  </button>
+                  </Link>
                 )}
                 <ModelSelector />
                 <button
+                  type="button"
                   onClick={() => setIsChangePasswordOpen(true)}
                   className="btn-brutal h-9 flex items-center gap-2"
                   title="修改密码"
@@ -340,15 +341,16 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                   <Lock className="w-4 h-4" />
                   <span className="text-xs font-mono">改密</span>
                 </button>
-                <button
-                  onClick={() => navigate('/profile')}
+                <Link
+                  to="/profile"
                   className="btn-brutal h-9 flex items-center gap-2"
                   title="个人资料"
                 >
                   <User className="w-4 h-4" />
                   <span className="text-xs font-mono">资料</span>
-                </button>
+                </Link>
                 <button
+                  type="button"
                   onClick={() => setShowLogoutConfirm(true)}
                   className="btn-brutal h-9 flex items-center gap-2"
                   title="Logout"
@@ -403,7 +405,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
           >
             <div className="flex items-center gap-2">
               <span>{toast.message}</span>
-              <button onClick={hideToast} className="text-xs opacity-60 hover:opacity-100">×</button>
+              <button type="button" onClick={hideToast} className="text-xs opacity-60 hover:opacity-100">×</button>
             </div>
           </div>
         </div>
@@ -416,6 +418,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
             <span className="font-bold">ERROR:</span>
             <span>{error}</span>
             <button
+              type="button"
               onClick={() => fetchProjects()}
               className="ml-auto underline hover:no-underline"
             >
@@ -441,6 +444,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
             <span className="text-brutal-muted">// FILTER: </span>
             <span className="text-brutal-accent uppercase">{filter}</span>
             <button
+              type="button"
               onClick={() => setFilter('all')}
               className="ml-4 text-xs text-brutal-muted hover:text-brutal-text underline"
             >
@@ -467,6 +471,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
               {/* 添加新项目卡片 */}
               {filter !== 'archived' && (
                 <button
+                  type="button"
                   onClick={() => {
                     const canCreate =
                       !quota ||
@@ -497,6 +502,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         {filter === 'all' && filteredArchived.length > 0 && (
           <>
             <button
+              type="button"
               onClick={() => setIsArchivedExpanded((v) => !v)}
               className="w-full flex items-center gap-3 px-3 py-2 my-6 border border-brutal-border bg-brutal-bg hover:bg-brutal-surface-hover transition-colors group"
             >
@@ -597,6 +603,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
 
         {/* 宠物按钮 */}
         <button
+          type="button"
           onClick={handlePetClick}
           onDoubleClick={() => setIsPetConfigOpen(true)}
           className={`relative w-16 h-16 bg-brutal-bg rounded-lg
@@ -623,6 +630,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
 
         {/* 配置按钮 */}
         <button
+          type="button"
           onClick={() => setIsPetConfigOpen(true)}
           className="text-[10px] text-brutal-muted hover:text-brutal-accent font-mono transition-colors"
         >
@@ -658,6 +666,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-sm font-mono font-bold uppercase tracking-wider">账号设置</h2>
               <button
+                type="button"
                 onClick={() => setIsAccountModalOpen(false)}
                 className="text-brutal-muted hover:text-brutal-text text-lg"
               >
@@ -685,6 +694,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                   </div>
                   {oauthProvider === 'google' ? (
                     <button
+                      type="button"
                       onClick={async () => {
                         try {
                           await authApi.unbindOAuth('google');
@@ -701,6 +711,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                     </button>
                   ) : (
                     <button
+                      type="button"
                       onClick={() => {
                         window.location.href = authApi.getOAuthBindUrl('google');
                       }}
@@ -721,6 +732,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                   </div>
                   {oauthProvider === 'github' ? (
                     <button
+                      type="button"
                       onClick={async () => {
                         try {
                           await authApi.unbindOAuth('github');
@@ -737,6 +749,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                     </button>
                   ) : (
                     <button
+                      type="button"
                       onClick={() => {
                         window.location.href = authApi.getOAuthBindUrl('github');
                       }}
@@ -803,6 +816,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
             {/* 操作按钮 */}
             <div className="flex gap-3 w-full">
               <button
+                type="button"
                 onClick={() => setShowLogoutConfirm(false)}
                 className="flex-1 py-3 bg-brutal-accent text-brutal-bg font-mono font-bold
                            border-2 border-brutal-accent
@@ -813,6 +827,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                 留下陪我
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setShowLogoutConfirm(false);
                   onLogout();

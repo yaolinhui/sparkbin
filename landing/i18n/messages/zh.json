@@ -16,7 +16,7 @@
     "ctaPrimary": "免费开始",
     "ctaSecondary": "Star on GitHub",
     "trust": {
-      "opensource": "开源 MIT",
+      "opensource": "开源 ELv2",
       "selfhost": "自托管免费",
       "aiproxy": "AI 后端代理"
     }
@@ -38,6 +38,7 @@
     "label": "FEATURES",
     "title": "不止是一个看板",
     "subtitle": "AI 不是附加功能，而是贯穿每个阶段的基础设施。",
+    "screenshotLabel": "产品截图待补充",
     "items": [
       { "title": "AI 宠物教练", "desc": "每个项目配备专属 AI 教练，根据当前阶段提供针对性建议。" },
       { "title": "GO/NO-GO 决策", "desc": "结构化验证框架，用数据驱动决策，避免情绪化投入。" },
@@ -53,7 +54,7 @@
     "subtitle": "我们相信开源不是商业的妥协，而是信任的起点。",
     "selfHosted": {
       "title": "SELF-HOSTED",
-      "badge": "MIT LICENSE",
+      "badge": "ELv2",
       "desc": "代码完全开源，数据自主可控。适合有技术能力的团队和个人。",
       "features": ["无限 AI 调用（自备 API Key）", "完整功能，无功能限制", "数据存储在本地", "社区支持"]
     },
@@ -68,6 +69,8 @@
     "label": "PRICING",
     "title": "简单透明的定价",
     "subtitle": "自托管用户完全免费。Cloud 版按使用量付费，没有隐藏费用。",
+    "ctaPro": "开始 Pro 试用",
+    "ctaFree": "开始使用",
     "tiers": [
       {
         "name": "Free",
@@ -110,10 +113,10 @@
     "contributing": "贡献指南",
     "opensource": "开源",
     "github": "GitHub 仓库",
-    "license": "MIT License",
+    "license": "Elastic License 2.0",
     "security": "安全政策",
     "privacy": "隐私政策",
-    "copyright": "SPARKBIN © 2026 — MIT Licensed",
+    "copyright": "SPARKBIN © 2026 — Elastic License 2.0",
     "builtWith": "Built with React + FastAPI + Brutalist design"
   },
   "notFound": {

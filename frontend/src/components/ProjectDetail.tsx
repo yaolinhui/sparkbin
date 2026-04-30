@@ -1145,7 +1145,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
         {/* Right: AI Chat - 根据折叠状态动态调整宽度 */}
         <div
-          className={`bg-brutal-bg transition-all duration-300 ease-in-out flex-shrink-0 self-stretch ${
+          className={`bg-brutal-bg transition-all duration-300 ease-in-out flex-shrink-0 self-stretch flex flex-col ${
             isAIChatCollapsed ? 'w-12' : 'w-full sm:w-[320px] md:w-[380px] lg:w-[420px] max-w-[420px]'
           }`}
         >

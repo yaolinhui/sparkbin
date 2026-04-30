@@ -1,12 +1,29 @@
-'use client';
-
-import { useTranslations } from 'next-intl';
 import { Lock, ExternalLink, CheckCircle } from 'lucide-react';
 import { TerminalBlock } from '@/components/ui/TerminalBlock';
 
-export function HeroSection() {
-  const t = useTranslations('hero');
+interface HeroSectionProps {
+  badge: string;
+  title1: string;
+  title2: string;
+  subtitle: string;
+  ctaPrimary: string;
+  ctaSecondary: string;
+  trust: {
+    opensource: string;
+    selfhost: string;
+    aiproxy: string;
+  };
+}
 
+export function HeroSection({
+  badge,
+  title1,
+  title2,
+  subtitle,
+  ctaPrimary,
+  ctaSecondary,
+  trust,
+}: HeroSectionProps) {
   const terminalLines = [
     '$ sparkbin init my-idea',
     '> Creating project workspace...',
@@ -27,9 +44,9 @@ export function HeroSection() {
   ];
 
   const trustItems = [
-    { key: 'opensource', icon: CheckCircle },
-    { key: 'selfhost', icon: CheckCircle },
-    { key: 'aiproxy', icon: CheckCircle },
+    { key: 'opensource' as const, icon: CheckCircle },
+    { key: 'selfhost' as const, icon: CheckCircle },
+    { key: 'aiproxy' as const, icon: CheckCircle },
   ];
 
   return (
@@ -45,21 +62,21 @@ export function HeroSection() {
               className="inline-block px-2 py-1 text-[10px] font-mono font-bold tracking-widest border mb-6"
               style={{ borderColor: 'var(--brutal-accent)', color: 'var(--brutal-accent)' }}
             >
-              {t('badge')}
+              {badge}
             </div>
             <h1
               className="text-4xl md:text-5xl lg:text-6xl font-mono font-bold tracking-tight leading-tight mb-4"
               style={{ color: 'var(--brutal-text)' }}
             >
-              {t('title1')}
+              {title1}
               <br />
-              <span style={{ color: 'var(--brutal-accent)' }}>{t('title2')}</span>
+              <span style={{ color: 'var(--brutal-accent)' }}>{title2}</span>
             </h1>
             <p
               className="text-sm md:text-base font-mono mb-8 max-w-md"
               style={{ color: 'var(--brutal-text-secondary)', lineHeight: 1.6 }}
             >
-              {t('subtitle')}
+              {subtitle}
             </p>
 
             {/* CTA Buttons */}
@@ -74,7 +91,7 @@ export function HeroSection() {
                 }}
               >
                 <Lock className="w-4 h-4 mr-2" />
-                {t('ctaPrimary')}
+                {ctaPrimary}
               </a>
               <a
                 href="https://github.com/yaolinhui/sparkbin"
@@ -87,7 +104,7 @@ export function HeroSection() {
                   color: 'var(--brutal-text)',
                 }}
               >
-                {t('ctaSecondary')}
+                {ctaSecondary}
                 <ExternalLink className="w-4 h-4 ml-2" />
               </a>
             </div>
@@ -100,7 +117,7 @@ export function HeroSection() {
                   <div key={item.key} className="flex items-center gap-1.5">
                     <Icon className="w-3.5 h-3.5" style={{ color: 'var(--brutal-success)' }} />
                     <span className="text-xs font-mono" style={{ color: 'var(--brutal-muted)' }}>
-                      {t(`trust.${item.key}`)}
+                      {trust[item.key]}
                     </span>
                   </div>
                 );

@@ -1,29 +1,30 @@
-'use client';
-
-import { useTranslations } from 'next-intl';
 import { Check, Server, Cloud } from 'lucide-react';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 
-export function DeploymentSection() {
-  const t = useTranslations('deployment');
-  const selfHosted = t.raw('selfHosted') as {
+interface DeploymentSectionProps {
+  label: string;
+  title: string;
+  subtitle: string;
+  selfHosted: {
     title: string;
     badge: string;
     desc: string;
     features: string[];
   };
-  const cloud = t.raw('cloud') as {
+  cloud: {
     title: string;
     badge: string;
     desc: string;
     features: string[];
   };
+}
 
+export function DeploymentSection({ label, title, subtitle, selfHosted, cloud }: DeploymentSectionProps) {
   return (
     <section id="opensource" className="py-16 md:py-24" style={{ backgroundColor: 'var(--brutal-bg)' }}>
       <div className="max-w-container mx-auto px-4 md:px-8">
-        <SectionHeader label={t('label')} title={t('title')} subtitle={t('subtitle')} />
+        <SectionHeader label={label} title={title} subtitle={subtitle} />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Self-Hosted */}

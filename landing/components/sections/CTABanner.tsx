@@ -1,12 +1,14 @@
-'use client';
-
-import { useTranslations } from 'next-intl';
 import { ExternalLink } from 'lucide-react';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 
-export function CTABanner() {
-  const t = useTranslations('cta');
+interface CTABannerProps {
+  title: string;
+  subtitle: string;
+  primary: string;
+  secondary: string;
+}
 
+export function CTABanner({ title, subtitle, primary, secondary }: CTABannerProps) {
   return (
     <section className="py-16 md:py-24" style={{ backgroundColor: 'var(--brutal-bg)' }}>
       <div className="max-w-container mx-auto px-4 md:px-8">
@@ -22,13 +24,13 @@ export function CTABanner() {
               className="text-xl md:text-2xl font-mono font-bold tracking-tight mb-3 max-w-lg mx-auto"
               style={{ color: 'var(--brutal-text)' }}
             >
-              {t('title')}
+              {title}
             </h2>
             <p
               className="text-sm font-mono mb-8 max-w-md mx-auto"
               style={{ color: 'var(--brutal-text-secondary)', lineHeight: 1.6 }}
             >
-              {t('subtitle')}
+              {subtitle}
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <a
@@ -40,7 +42,7 @@ export function CTABanner() {
                   color: 'var(--brutal-bg)',
                 }}
               >
-                {t('primary')}
+                {primary}
               </a>
               <a
                 href="https://github.com/yaolinhui/sparkbin"
@@ -53,7 +55,7 @@ export function CTABanner() {
                   color: 'var(--brutal-text)',
                 }}
               >
-                {t('secondary')}
+                {secondary}
                 <ExternalLink className="w-4 h-4 ml-2" />
               </a>
             </div>

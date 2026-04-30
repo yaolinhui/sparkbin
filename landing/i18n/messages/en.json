@@ -16,7 +16,7 @@
     "ctaPrimary": "Get Started",
     "ctaSecondary": "Star on GitHub",
     "trust": {
-      "opensource": "Open Source MIT",
+      "opensource": "Open Source ELv2",
       "selfhost": "Free Self-Hosting",
       "aiproxy": "AI Backend Proxy"
     }
@@ -38,6 +38,7 @@
     "label": "FEATURES",
     "title": "More Than a Kanban Board",
     "subtitle": "AI is not an add-on. It is infrastructure woven into every stage.",
+    "screenshotLabel": "Product screenshots coming soon",
     "items": [
       { "title": "AI Pet Coach", "desc": "Each project gets a dedicated AI coach providing stage-specific guidance." },
       { "title": "GO/NO-GO Decisions", "desc": "Structured validation framework. Data-driven decisions, not emotional ones." },
@@ -53,7 +54,7 @@
     "subtitle": "We believe open source is not a compromise on business, but the foundation of trust.",
     "selfHosted": {
       "title": "SELF-HOSTED",
-      "badge": "MIT LICENSE",
+      "badge": "ELv2",
       "desc": "Fully open source. Data under your control. Ideal for technical teams and individuals.",
       "features": ["Unlimited AI calls (bring your own API key)", "Full features, no limitations", "Local data storage", "Community support"]
     },
@@ -68,6 +69,8 @@
     "label": "PRICING",
     "title": "Simple, Transparent Pricing",
     "subtitle": "Self-hosted is completely free. Cloud is pay-as-you-go with no hidden fees.",
+    "ctaPro": "Start Pro Trial",
+    "ctaFree": "Get Started",
     "tiers": [
       {
         "name": "Free",
@@ -110,10 +113,10 @@
     "contributing": "Contributing",
     "opensource": "Open Source",
     "github": "GitHub Repository",
-    "license": "MIT License",
+    "license": "Elastic License 2.0",
     "security": "Security Policy",
     "privacy": "Privacy Policy",
-    "copyright": "SPARKBIN © 2026 — MIT Licensed",
+    "copyright": "SPARKBIN © 2026 — Elastic License 2.0",
     "builtWith": "Built with React + FastAPI + Brutalist design"
   },
   "notFound": {
