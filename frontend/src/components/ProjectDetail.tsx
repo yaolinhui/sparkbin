@@ -391,6 +391,8 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const dirtyEditorsRef = useRef<Set<string>>(new Set());
   const forceProceedRef = useRef<boolean>(false);
   const [dirtyCount, setDirtyCount] = useState(0);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const saveStatusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hasUnsavedChanges = dirtyCount > 0 || isEditingTitle;
 
@@ -412,6 +414,18 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       setShowLeaveConfirm(true);
     }
   }, [blocker]);
+
+  // 清理保存状态定时器
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      if (saveStatusTimeoutRef.current) {
+        clearTimeout(saveStatusTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const { toggleTheme, isLight } = useTheme();
 
@@ -563,7 +577,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     );
   }
 
-  if (!project) {
+  if (!project || !project.stages || Object.keys(project.stages).length === 0) {
     return (
       <div className="min-h-screen bg-brutal-bg flex items-center justify-center font-mono">
         <div className="text-center border border-brutal-border bg-brutal-surface p-8">
@@ -591,9 +605,26 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const displayStage = viewingStage ?? validCurrentStage;
   const displayStageData = project.stages?.[displayStage];
   const isDisplayStageLocked = displayStageData?.isLocked ?? false;
-  const handleContentChange = async (content: string) => {
-    await updateStageContent(project.id, validCurrentStage, content);
-  };
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleContentChange = useCallback(async (content: string) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    if (saveStatusTimeoutRef.current) {
+      clearTimeout(saveStatusTimeoutRef.current);
+    }
+    setSaveStatus('saving');
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await updateStageContent(project.id, validCurrentStage, content);
+        setSaveStatus('saved');
+        saveStatusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
+      } catch {
+        setSaveStatus('error');
+      }
+    }, 1000);
+  }, [project.id, validCurrentStage, updateStageContent]);
 
   /**
    * 检查阶段内容是否包含用户实质填写的内容。
@@ -1076,6 +1107,23 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
         {/* Left: Editor - 根据 AI 聊天状态自适应宽度 */}
         <div className="flex-1 flex flex-col min-w-0 border-r border-brutal-border bg-brutal-surface transition-all duration-300">
           <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+            {/* 自动保存状态指示器 */}
+            <div className="px-4 py-1.5 border-b border-brutal-border flex items-center justify-between flex-shrink-0">
+              <span className="text-xs font-mono text-brutal-muted">
+                // {currentStageLabel}
+              </span>
+              {saveStatus !== 'idle' && (
+                <span className={`text-xs font-mono ${
+                  saveStatus === 'saving' ? 'text-brutal-warning' :
+                  saveStatus === 'saved' ? 'text-brutal-success' :
+                  'text-brutal-error'
+                }`}>
+                  {saveStatus === 'saving' && '保存中...'}
+                  {saveStatus === 'saved' && '已保存'}
+                  {saveStatus === 'error' && '保存失败'}
+                </span>
+              )}
+            </div>
             {displayStage === 'idea' ? (
               <IdeaStage
                 project={project}

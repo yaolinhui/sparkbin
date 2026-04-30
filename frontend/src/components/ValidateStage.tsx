@@ -132,46 +132,13 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
           return;
         }
       } catch {
-        // 解析失败，使用默认生成
+        // 解析失败，使用空状态
       }
     }
-
-    // 预生成默认验证项
-    const defaultItems: ValidationItem[] = [
-      {
-        id: '1',
-        title: '痛点真实性验证',
-        description: '目标用户是否真的有这个痛点？频率和严重程度如何？',
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: '2',
-        title: '付费意愿验证',
-        description: '用户是否愿意为此付费？可接受的价格区间是多少？',
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: '3',
-        title: '场景真实性验证',
-        description: '描述的使用场景是否真实存在？',
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: '4',
-        title: '竞品弱点分析',
-        description: '现有竞品的不足之处是什么？我们的差异化机会？',
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-      },
-    ];
-    const defaultData: ValidationData = { items: defaultItems, tools: [] };
-    setData(defaultData);
-    saveData(defaultData);
+    // content 为空时不自动创建默认值
+    setData({ items: [], tools: [] });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project.id]);
+  }, [project.stages?.validate?.content]);
 
   // 保存数据
   const saveData = async (newData: ValidationData) => {
@@ -535,10 +502,32 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* Kanban Board */}
-        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="flex-1 flex gap-4 p-6 overflow-x-auto min-h-0">
-            {/* Pending Column */}
+        {data.items.length === 0 && !isLocked && (
+          <div className="flex-1 flex items-center justify-center">
+            <button
+              onClick={() => {
+                const defaultItems: ValidationItem[] = [
+                  { id: '1', title: '痛点真实性验证', description: '目标用户是否真的有这个痛点？', status: 'pending', createdAt: new Date().toISOString() },
+                  { id: '2', title: '付费意愿验证', description: '用户是否愿意为此付费？', status: 'pending', createdAt: new Date().toISOString() },
+                  { id: '3', title: '场景真实性验证', description: '描述的使用场景是否真实存在？', status: 'pending', createdAt: new Date().toISOString() },
+                  { id: '4', title: '竞品弱点分析', description: '现有竞品的不足之处是什么？', status: 'pending', createdAt: new Date().toISOString() },
+                ];
+                const newData = { ...data, items: defaultItems };
+                setData(newData);
+                saveData(newData);
+              }}
+              className="text-xs font-mono border border-brutal-accent text-brutal-accent px-3 py-1.5 hover:bg-brutal-accent/10 transition-colors"
+            >
+              添加默认验证项
+            </button>
+          </div>
+        )}
+        {data.items.length > 0 && (
+          <>
+            {/* Kanban Board */}
+            <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+              <div className="flex-1 flex gap-4 p-6 overflow-x-auto min-h-0">
+                {/* Pending Column */}
             <DroppableKanbanColumn
               id="pending"
               title="待验证"
@@ -636,6 +625,8 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
             ) : null}
           </DragOverlay>
         </DndContext>
+          </>
+        )}
 
         {/* Tools Panel */}
         <div className="w-80 border-l border-brutal-border bg-brutal-surface flex flex-col">

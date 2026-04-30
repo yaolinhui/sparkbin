@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Edit2, Check, Plus, X, Lightbulb, GripVertical } from 'lucide-react';
 import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
@@ -186,6 +186,11 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
   const [modalError, setModalError] = useState<string | null>(null);
   const { showToast } = useToast();
 
+  // 预生成：后台静默调用 AI，用户点击时直接弹出结果
+  const preGeneratedNotesRef = useRef<{ title: string; content: string }[] | null>(null);
+  const preGenPromiseRef = useRef<Promise<void> | null>(null);
+  const hasTriggeredPreGenRef = useRef(false);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -204,17 +209,11 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
         // ignore parse error
       }
     }
-    const defaultNotes: StickyNote[] = [
-      { id: '1', title: '核心痛点', content: project.painPoint || '描述你想解决的核心问题...', color: 'accent' },
-      { id: '2', title: '目标用户', content: '谁会使用这个产品？\n例如：25-35岁职场人士', color: 'default' },
-      { id: '3', title: '使用场景', content: '用户在什么情况下会用？\n例如：通勤时、工作中', color: 'default' },
-      { id: '4', title: '解决方案', content: '你打算如何解决？\n简述核心功能...', color: 'warning' },
-      { id: '5', title: '差异化价值', content: '与现有方案相比，你的优势是什么？', color: 'success' },
-    ];
-    setNotes(defaultNotes);
-    saveNotes(defaultNotes);
+    // content 为空时不自动创建默认值，而是设置为空数组
+    // 用户可以通过"添加便利贴"或"使用默认模板"手动创建
+    setNotes([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project.painPoint]);
+  }, [project.stages?.idea?.content]);
 
   const saveNotes = async (newNotes: StickyNote[]) => {
     const content = JSON.stringify(newNotes);
@@ -294,19 +293,58 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
     return DEFAULT_PLACEHOLDERS.some((p) => content.includes(p));
   };
 
-  const getAiSuggestion = async () => {
-    setIsGenerating(true);
-    setModalError(null);
-    setSuggestedNotes(null);
-    setModalOpen(true);
-    try {
-      const suggestions = await aiService.generateIdeaSuggestion(
+  // 后台预生成：当 notes 处于初始状态（空或少于5个）时自动调用 AI
+  useEffect(() => {
+    if (hasTriggeredPreGenRef.current) return;
+    if (notes.length >= 5) return;
+    if (!project.id) return;
+
+    hasTriggeredPreGenRef.current = true;
+
+    const promise = aiService
+      .generateIdeaSuggestion(
         project.id,
         project.title,
         project.painPoint,
         project.originalIdea || project.painPoint,
         notes.map((n) => ({ title: n.title, content: n.content }))
-      );
+      )
+      .then((suggestions) => {
+        preGeneratedNotesRef.current = suggestions;
+      })
+      .catch(() => {
+        // 静默失败，不打扰用户；点击按钮时会重新请求
+      });
+
+    preGenPromiseRef.current = promise;
+  }, [notes, project.id, project.title, project.painPoint, project.originalIdea]);
+
+  const getAiSuggestion = async () => {
+    setIsGenerating(true);
+    setModalError(null);
+    setSuggestedNotes(null);
+    setModalOpen(true);
+
+    try {
+      let suggestions = preGeneratedNotesRef.current;
+
+      // 如果预生成还在进行中，等待它完成
+      if (!suggestions && preGenPromiseRef.current) {
+        await preGenPromiseRef.current;
+        suggestions = preGeneratedNotesRef.current;
+      }
+
+      // 预生成未触发或失败，走正常请求
+      if (!suggestions) {
+        suggestions = await aiService.generateIdeaSuggestion(
+          project.id,
+          project.title,
+          project.painPoint,
+          project.originalIdea || project.painPoint,
+          notes.map((n) => ({ title: n.title, content: n.content }))
+        );
+      }
+
       setSuggestedNotes(suggestions);
     } catch (error) {
       const message = error instanceof Error ? error.message : '获取 AI 建议失败';
@@ -409,8 +447,26 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
           </DndContext>
 
           {notes.length === 0 && (
-            <div className="text-center py-12 flex-1 flex items-center justify-center">
+            <div className="text-center py-12 flex-1 flex items-center justify-center flex-col gap-4">
               <p className="text-brutal-muted font-mono text-sm">还没有便利贴，点击"添加"创建第一个</p>
+              {!isLocked && (
+                <button
+                  onClick={() => {
+                    const defaultNotes: StickyNote[] = [
+                      { id: '1', title: '核心痛点', content: project.painPoint || '描述你想解决的核心问题...', color: 'accent' },
+                      { id: '2', title: '目标用户', content: '谁会使用这个产品？\n例如：25-35岁职场人士', color: 'default' },
+                      { id: '3', title: '使用场景', content: '用户在什么情况下会用？\n例如：通勤时、工作中', color: 'default' },
+                      { id: '4', title: '解决方案', content: '你打算如何解决？\n简述核心功能...', color: 'warning' },
+                      { id: '5', title: '差异化价值', content: '与现有方案相比，你的优势是什么？', color: 'success' },
+                    ];
+                    setNotes(defaultNotes);
+                    saveNotes(defaultNotes);
+                  }}
+                  className="text-xs font-mono border border-brutal-accent text-brutal-accent px-3 py-1.5 hover:bg-brutal-accent/10 transition-colors"
+                >
+                  使用默认模板
+                </button>
+              )}
             </div>
           )}
         </div>

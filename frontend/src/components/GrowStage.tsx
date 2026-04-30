@@ -91,7 +91,7 @@ export function GrowStage({ project, onUpdateContent, isLocked, onToggleLock, on
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project.id]);
+  }, [project.stages?.grow?.content]);
 
   // 保存数据
   const saveData = async (newData: GrowData) => {

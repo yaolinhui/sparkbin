@@ -137,7 +137,7 @@ export function MonetizeStage({ project, onUpdateContent, isLocked, onToggleLock
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project.id]);
+  }, [project.stages?.monetize?.content]);
 
   // 加载用户订阅状态（当测试模式开启时）
   useEffect(() => {

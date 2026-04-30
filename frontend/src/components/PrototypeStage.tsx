@@ -130,62 +130,14 @@ export function PrototypeStage({ project, onUpdateContent, isLocked, onToggleLoc
         // 解析失败
       }
     }
-
-    // 从想法阶段导入解决方案作为默认功能
-    try {
-      const ideaContent = project.stages?.idea?.content || '';
-      const ideaData = JSON.parse(ideaContent);
-      const solutionNote = ideaData?.find?.((n: { title: string }) =>
-        n.title?.includes('解决方案') || n.title?.includes('方案')
-      );
-
-      if (solutionNote) {
-        const defaultFeatures: Feature[] = [
-          {
-            id: '1',
-            name: '用户登录/注册',
-            priority: 'P0',
-            status: 'todo',
-            notes: '基础账户系统',
-            order: 0,
-          },
-          {
-            id: '2',
-            name: solutionNote.content.slice(0, 30) || '核心功能',
-            priority: 'P0',
-            status: 'todo',
-            notes: '继承自想法阶段的解决方案',
-            order: 1,
-          },
-          {
-            id: '3',
-            name: '基础设置',
-            priority: 'P1',
-            status: 'todo',
-            notes: '用户偏好设置',
-            order: 2,
-          },
-        ];
-        const initialData: PrototypeData = {
-          features: defaultFeatures,
-          releaseChecklist: { domain: false, ssl: false, payment: false, analytics: false, feedback: false },
-        };
-        setData(initialData);
-        saveData(initialData);
-      }
-    } catch {
-      // 使用默认功能列表
-      const defaultFeatures: Feature[] = [
-        { id: '1', name: '用户登录/注册', priority: 'P0', status: 'todo', notes: '基础账户系统', order: 0 },
-        { id: '2', name: '核心功能模块', priority: 'P0', status: 'todo', notes: '主要业务逻辑', order: 1 },
-        { id: '3', name: '基础设置', priority: 'P1', status: 'todo', notes: '用户偏好设置', order: 2 },
-      ];
-      const initialData: PrototypeData = { features: defaultFeatures, releaseChecklist: { domain: false, ssl: false, payment: false, analytics: false, feedback: false } };
-      setData(initialData);
-      saveData(initialData);
-    }
+    // content 为空时不自动创建默认值
+    setData({
+      features: [],
+      releaseChecklist: { domain: false, ssl: false, payment: false, analytics: false, feedback: false },
+    });
+    setCurrentStep('platform');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project.id]);
+  }, [project.stages?.prototype?.content]);
 
   // 保存数据
   const saveData = async (newData: PrototypeData) => {
@@ -515,8 +467,41 @@ export function PrototypeStage({ project, onUpdateContent, isLocked, onToggleLoc
                   />
                 ))}
                 {data.features.length === 0 && (
-                  <div className="p-8 text-center text-brutal-muted font-mono text-sm">
-                    还没有功能，点击"添加功能"开始规划
+                  <div className="p-8 text-center text-brutal-muted font-mono text-sm flex flex-col items-center gap-4">
+                    <span>还没有功能，点击"添加功能"开始规划</span>
+                    {!isLocked && (
+                      <button
+                        onClick={() => {
+                          try {
+                            const ideaContent = project.stages?.idea?.content || '';
+                            const ideaData = JSON.parse(ideaContent);
+                            const solutionNote = ideaData?.find?.((n: { title: string }) =>
+                              n.title?.includes('解决方案') || n.title?.includes('方案')
+                            );
+                            const defaultFeatures: Feature[] = [
+                              { id: '1', name: '用户登录/注册', priority: 'P0', status: 'todo', notes: '基础账户系统', order: 0 },
+                              { id: '2', name: solutionNote?.content?.slice(0, 30) || '核心功能', priority: 'P0', status: 'todo', notes: '继承自想法阶段的解决方案', order: 1 },
+                              { id: '3', name: '基础设置', priority: 'P1', status: 'todo', notes: '用户偏好设置', order: 2 },
+                            ];
+                            const newData = { ...data, features: defaultFeatures };
+                            setData(newData);
+                            saveData(newData);
+                          } catch {
+                            const defaultFeatures: Feature[] = [
+                              { id: '1', name: '用户登录/注册', priority: 'P0', status: 'todo', notes: '基础账户系统', order: 0 },
+                              { id: '2', name: '核心功能模块', priority: 'P0', status: 'todo', notes: '主要业务逻辑', order: 1 },
+                              { id: '3', name: '基础设置', priority: 'P1', status: 'todo', notes: '用户偏好设置', order: 2 },
+                            ];
+                            const newData = { ...data, features: defaultFeatures };
+                            setData(newData);
+                            saveData(newData);
+                          }
+                        }}
+                        className="text-xs font-mono border border-brutal-accent text-brutal-accent px-3 py-1.5 hover:bg-brutal-accent/10 transition-colors"
+                      >
+                        从想法阶段导入功能
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
