@@ -315,7 +315,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
             </div>
             <div>
               <h1 className="text-xl font-mono font-bold text-brutal-bg">SPARKBIN</h1>
-              <p className="text-xs font-mono text-brutal-bg/70">BACKEND AUTHENTICATION</p>
+              <p className="text-xs font-mono text-brutal-bg/70">账户认证</p>
             </div>
           </div>
         </div>
@@ -343,7 +343,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
             <form onSubmit={handleLogin} className="p-6 space-y-4 animate-fade-in-slide">
               <div>
                 <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
-                  Username
+                  用户名
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brutal-muted" />
@@ -355,7 +355,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                     className="w-full pl-10 pr-3 py-3 border border-brutal-border bg-brutal-bg
                                focus:border-brutal-accent focus:outline-none
                                font-mono text-sm transition-colors"
-                    placeholder="Username"
+                    placeholder="用户名"
                     autoComplete="username"
                     disabled={isLoading || isLocked}
                   />
@@ -364,7 +364,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
 
               <div>
                 <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
-                  Password
+                  密码
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brutal-muted" />
@@ -376,7 +376,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                     className="w-full pl-10 pr-10 py-3 border border-brutal-border bg-brutal-bg
                                focus:border-brutal-accent focus:outline-none
                                font-mono text-sm transition-colors"
-                    placeholder="Password"
+                    placeholder="输入密码"
                     autoComplete="current-password"
                     disabled={isLoading || isLocked}
                   />
@@ -466,10 +466,10 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    AUTHENTICATING...
+                    登录中...
                   </>
                 ) : (
-                  'LOGIN'
+                  '登录'
                 )}
               </button>
             </form>
@@ -478,7 +478,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
             <div className="px-6 pb-2">
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-brutal-border" />
-                <span className="text-xs font-mono text-brutal-muted">Or continue with</span>
+                <span className="text-xs font-mono text-brutal-muted">或通过以下方式登录</span>
                 <div className="flex-1 h-px bg-brutal-border" />
               </div>
             </div>
@@ -649,7 +649,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  REGISTERING...
+                  注册中...
                 </>
               ) : (
                 '注册账号'
@@ -733,10 +733,10 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
         {/* Footer */}
         <div className="px-6 py-4 border-t border-brutal-border bg-brutal-bg">
           <div className="flex items-center justify-between text-xs font-mono text-brutal-muted">
-            <span>Backend Mode</span>
+            <span>后端模式</span>
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 bg-brutal-success rounded-full animate-pulse" />
-              Online
+              在线
             </span>
           </div>
         </div>

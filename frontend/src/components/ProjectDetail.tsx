@@ -392,6 +392,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const forceProceedRef = useRef<boolean>(false);
   const [dirtyCount, setDirtyCount] = useState(0);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveStatusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hasUnsavedChanges = dirtyCount > 0 || isEditingTitle;
@@ -539,6 +540,25 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const statusLabelValue = useStatusLabel(project?.status ?? 'active');
   const statusLabel = project ? statusLabelValue : 'ACTIVE';
 
+  const handleContentChange = useCallback(async (content: string) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    if (saveStatusTimeoutRef.current) {
+      clearTimeout(saveStatusTimeoutRef.current);
+    }
+    setSaveStatus('saving');
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await updateStageContent(project!.id, validCurrentStage, content);
+        setSaveStatus('saved');
+        saveStatusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
+      } catch {
+        setSaveStatus('error');
+      }
+    }, 1000);
+  }, [project?.id, validCurrentStage, updateStageContent]);
+
   // 加载中状态
   if (isLoading) {
     return (
@@ -605,26 +625,6 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const displayStage = viewingStage ?? validCurrentStage;
   const displayStageData = project.stages?.[displayStage];
   const isDisplayStageLocked = displayStageData?.isLocked ?? false;
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleContentChange = useCallback(async (content: string) => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    if (saveStatusTimeoutRef.current) {
-      clearTimeout(saveStatusTimeoutRef.current);
-    }
-    setSaveStatus('saving');
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        await updateStageContent(project.id, validCurrentStage, content);
-        setSaveStatus('saved');
-        saveStatusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
-      } catch {
-        setSaveStatus('error');
-      }
-    }, 1000);
-  }, [project.id, validCurrentStage, updateStageContent]);
 
   /**
    * 检查阶段内容是否包含用户实质填写的内容。

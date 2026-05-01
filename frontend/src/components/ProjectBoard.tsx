@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Terminal, LogOut, Server, Settings, Cat, ChevronDown, ChevronRight, Lock, User } from 'lucide-react';
+import { Plus, Terminal, LogOut, Server, Settings, ChevronDown, ChevronRight, User } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import { GitHubImportModal } from './GitHubImportModal';
 import { useProjectStore } from '../stores/projectStore';
@@ -13,11 +13,11 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { ModelSelector } from './ModelSelector';
 import { AIPetConfig } from './AIPetConfig';
+import { PetHabitat } from './PetHabitat';
 import { PixelPet } from './PixelPet';
 import { PIXEL_PET_CATALOG } from './PixelPet.frames';
-import { ChangePasswordModal } from './ChangePasswordModal';
 import { UpgradePromptModal } from './UpgradePromptModal';
-import { PET_OPTIONS, PERSONALITY_OPTIONS, getContextDialogue } from './AIPetConfig.constants';
+import { PET_OPTIONS, getContextDialogue } from './AIPetConfig.constants';
 import type { AIPetConfig as AIPetConfigType } from '../types';
 
 interface ProjectBoardProps {
@@ -88,8 +88,6 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
   const [isPetConfigOpen, setIsPetConfigOpen] = useState(false);
-  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  const [showPetBubble, setShowPetBubble] = useState(false);
   const [petDialogue, setPetDialogue] = useState('');
   const petConfigKey = `sparkbin_pet_config_${getUserId() || 'guest'}`;
   const [petConfig, setPetConfig] = useState<AIPetConfigType | null>(() => {
@@ -101,8 +99,8 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [quota, setQuota] = useState<{
-    ai_calls_used_this_month: number;
-    ai_calls_limit: number;
+    ai_credits: number;
+    ai_credits_total_consumed: number;
     projects_used: number;
     projects_limit: number | null;
   } | null>(null);
@@ -258,11 +256,9 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
     );
 
     setPetDialogue(dialogue);
-    setShowPetBubble(true);
     setTimeout(() => {
-      setShowPetBubble(false);
       setIsPetBouncing(false);
-    }, 4500);
+    }, 300);
   };
 
   return (
@@ -294,11 +290,11 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                 </div>
               </div>
 
-              {quota && quota.projects_limit !== null && quota.projects_limit > 0 && (
+              {quota && quota.ai_credits !== undefined && (
                 <div className="text-right">
-                  <div className="text-xs text-brutal-muted">项目配额</div>
-                  <div className={`text-xs font-mono ${quota.projects_used >= quota.projects_limit ? 'text-brutal-warning' : 'text-brutal-text'}`}>
-                    {quota.projects_used} / {quota.projects_limit}
+                  <div className="text-xs text-brutal-muted">AI 额度</div>
+                  <div className={`text-xs font-mono ${quota.ai_credits <= 3 ? 'text-brutal-warning' : 'text-brutal-text'}`}>
+                    {quota.ai_credits}
                   </div>
                 </div>
               )}
@@ -312,15 +308,6 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
               <div className="flex items-center gap-2 flex-wrap justify-end">
                 <ThemeSwitcher />
                 <LanguageSwitcher />
-                <button
-                  type="button"
-                  onClick={() => setIsPetConfigOpen(true)}
-                  className="btn-brutal h-9 flex items-center gap-2"
-                  title="AI 宠物配置"
-                >
-                  <Cat className="w-4 h-4" />
-                  <span className="text-xs font-mono">宠物</span>
-                </button>
                 {isAdmin() && (
                   <Link
                     to="/admin"
@@ -332,22 +319,13 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                   </Link>
                 )}
                 <ModelSelector />
-                <button
-                  type="button"
-                  onClick={() => setIsChangePasswordOpen(true)}
-                  className="btn-brutal h-9 flex items-center gap-2"
-                  title="修改密码"
-                >
-                  <Lock className="w-4 h-4" />
-                  <span className="text-xs font-mono">改密</span>
-                </button>
                 <Link
                   to="/profile"
                   className="btn-brutal h-9 flex items-center gap-2"
-                  title="个人资料"
+                  title="个人账户"
                 >
                   <User className="w-4 h-4" />
-                  <span className="text-xs font-mono">资料</span>
+                  <span className="text-xs font-mono">账户</span>
                 </Link>
                 <button
                   type="button"
@@ -473,15 +451,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                 <button
                   type="button"
                   onClick={() => {
-                    const canCreate =
-                      !quota ||
-                      quota.projects_limit === null ||
-                      quota.projects_used < quota.projects_limit;
-                    if (canCreate) {
-                      setIsCreateModalOpen(true);
-                    } else {
-                      setShowUpgradeModal(true);
-                    }
+                    setIsCreateModalOpen(true);
                   }}
                   className="bg-brutal-surface border-2 border-dashed border-brutal-border p-4 cursor-pointer
                            hover:border-brutal-accent hover:bg-brutal-accent/5
@@ -572,71 +542,16 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         )}
       </main>
 
-      {/* AI Pet - Fixed Bottom Right */}
-      <div className="fixed bottom-6 right-6 flex flex-col items-end gap-2">
-        {/* 对话气泡 */}
-        {showPetBubble && (
-          <div className="mb-2 relative"
-          >
-            <div
-              className="px-4 py-3 rounded-2xl text-sm font-mono text-center max-w-[200px]"
-              style={{
-                backgroundColor: petColor,
-                color: 'var(--brutal-bg)',
-                border: '2px solid var(--brutal-text)',
-                boxShadow: '4px 4px 0px var(--brutal-text)',
-              }}
-            >
-              {petDialogue}
-            </div>
-            {/* 气泡尾巴 */}
-            <div
-              className="absolute -bottom-2 right-6 w-0 h-0"
-              style={{
-                borderLeft: '8px solid transparent',
-                borderRight: '8px solid transparent',
-                borderTop: `8px solid ${petColor}`,
-              }}
-            />
-          </div>
-        )}
-
-        {/* 宠物按钮 */}
-        <button
-          type="button"
-          onClick={handlePetClick}
-          onDoubleClick={() => setIsPetConfigOpen(true)}
-          className={`relative w-16 h-16 bg-brutal-bg rounded-lg
-                     transition-all duration-200
-                     flex items-center justify-center
-                     hover:scale-105 hover:shadow-lg ${
-                       isPetBouncing ? 'scale-110' : 'animate-pulse-slow'
-                     }`}
-          style={{ boxShadow: '2px 2px 8px rgba(0,0,0,0.15)' }}
-          title={`${petName} - 单击互动 / 双击配置`}
-        >
-          <PixelPet frames={petFrames} scale={2} animation="idle" />
-          {/* 性格装饰 */}
-          {(() => {
-            const P = PERSONALITY_OPTIONS.find(p => p.id === petConfig?.personality);
-            return P ? (
-              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-brutal-bg border border-brutal-border rounded-full"
-              >
-                <P.icon className="w-3 h-3" style={{ color: P.color }} />
-              </span>
-            ) : null;
-          })()}
-        </button>
-
-        {/* 配置按钮 */}
-        <button
-          type="button"
-          onClick={() => setIsPetConfigOpen(true)}
-          className="text-[10px] text-brutal-muted hover:text-brutal-accent font-mono transition-colors"
-        >
-          双击宠物也可配置
-        </button>
-      </div>
+      {/* AI Pet - Pixel Glass Habitat */}
+      <PetHabitat
+        petFrames={petFrames}
+        petName={petName}
+        personality={petConfig?.personality}
+        dialogue={petDialogue}
+        onPetClick={handlePetClick}
+        onPetDoubleClick={() => setIsPetConfigOpen(true)}
+        isBouncing={isPetBouncing}
+      />
 
       {/* Modals */}
       <CreateProjectModal
@@ -648,15 +563,10 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         isOpen={isGitHubModalOpen}
         onClose={() => setIsGitHubModalOpen(false)}
       />
-      <ChangePasswordModal
-        isOpen={isChangePasswordOpen}
-        onSuccess={() => setIsChangePasswordOpen(false)}
-        onClose={() => setIsChangePasswordOpen(false)}
-      />
       <UpgradePromptModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        feature="projects"
+        feature="ai_calls"
       />
 
       {/* 账号设置模态框 */}
@@ -857,7 +767,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
               } catch {
                 // 后端保存失败，不更新本地状态
               }
-            } else {
+            // } else {
               setPetConfig(config);
               localStorage.setItem(petConfigKey, JSON.stringify(config));
             }
