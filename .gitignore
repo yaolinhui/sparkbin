@@ -43,6 +43,9 @@ test-results/
 
 # Build artifacts
 dist-bundle.html
+.next/
+package.json
+package-lock.json
 
 # Claude Code local settings (may contain sensitive data)
 .claude/settings.local.json
