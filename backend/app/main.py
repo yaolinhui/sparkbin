@@ -80,15 +80,22 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
 
         # 内容安全策略（CSP）— 根据实际前端资源调整
-        # 当前为 SPA + 本地开发环境设置；生产环境部署 HTTPS 时需进一步收紧
+        _frontend_origin = ""
+        if settings.frontend_url:
+            _frontend_origin = settings.frontend_url.strip()
+        _connect_src = "'self'"
+        if settings.debug:
+            _connect_src += " http://localhost:8000"
+        if _frontend_origin:
+            _connect_src += f" {_frontend_origin}"
         csp = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
+            f"script-src 'self' 'unsafe-inline' {'https://js.stripe.com' if settings.enable_payments else ''}; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: https:; "
             "font-src 'self'; "
-            "connect-src 'self' http://localhost:8000 https://api.stripe.com; "
-            "frame-src https://js.stripe.com https://hooks.stripe.com; "
+            f"connect-src {_connect_src}{' https://api.stripe.com' if settings.enable_payments else ''}; "
+            f"frame-src {'https://js.stripe.com https://hooks.stripe.com' if settings.enable_payments else ''}; "
             "object-src 'none'; "
             "base-uri 'self';"
         )
@@ -208,9 +215,21 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestSizeLimitMiddleware)
 
 # 可信 Host 中间件（防止 Host Header 攻击）
+# 生产环境从 CORS_ORIGINS 中提取域名，同时允许 Render 默认域名
+_default_hosts = ["sparkbin.dev", "*.sparkbin.dev", "localhost", "*.onrender.com"]
+if settings.cors_origins:
+    import urllib.parse
+    _cors_hosts = []
+    for origin in settings.cors_origins.split(","):
+        origin = origin.strip()
+        if origin:
+            parsed = urllib.parse.urlparse(origin)
+            if parsed.hostname:
+                _cors_hosts.append(parsed.hostname)
+    _default_hosts.extend(_cors_hosts)
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["*"] if settings.debug else ["sparkbin.dev", "*.sparkbin.dev", "localhost"],
+    allowed_hosts=["*"] if settings.debug else list(set(_default_hosts)),
 )
 
 # 注册路由
