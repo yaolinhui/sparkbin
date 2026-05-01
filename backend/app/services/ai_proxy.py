@@ -479,16 +479,15 @@ class AIProxyService:
             f"- {note['title']}: {note['content']}" for note in current_notes
         )
 
-        prompt = f"""你是一个资深产品顾问，擅长帮助创业者完善产品想法。
+        prompt = f"""你是产品顾问。基于项目信息生成5个维度的优化建议，返回JSON。
 
-用户原始想法：{original_idea or pain_point}
-当前痛点描述：{pain_point}
-项目标题：{title}
-
-当前便利贴内容：
+项目：{title}
+痛点：{pain_point}
+想法：{original_idea or pain_point}
+现有内容：
 {notes_text}
 
-请根据用户的原始想法，优化并填充以下 5 个维度的内容。必须返回 JSON 格式，不要包含其他内容：
+返回格式：
 {{
     "notes": [
         {{"title": "核心痛点", "content": "..."}},
@@ -499,12 +498,7 @@ class AIProxyService:
     ]
 }}
 
-要求（严格遵循）：
-1. 忠实于用户原始意图，不要过度发挥
-2. 每个维度严格限制在 1-2 句话，每句话不超过 30 字，总字数不超过 250 字
-3. 内容 actionable，符合 Vibe 开发理念（快速验证、不完美也发布）
-4. 如果某个维度用户已经填写了实质性内容（不是占位符），请保留其核心意思并优化表达
-5. 用中文回复"""
+约束：每维度1-2句话，每句≤30字。保留用户已有实质内容。中文。"""
 
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -515,7 +509,7 @@ class AIProxyService:
             "model": config.default_model,
             "messages": [{"role": "user", "content": prompt}],
             "stream": False,
-            "max_tokens": 350,
+            "max_tokens": 250,
             "temperature": 0.5
         }
 

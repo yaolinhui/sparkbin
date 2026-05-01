@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     github_repo: str = ""
     github_file_path: str = "data/projects.json"
 
+    # 商业模式开关
+    enable_payments: bool = False  # 是否启用支付/充值功能（SaaS=true, 自托管=false）
+    enable_saas_features: bool = False  # SaaS 专属功能开关
+    credits_grant_on_register: int = 20  # 注册赠送 AI 额度
+    credits_packs: str = "5:100,10:250,20:600"  # 价格(美元):额度数
+
     # Stripe 支付配置（测试模式）
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""

@@ -13,25 +13,25 @@ interface PricingSectionProps {
     desc: string;
     features: string[];
   }>;
-  ctaPro: string;
+  ctaPayg: string;
   ctaFree: string;
 }
 
-export function PricingSection({ label, title, subtitle, tiers, ctaPro, ctaFree }: PricingSectionProps) {
+export function PricingSection({ label, title, subtitle, tiers, ctaPayg, ctaFree }: PricingSectionProps) {
   return (
     <section id="pricing" className="py-16 md:py-24" style={{ backgroundColor: 'var(--brutal-surface)' }}>
       <div className="max-w-container mx-auto px-4 md:px-8">
         <SectionHeader label={label} title={title} subtitle={subtitle} />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto">
           {tiers.map((tier, i) => {
-            const isPro = tier.name === 'Pro';
+            const isPayg = tier.name === '按需付费' || tier.name === 'Pay-as-you-go';
             return (
               <ScrollReveal key={tier.name} delay={i * 100}>
                 <div
                   className="border-2 p-6 h-full flex flex-col transition-colors hover:border-brutal-accent"
                   style={{
-                    borderColor: isPro ? 'var(--brutal-accent)' : 'var(--brutal-border)',
+                    borderColor: isPayg ? 'var(--brutal-accent)' : 'var(--brutal-border)',
                     backgroundColor: 'var(--brutal-bg)',
                   }}
                 >
@@ -67,12 +67,12 @@ export function PricingSection({ label, title, subtitle, tiers, ctaPro, ctaFree 
                     href="https://app.sparkbin.dev"
                     className="block text-center px-5 py-2.5 text-xs font-mono font-bold border-2 transition-colors"
                     style={{
-                      backgroundColor: isPro ? 'var(--brutal-accent)' : 'transparent',
+                      backgroundColor: isPayg ? 'var(--brutal-accent)' : 'transparent',
                       borderColor: 'var(--brutal-accent)',
-                      color: isPro ? 'var(--brutal-bg)' : 'var(--brutal-accent)',
+                      color: isPayg ? 'var(--brutal-bg)' : 'var(--brutal-accent)',
                     }}
                   >
-                    {isPro ? ctaPro : ctaFree}
+                    {isPayg ? ctaPayg : ctaFree}
                   </a>
                 </div>
               </ScrollReveal>

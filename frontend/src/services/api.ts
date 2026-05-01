@@ -372,16 +372,15 @@ export const authApi = {
       avatar_url: string | null;
       role: string;
       preferred_model: AIProvider | null;
-      subscription_status: string;
-      current_tier_id: string | null;
+      enable_payments: boolean;
       pet_config: { type: string; name: string; personality: string; verbosity: string } | null;
       theme_preference: string | null;
       require_password_change: boolean;
       oauth_provider: string | null;
       oauth_id: string | null;
       quota: {
-        ai_calls_used_this_month: number;
-        ai_calls_limit: number;
+        ai_credits: number;
+        ai_credits_total_consumed: number;
         projects_used: number;
         projects_limit: number | null;
       };
@@ -796,12 +795,11 @@ export const githubApi = {
     }),
 };
 
-// ===== 支付 API =====
-export interface CheckoutItem {
-  name: string;
-  price: number;
-  period: 'month' | 'year' | 'lifetime';
-  tier_id: string;
+// ===== 支付 API (额度制) =====
+export interface CreditPack {
+  price_usd: number;
+  credits: number;
+  label: string;
 }
 
 export interface CheckoutSessionResponse {
@@ -809,14 +807,48 @@ export interface CheckoutSessionResponse {
   session_id: string;
 }
 
-export interface SubscriptionStatusResponse {
-  status: string;
-  tier_id: string | null;
+export interface CreditsStatusResponse {
+  credits: number;
+  total_consumed: number;
+}
+
+export interface CreditTransaction {
+  id: string;
+  type: string; // grant | purchase | consume | refund
+  amount: number;
+  balance_after: number;
+  description: string;
+  reference_id: string | null;
+  created_at: string;
 }
 
 export const paymentsApi = {
+  // 获取可用额度包
+  getCreditPacks: () =>
+    request<CreditPack[]>('/payments/credit-packs'),
+
+  // 购买额度（创建 Stripe Checkout）
+  purchaseCredits: (data: {
+    pack_index: number;
+    success_url: string;
+    cancel_url: string;
+  }) =>
+    request<CheckoutSessionResponse>('/payments/purchase-credits', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // 获取当前额度状态
+  getCreditsStatus: () =>
+    request<CreditsStatusResponse>('/payments/credits-status'),
+
+  // 获取额度流水
+  getCreditTransactions: (limit = 50) =>
+    request<CreditTransaction[]>(`/payments/credit-transactions?limit=${limit}`),
+
+  // === 兼容/演示接口（MonetizeStage 测试模式使用） ===
   createCheckoutSession: (data: {
-    items: CheckoutItem[];
+    items: { name: string; price: number; period: string; tier_id: string }[];
     success_url: string;
     cancel_url: string;
   }) =>
@@ -826,7 +858,7 @@ export const paymentsApi = {
     }),
 
   getSubscriptionStatus: () =>
-    request<SubscriptionStatusResponse>('/payments/subscription-status'),
+    request<{ status: string; tier_id: string | null; stripe_customer_id: string | null; stripe_subscription_id: string | null }>('/payments/subscription-status'),
 };
 
 // ===== 管理 API =====

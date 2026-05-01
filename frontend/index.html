@@ -14,8 +14,20 @@
         const saved = localStorage.getItem('sparkbin-theme');
         const theme = saved === 'light' || saved === 'dark' ? saved : 'dark';
         document.documentElement.setAttribute('data-theme', theme);
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor) {
+          metaThemeColor.setAttribute('content', theme === 'light' ? '#f5f3ef' : '#0a0a0a');
+        }
       })();
     </script>
+    <style>
+      /* Critical CSS: prevent FOUC (flash of unstyled content) before JS/CSS bundles load */
+      :root { --brutal-bg: #0a0a0a; --brutal-text: #ffffff; }
+      [data-theme="light"] { --brutal-bg: #f5f3ef; --brutal-text: #1a1a1a; }
+      html, body { background-color: var(--brutal-bg); color: var(--brutal-text); margin: 0; min-height: 100vh; }
+      body { transition: none; }
+      #root { min-height: 100vh; }
+    </style>
   </head>
   <body class="transition-colors duration-300">
     <div id="root"></div>

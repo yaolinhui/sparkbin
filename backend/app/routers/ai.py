@@ -8,7 +8,7 @@ from uuid import UUID
 
 from ..database import get_db
 from ..auth import get_current_user, require_admin
-from ..models import User, AIProvider, AIConfig, AICallLog, Project, Stage, StageKey
+from ..models import User, AIProvider, AIConfig, AICallLog, Project, Stage, StageKey, CreditTransaction
 from ..schemas import (
     AIProviderInfo, AIConfigUpdate, AIChatRequest,
     AIPromoteSuggestRequest, PromoteSuggestionInfo, BaseResponse,
@@ -32,36 +32,45 @@ from ..config import get_settings
 from sqlalchemy import func
 from datetime import datetime
 
+
+# ========== AI 额度检查与扣费 ==========
+
+def _check_ai_quota(user: User, db: Session) -> None:
+    """检查用户 AI 调用额度，余额不足则抛出 402"""
+    settings = get_settings()
+    # 未启用支付（自托管模式）或管理员：不限制
+    if not settings.enable_payments or user.role.value == "admin":
+        return
+
+    if user.ai_credits <= 0:
+        raise HTTPException(
+            status_code=402,
+            detail="AI credits exhausted. Please purchase more credits to continue.",
+        )
+
+
+def _deduct_ai_credit(user: User, db: Session, reference_id: str | None = None) -> None:
+    """扣除一次 AI 调用额度并写入流水"""
+    settings = get_settings()
+    if not settings.enable_payments or user.role.value == "admin":
+        return
+
+    user.ai_credits -= 1
+    user.ai_credits_total_consumed += 1
+
+    tx = CreditTransaction(
+        user_id=user.id,
+        type="consume",
+        amount=-1,
+        balance_after=user.ai_credits,
+        description="AI 对话消耗",
+        reference_id=reference_id,
+    )
+    db.add(tx)
+    db.commit()
+
 router = APIRouter(prefix="/ai", tags=["ai"])
 logger = logging.getLogger(__name__)
-
-
-def _check_ai_quota(user: User, db) -> None:
-    """检查用户 AI 调用配额，超出则抛出 429"""
-    settings = get_settings()
-    # 自托管模式或未配置 Stripe：不限制
-    if not settings.stripe_secret_key:
-        return
-    # 管理员不限制
-    if user.role.value == "admin":
-        return
-
-    tier = user.current_tier_id or "free"
-    tier_limits = {"free": 30, "pro": 500, "team": 2000}
-    limit = tier_limits.get(tier, 30)
-
-    now = datetime.utcnow()
-    start_of_month = datetime(now.year, now.month, 1)
-    used = db.query(func.count(AICallLog.id)).filter(
-        AICallLog.user_id == user.id,
-        AICallLog.created_at >= start_of_month
-    ).scalar() or 0
-
-    if used >= limit:
-        raise HTTPException(
-            status_code=429,
-            detail=f"本月 AI 调用配额已用完（{used}/{limit}）。请升级套餐或等待下个月重置。"
-        )
 
 
 def _extract_content_from_sse_chunks(chunks: List[str]) -> str:
@@ -228,6 +237,7 @@ async def chat_completion(
     返回 SSE 流
     """
     _check_ai_quota(current_user, db)
+    _deduct_ai_credit(current_user, db, reference_id="chat")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
 
     merged_messages = list(request.messages)
@@ -362,6 +372,7 @@ async def generate_promote_suggestions(
 ):
     """生成推广建议"""
     _check_ai_quota(current_user, db)
+    _deduct_ai_credit(current_user, db, reference_id="promote-suggest")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
 
     suggestions = await ai_service.generate_promote_suggestions(
@@ -409,6 +420,7 @@ async def generate_idea_suggestions(
 ):
     """生成想法阶段便利贴建议"""
     _check_ai_quota(current_user, db)
+    _deduct_ai_credit(current_user, db, reference_id="idea-suggest")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
 
     # 使用用户首选模型，如果没有则默认使用 DeepSeek
@@ -433,6 +445,7 @@ async def generate_validate_suggestions(
 ):
     """生成验证阶段建议（验证项 + 验证工具 + 分析）"""
     _check_ai_quota(current_user, db)
+    _deduct_ai_credit(current_user, db, reference_id="validate-suggest")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
 
     # 使用用户首选模型，如果没有则默认使用 DeepSeek
@@ -536,8 +549,9 @@ async def run_agent_cockpit(
     from ..agents import AgentOrchestrator
     from ..services.stage_context import evaluate_stage_content
 
-    # 检查配额
+    # 检查配额并扣费
     _check_ai_quota(current_user, db)
+    _deduct_ai_credit(current_user, db, reference_id="agent-run")
 
     project = db.query(Project).filter(
         Project.id == request.project_id,

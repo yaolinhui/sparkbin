@@ -74,10 +74,10 @@ class PetConfig(BaseModel):
 
 
 class UserQuotaInfo(BaseModel):
-    ai_calls_used_this_month: int
-    ai_calls_limit: int
+    ai_credits: int
+    ai_credits_total_consumed: int
     projects_used: int
-    projects_limit: Optional[int] = None
+    projects_limit: Optional[int] = None  # 始终返回 None（无限）
 
 
 class UserInfo(BaseModel):
@@ -91,6 +91,7 @@ class UserInfo(BaseModel):
     pet_config: Optional[PetConfig] = None
     theme_preference: Optional[str] = "dark"
     require_password_change: bool = False
+    enable_payments: bool = False  # 后端是否开启支付功能
     quota: UserQuotaInfo
     created_at: datetime
 
@@ -322,6 +323,36 @@ class SubscriptionStatusResponse(BaseModel):
     tier_id: Optional[str] = None
     stripe_customer_id: Optional[str] = None
     stripe_subscription_id: Optional[str] = None
+
+
+class CreditsStatusResponse(BaseModel):
+    credits: int
+    total_consumed: int
+
+
+class CreditPack(BaseModel):
+    price_usd: float
+    credits: int
+    label: str
+
+
+class CreditTransactionInfo(BaseModel):
+    id: UUID
+    type: str  # grant | purchase | consume | refund
+    amount: int
+    balance_after: int
+    description: str
+    reference_id: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PurchaseCreditsRequest(BaseModel):
+    pack_index: int = Field(..., ge=0, le=2)
+    success_url: str
+    cancel_url: str
 
 
 # ========== 数据导出 ==========

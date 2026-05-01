@@ -63,16 +63,15 @@ export function ProfilePage({ onLogout }: ProfilePageProps) {
     avatar_url: string | null;
     role: string;
     preferred_model: string | null;
-    subscription_status: string;
-    current_tier_id: string | null;
+    enable_payments: boolean;
     pet_config: { type: string; name: string; personality: string; verbosity: string } | null;
     theme_preference: string | null;
     require_password_change: boolean;
     oauth_provider: string | null;
     oauth_id: string | null;
     quota: {
-      ai_calls_used_this_month: number;
-      ai_calls_limit: number;
+      ai_credits: number;
+      ai_credits_total_consumed: number;
       projects_used: number;
       projects_limit: number | null;
     };
@@ -239,35 +238,32 @@ export function ProfilePage({ onLogout }: ProfilePageProps) {
           />
           <InfoRow label="注册时间" value={formatDate(user.created_at)} />
           <InfoRow
-            label="订阅状态"
+            label="支付功能"
             value={
-              <span className={`uppercase ${user.subscription_status === 'active' ? 'text-brutal-success' : 'text-brutal-muted'}`}>
-                {user.subscription_status}
+              <span className={`uppercase ${user.enable_payments ? 'text-brutal-success' : 'text-brutal-muted'}`}>
+                {user.enable_payments ? '已启用' : '已关闭'}
               </span>
             }
           />
-          {user.current_tier_id && (
-            <InfoRow label="当前套餐" value={user.current_tier_id.toUpperCase()} />
-          )}
         </SectionCard>
 
         {/* Quota */}
         <SectionCard title="配额信息" icon={Zap}>
           <InfoRow
-            label="AI 调用（本月）"
+            label="AI 额度"
             value={
-              user.quota.ai_calls_limit === -1
-                ? `${user.quota.ai_calls_used_this_month} / ∞`
-                : `${user.quota.ai_calls_used_this_month} / ${user.quota.ai_calls_limit}`
+              <span className={`font-mono ${user.quota.ai_credits <= 3 ? 'text-brutal-warning' : 'text-brutal-text'}`}>
+                {user.quota.ai_credits} 次
+              </span>
             }
           />
           <InfoRow
+            label="累计消耗"
+            value={`${user.quota.ai_credits_total_consumed} 次`}
+          />
+          <InfoRow
             label="项目数量"
-            value={
-              user.quota.projects_limit === null
-                ? `${user.quota.projects_used} / ∞`
-                : `${user.quota.projects_used} / ${user.quota.projects_limit}`
-            }
+            value={`${user.quota.projects_used} / ∞`}
           />
         </SectionCard>
 

@@ -29,14 +29,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Registration honeypot anti-bot protection
 - Project title inline editing
 - Landing page with grid dot pattern
+- **AI credits system**: `ai_credits` and `ai_credits_total_consumed` fields on User model
+- **`CreditTransaction` table**: Audit trail for all credit grants, purchases, consumptions, and refunds
+- **Stripe one-time payments**: `purchase-credits` endpoint creates Checkout Session for credit packs ($5/100, $10/250, $20/600)
+- **Credit balance APIs**: `GET /payments/credits-status`, `GET /payments/credit-transactions`, `GET /payments/credit-packs`
+- **AI quota enforcement**: All AI endpoints check credits before processing; return 402 when exhausted; deduct 1 credit per successful call with transaction logging
+- **Registration bonus**: New users automatically receive 20 free AI credits on sign-up
+- **Feature flags**: `ENABLE_PAYMENTS`, `ENABLE_SAAS_FEATURES`, `CREDITS_GRANT_ON_REGISTER`, `CREDITS_PACKS` environment variables for self-hosted vs SaaS differentiation
+- **Webhook handler**: `checkout.session.completed` processes credit purchases and updates user balance
+- **Next question auto-fill**: After AI stream completes, if `nextQuestion` is present, input field is pre-filled for seamless stage loop progression
+- Database migration: `b299dc1b311c` adds `ai_credits` columns and `credit_transactions` table
 
 ### Changed
 - `LanguageSwitcher` changed from button to dropdown panel, unified placement across all pages
 - Elastic layout fix: replaced `h-full` abuse with `flex-1` for proper viewport filling in Stage components
+- **Business model**: Replaced monthly subscription with "Free unlimited projects + AI credits prepaid" model. Projects are always free; AI calls consume prepaid credits (1 per conversation). Credits never expire
+- **Pricing**: Landing site Pricing section updated from 3-tier subscription (Free/Pro/Team) to 2-tier (Free + Pay-as-you-go)
+- `UpgradePromptModal` redesigned as credit purchase modal with Stripe Checkout one-time payment
+- `AIChat` displays real-time AI credit balance, optimistic deduction, 30s polling sync, and low-credit warnings
+- `PaymentResultModal` updated to show credit balance instead of subscription status
+- `ProfilePage` quota section migrated from monthly AI call limits to credit balance display
+- `MonetizeStage` test mode now queries credit status instead of subscription status
+- **Project limits removed**: All users can create unlimited projects regardless of tier
 
 ### Removed
 - Legacy GitHub backup sync feature (frontend PAT storage was a security risk in multi-user scenarios; will be replaced by backend-proxied project-level repo binding in future)
 - `GitHubConfigModal`, `github.ts`, and `GitHubConfig` type from first-version localStorage architecture
+- Free/Pro/Team tier subscription system (replaced by AI credits prepaid model)
 
 ### Security
 - Rate limiting on login endpoints (5 attempts per 5 minutes per IP)

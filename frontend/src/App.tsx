@@ -76,6 +76,29 @@ function AppRoutes() {
     });
 
     const checkAuth = async () => {
+      // OAuth 回调：优先从 URL fragment 提取 token，避免页面闪烁
+      const hash = window.location.hash.slice(1);
+      const params = new URLSearchParams(hash);
+      const oauthSuccess = params.get('oauth_success');
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      const githubConnect = params.get('github_connect');
+      const oauthBindSuccess = params.get('oauth_bind_success');
+
+      if (oauthSuccess === '1' && accessToken && refreshToken) {
+        setAuthToken(accessToken);
+        setRefreshToken(refreshToken);
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+      if (githubConnect === 'success') {
+        sessionStorage.setItem('sparkbin_github_connected', '1');
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+      if (oauthBindSuccess === '1') {
+        sessionStorage.setItem('sparkbin_oauth_bind_success', '1');
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+
       if (isAuthenticated()) {
         // 前置校验：token 格式必须是合法 JWT（header.payload.signature）
         const token = localStorage.getItem('sparkbin_token');
@@ -164,7 +187,7 @@ function AppRoutes() {
     <div className="min-h-screen bg-brutal-bg flex items-center justify-center">
       <div className="text-center">
         <div className="w-8 h-8 border-2 border-brutal-accent border-t-transparent animate-spin mx-auto mb-4" />
-        <p className="font-mono text-brutal-muted">Loading page...</p>
+        <p className="font-mono text-brutal-muted">加载页面中...</p>
       </div>
     </div>
   );
@@ -178,7 +201,7 @@ function AppRoutes() {
       <div className="min-h-screen bg-brutal-bg flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-brutal-accent border-t-transparent animate-spin mx-auto mb-4" />
-          <p className="font-mono text-brutal-muted">Connecting to backend...</p>
+          <p className="font-mono text-brutal-muted">连接后端中...</p>
         </div>
       </div>
     );

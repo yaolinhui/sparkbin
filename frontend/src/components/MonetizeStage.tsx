@@ -139,11 +139,11 @@ export function MonetizeStage({ project, onUpdateContent, isLocked, onToggleLock
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.stages?.monetize?.content]);
 
-  // 加载用户订阅状态（当测试模式开启时）
+  // 加载用户额度状态（当测试模式开启时）
   useEffect(() => {
     if (data.testMode) {
-      paymentsApi.getSubscriptionStatus()
-        .then((res) => setSubscriptionStatus(res.status))
+      paymentsApi.getCreditsStatus()
+        .then((res) => setSubscriptionStatus(res.credits > 0 ? 'active' : 'inactive'))
         .catch(() => setSubscriptionStatus(null));
     }
   }, [data.testMode]);
@@ -681,11 +681,11 @@ export function MonetizeStage({ project, onUpdateContent, isLocked, onToggleLock
       <PaymentResultModal
         result={paymentResult}
         onClose={async () => {
-          // 如果支付成功，刷新 MonetizeStage 中的订阅状态
+          // 如果支付成功，刷新 MonetizeStage 中的额度状态
           if (paymentResult === 'success') {
             try {
-              const res = await paymentsApi.getSubscriptionStatus();
-              setSubscriptionStatus(res.status);
+              const res = await paymentsApi.getCreditsStatus();
+              setSubscriptionStatus(res.credits > 0 ? 'active' : 'inactive');
             } catch {
               // 忽略错误
             }

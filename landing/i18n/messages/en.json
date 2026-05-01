@@ -68,30 +68,23 @@
   "pricing": {
     "label": "PRICING",
     "title": "Simple, Transparent Pricing",
-    "subtitle": "Self-hosted is completely free. Cloud is pay-as-you-go with no hidden fees.",
-    "ctaPro": "Start Pro Trial",
+    "subtitle": "Self-hosted is completely free. Cloud is pay-as-you-go. Credits never expire.",
+    "ctaPayg": "Buy Credits",
     "ctaFree": "Get Started",
     "tiers": [
       {
         "name": "Free",
         "price": "$0",
-        "period": "/mo",
+        "period": "/forever",
         "desc": "For individual developers and small projects",
-        "features": ["Up to 3 projects", "Basic AI coach", "GO/NO-GO decisions", "Community support"]
+        "features": ["Unlimited projects", "20 AI conversations (registration gift)", "Full 6-stage workflow", "GO/NO-GO decisions", "Community support"]
       },
       {
-        "name": "Pro",
-        "price": "$9",
-        "period": "/mo",
-        "desc": "For full-time indie hackers and early teams",
-        "features": ["Unlimited projects", "Advanced AI coach (GPT-4 level)", "Monetization simulator", "Multi-platform copy generation", "Priority support"]
-      },
-      {
-        "name": "Team",
-        "price": "$29",
-        "period": "/mo",
-        "desc": "For small teams collaborating",
-        "features": ["Everything in Pro", "Team collaboration (up to 5)", "Shared project blueprints", "Custom AI model config", "Email support"]
+        "name": "Pay-as-you-go",
+        "price": "From $5",
+        "period": "/one-time",
+        "desc": "Buy AI credits when you need them. Never expire.",
+        "features": ["Unlimited projects", "$5 / 100 AI conversations", "$10 / 250 AI conversations", "$20 / 600 AI conversations", "Credits never expire", "Email support"]
       }
     ]
   },

@@ -76,6 +76,10 @@ class User(Base):
     # 主题偏好
     theme_preference = Column(String(20), default="dark", nullable=True)  # dark / light
 
+    # AI 额度系统（替代订阅制）
+    ai_credits = Column(Integer, default=20, nullable=False)  # 当前可用 AI 额度
+    ai_credits_total_consumed = Column(Integer, default=0, nullable=False)  # 累计消耗统计
+
     # 安全字段
     require_password_change = Column(Boolean, default=False, nullable=False)
     token_version = Column(Integer, default=0, nullable=False)  # 用于使旧 token 失效
@@ -239,6 +243,22 @@ class AgentTask(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     run = relationship("AgentRun", back_populates="tasks")
+
+
+# 额度流水表
+class CreditTransaction(Base):
+    __tablename__ = "credit_transactions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    type = Column(String(20), nullable=False)  # grant | purchase | consume | refund
+    amount = Column(Integer, nullable=False)   # 正数=增加，负数=扣除
+    balance_after = Column(Integer, nullable=False)  # 变动后的余额
+    description = Column(String(255), nullable=True)
+    reference_id = Column(String(255), nullable=True)  # Stripe session_id 或 AI call log id
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User")
 
 
 # 操作日志表

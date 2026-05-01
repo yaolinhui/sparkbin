@@ -117,7 +117,7 @@ export default async function HomePage({ params }: { params: { lang: string } })
           title={pricingT('title')}
           subtitle={pricingT('subtitle')}
           tiers={pricingT.raw('tiers') as Array<{ name: string; price: string; period: string; desc: string; features: string[] }>}
-          ctaPro={pricingT('ctaPro')}
+          ctaPayg={pricingT('ctaPayg')}
           ctaFree={pricingT('ctaFree')}
         />
         <CTABanner

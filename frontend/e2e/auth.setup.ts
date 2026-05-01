@@ -19,8 +19,8 @@ setup('authenticate', async ({ page }) => {
     await page.waitForTimeout(500);
   }
 
-  // 如果弹窗内有 LOGIN 按钮（登录表单已显示），无需再次点击
-  const loginBtn = page.locator('button').filter({ hasText: 'LOGIN' });
+  // 如果弹窗内有登录按钮（登录表单已显示），无需再次点击
+  const loginBtn = page.locator('button').filter({ hasText: '登录' });
 
   // 等待登录表单出现
   const usernameInput = page.locator('input[type="text"]').first();
@@ -45,7 +45,7 @@ setup('authenticate', async ({ page }) => {
   await usernameInput.fill('admin');
   await page.locator('input[type="password"]').first().fill('admin');
 
-  const loginButton = page.getByRole('button', { name: 'LOGIN' });
+  const loginButton = page.locator('form').getByRole('button', { name: '登录' });
   await loginButton.click();
 
   await page.waitForResponse(resp => resp.url().includes('/auth/login'), { timeout: 10000 }).catch(() => {});

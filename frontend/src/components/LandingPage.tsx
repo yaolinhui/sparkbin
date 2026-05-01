@@ -27,7 +27,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             </div>
             <div className="text-left">
               <h1 className="text-3xl font-mono font-bold text-brutal-text tracking-tight">SPARKBIN</h1>
-              <p className="text-xs font-mono text-brutal-muted">BACKEND AUTHENTICATION</p>
+              <p className="text-xs font-mono text-brutal-muted">账户认证</p>
             </div>
           </div>
           <p className="text-sm font-mono text-brutal-text-secondary mb-2">

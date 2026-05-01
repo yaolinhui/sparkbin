@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, ChevronRight, ChevronLeft, Maximize2, X, Heart, BarChart3, Coffee, Zap } from 'lucide-react';
+import { Send, ChevronRight, ChevronLeft, Maximize2, X, Heart, BarChart3, Coffee, Zap, AlertTriangle } from 'lucide-react';
 import { SafeMarkdown } from './SafeMarkdown';
 import { useI18n } from '../i18n/hooks';
 import { aiService, aiApi, type StageStreamMeta } from '../services/ai';
@@ -181,12 +181,14 @@ export function AIChat({
   const [retryUsed, setRetryUsed] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [aiQuota, setAiQuota] = useState<{ used: number; limit: number } | null>(null);
+  const [aiCredits, setAiCredits] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const fullscreenInputRef = useRef<HTMLTextAreaElement>(null);
   const streamingContentRef = useRef('');
   const streamingUpdateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const creditSyncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const petConfigKey = `sparkbin_pet_config_${getUserId() || 'guest'}`;
 
@@ -206,10 +208,7 @@ export function AIChat({
             localStorage.setItem(petConfigKey, JSON.stringify(config));
           }
           if (data.quota) {
-            setAiQuota({
-              used: data.quota.ai_calls_used_this_month,
-              limit: data.quota.ai_calls_limit,
-            });
+            setAiCredits(data.quota.ai_credits);
           }
         })
         .catch(() => {
@@ -233,6 +232,39 @@ export function AIChat({
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isFullscreen]);
+
+  // ===== 循环的优化：额度状态同步循环 =====
+  // 1. 轮询同步：每 30 秒从后端同步一次额度状态
+  useEffect(() => {
+    if (!isAuthenticated()) return;
+
+    const syncCredits = async () => {
+      try {
+        const data = await authApi.getMe();
+        if (data.quota) {
+          setAiCredits(data.quota.ai_credits);
+        }
+      } catch {
+        // 静默失败，不中断用户体验
+      }
+    };
+
+    // 立即执行一次
+    syncCredits();
+
+    // 每 30 秒轮询
+    creditSyncTimerRef.current = setInterval(syncCredits, 30000);
+
+    return () => {
+      if (creditSyncTimerRef.current) {
+        clearInterval(creditSyncTimerRef.current);
+        creditSyncTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  // 2. 临界阈值预警：额度 <= 3 时显示警告
+  const showCreditWarning = aiCredits !== null && aiCredits > 0 && aiCredits <= 3;
 
   const handleToggleCollapse = () => {
     onCollapsedChange?.(!isCollapsed);
@@ -335,10 +367,15 @@ export function AIChat({
     const textToSend = (messageText ?? input).trim();
     if (!textToSend || isThinking) return;
 
-    // AI 配额检查
-    if (aiQuota && aiQuota.limit > 0 && aiQuota.used >= aiQuota.limit) {
+    // AI 额度检查（启用支付模式时）
+    if (aiCredits !== null && aiCredits <= 0) {
       setShowUpgradeModal(true);
       return;
+    }
+
+    // 乐观扣费：先本地扣减 1 次额度，提升响应感知速度
+    if (aiCredits !== null && aiCredits > 0) {
+      setAiCredits((prev) => (prev !== null ? prev - 1 : prev));
     }
 
     const userMessage: Message = {
@@ -434,16 +471,35 @@ export function AIChat({
       if (generateKeywords.some((kw) => textToSend.toLowerCase().includes(kw))) {
         onGenerateContent?.(fullContent);
       }
+
+      // ===== 循环的设计：AI 阶段推进循环 =====
+      // 流结束后，如果有 next_question，自动聚焦输入框并预填充建议
+      const finalMsg = [...messages, userMessage].find((m) => m.id === aiMessage.id);
+      if (finalMsg?.nextQuestion) {
+        setInput(finalMsg.nextQuestion);
+        // 延迟聚焦，等待 DOM 更新
+        setTimeout(() => inputRef.current?.focus(), 100);
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       const isConfigError = errorMessage.includes('not configured') ||
                            errorMessage.includes('inactive') ||
                            errorMessage.includes('未配置') ||
                            errorMessage.includes('未激活');
-      if (isConfigError) {
-        setError(`${t('ai.error_prefix')} ${t('ai.config_required')}`);
+      const isCreditExhausted = errorMessage.includes('credits exhausted') ||
+                                errorMessage.includes('额度已用完') ||
+                                errorMessage.includes('402');
+      if (isCreditExhausted) {
+        setShowUpgradeModal(true);
+        setError(`${t('ai.error_prefix')} AI 额度已用完，请购买额度包继续`);
       } else {
-        setError(`${t('ai.error_prefix')} ${errorMessage}`);
+        // 非额度错误：恢复乐观扣减的额度（因为实际未消费）
+        setAiCredits((prev) => (prev !== null ? prev + 1 : prev));
+        if (isConfigError) {
+          setError(`${t('ai.error_prefix')} ${t('ai.config_required')}`);
+        } else {
+          setError(`${t('ai.error_prefix')} ${errorMessage}`);
+        }
       }
       setMessages((prev) => prev.filter((msg) => msg.id !== aiMessage.id));
     } finally {
@@ -527,9 +583,9 @@ export function AIChat({
               <div>
                 <div className="flex items-center gap-2">
                   <div className="font-mono text-sm font-bold">{petName}</div>
-                  {aiQuota && aiQuota.limit > 0 && (
-                    <span className={`text-[10px] font-mono px-1 py-0.5 border ${aiQuota.used >= aiQuota.limit ? 'text-brutal-warning border-brutal-warning/30' : 'text-brutal-muted border-brutal-border'}`}>
-                      AI: {aiQuota.used}/{aiQuota.limit}
+                  {aiCredits !== null && (
+                    <span className={`text-[10px] font-mono px-1 py-0.5 border ${aiCredits <= 3 ? 'text-brutal-warning border-brutal-warning/30' : 'text-brutal-muted border-brutal-border'}`}>
+                      AI: {aiCredits}
                     </span>
                   )}
                 </div>
@@ -605,6 +661,20 @@ export function AIChat({
             ))}
             <div ref={messagesEndRef} />
           </div>
+
+          {/* 额度预警 */}
+          {showCreditWarning && (
+            <div className="mx-6 mb-2 p-2 border border-brutal-warning/60 bg-brutal-warning/10 text-brutal-warning text-xs font-mono flex items-center gap-2 flex-shrink-0">
+              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>AI 额度仅剩 {aiCredits} 次，建议及时补充</span>
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="ml-auto underline hover:text-brutal-accent transition-colors"
+              >
+                购买额度
+              </button>
+            </div>
+          )}
 
           {/* 错误提示 */}
           {error && (
@@ -767,9 +837,9 @@ export function AIChat({
                 NATIVE
               </span>
             )}
-            {aiQuota && aiQuota.limit > 0 && (
-              <span className={`text-[10px] font-mono px-1 py-0.5 border ${aiQuota.used >= aiQuota.limit ? 'text-brutal-warning border-brutal-warning/30' : 'text-brutal-muted border-brutal-border'}`}>
-                AI: {aiQuota.used}/{aiQuota.limit}
+            {aiCredits !== null && (
+              <span className={`text-[10px] font-mono px-1 py-0.5 border ${aiCredits <= 3 ? 'text-brutal-warning border-brutal-warning/30' : 'text-brutal-muted border-brutal-border'}`}>
+                AI: {aiCredits}
               </span>
             )}
           </div>
@@ -874,6 +944,20 @@ export function AIChat({
         <div ref={messagesEndRef} />
       </div>
 
+      {/* 额度预警 */}
+      {showCreditWarning && (
+        <div className="mx-4 mb-2 p-2 border border-brutal-warning/60 bg-brutal-warning/10 text-brutal-warning text-xs font-mono flex items-center gap-2 flex-shrink-0">
+          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+          <span>AI 额度仅剩 {aiCredits} 次，建议及时补充</span>
+          <button
+            onClick={() => setShowUpgradeModal(true)}
+            className="ml-auto underline hover:text-brutal-accent transition-colors"
+          >
+            购买额度
+          </button>
+        </div>
+      )}
+
       {/* Error */}
       {error && (
         <div className="mx-4 mb-2 p-2 border border-brutal-warning text-brutal-warning text-xs font-mono flex-shrink-0">
@@ -912,6 +996,7 @@ export function AIChat({
       <div className="p-3 border-t border-brutal-border flex-shrink-0 bg-brutal-surface">
         <div className="flex gap-2">
           <textarea
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}

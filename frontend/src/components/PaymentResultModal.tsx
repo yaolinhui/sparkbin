@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle, XCircle, Loader2, CreditCard } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, CreditCard, Coins } from 'lucide-react';
 import { paymentsApi } from '../services/api';
 
 interface PaymentResultModalProps {
@@ -8,18 +8,18 @@ interface PaymentResultModalProps {
 }
 
 export function PaymentResultModal({ result, onClose }: PaymentResultModalProps) {
-  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
+  const [creditsStatus, setCreditsStatus] = useState<{ credits: number; total_consumed: number } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (result === 'success') {
       setIsLoading(true);
-      paymentsApi.getSubscriptionStatus()
+      paymentsApi.getCreditsStatus()
         .then((res) => {
-          setSubscriptionStatus(res.status);
+          setCreditsStatus(res);
         })
         .catch(() => {
-          setSubscriptionStatus('unknown');
+          setCreditsStatus(null);
         })
         .finally(() => {
           setIsLoading(false);
@@ -49,19 +49,19 @@ export function PaymentResultModal({ result, onClose }: PaymentResultModalProps)
           {isSuccess ? (
             <>
               <p className="text-sm font-mono text-brutal-text">
-                Your test subscription has been activated. This is a simulated payment in Stripe Test Mode — no real money was charged.
+                额度购买成功！AI 额度已充值到你的账户，永久有效，永不过期。
               </p>
 
               <div className="p-3 border border-brutal-border bg-brutal-bg">
-                <div className="text-[10px] text-brutal-muted font-mono uppercase mb-1">Subscription Status</div>
+                <div className="text-[10px] text-brutal-muted font-mono uppercase mb-1">当前额度</div>
                 <div className="flex items-center gap-2">
                   {isLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin text-brutal-accent" />
                   ) : (
                     <>
-                      <span className={`w-2 h-2 rounded-full ${subscriptionStatus === 'active' ? 'bg-brutal-success' : 'bg-brutal-warning'}`} />
-                      <span className="text-sm font-mono font-bold text-brutal-text uppercase">
-                        {subscriptionStatus || 'pending'}
+                      <Coins className="w-4 h-4 text-brutal-accent" />
+                      <span className="text-sm font-mono font-bold text-brutal-text">
+                        {creditsStatus?.credits ?? '--'} Credits
                       </span>
                     </>
                   )}
@@ -69,7 +69,7 @@ export function PaymentResultModal({ result, onClose }: PaymentResultModalProps)
               </div>
 
               <div className="p-3 border border-brutal-accent/30 bg-brutal-accent/5 text-xs font-mono text-brutal-muted">
-                <span className="text-brutal-accent">{'>'}</span> Webhook received from Stripe. User record updated in backend.
+                <span className="text-brutal-accent">{'>'}</span> Webhook received from Stripe. Credits updated in backend.
               </div>
             </>
           ) : (

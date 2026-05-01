@@ -20,35 +20,8 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 
 
 def _check_project_limit(user: User, db) -> None:
-    """检查用户项目数量上限，超出则抛出 403"""
-    settings = get_settings()
-    # 测试模式 / 调试模式下不限制项目数量，避免 E2E 测试因配额耗尽失败
-    if os.environ.get("SPARKBIN_TESTING") == "1" or settings.debug:
-        return
-    # 自托管模式或未配置 Stripe：不限制
-    if not settings.stripe_secret_key:
-        return
-    # 管理员不限制
-    if user.role.value == "admin":
-        return
-
-    tier = user.current_tier_id or "free"
-    tier_limits = {"free": 3, "pro": None, "team": None}
-    limit = tier_limits.get(tier, 3)
-
-    if limit is None:
-        return
-
-    count = db.query(func.count(Project.id)).filter(
-        Project.user_id == user.id,
-        Project.deleted_at.is_(None)
-    ).scalar() or 0
-
-    if count >= limit:
-        raise HTTPException(
-            status_code=403,
-            detail=f"免费版最多创建 {limit} 个项目。请升级至 Pro 以创建无限项目。"
-        )
+    """项目数量不再限制（免费无限）"""
+    pass
 
 
 def _project_to_detail(project: Project) -> ProjectDetail:

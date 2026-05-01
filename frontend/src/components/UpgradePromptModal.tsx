@@ -1,30 +1,66 @@
-import { X, Zap } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Zap, Coins, Loader2 } from 'lucide-react';
+import { paymentsApi } from '../services/api';
+import { useToast } from '../hooks/useToast';
 
 interface UpgradePromptProps {
   isOpen: boolean;
   onClose: () => void;
-  feature: 'projects' | 'ai_calls' | 'analysis';
+  feature: 'ai_calls' | 'analysis' | 'projects';
 }
 
-const MESSAGES = {
-  projects: {
-    title: '项目数量已达上限',
-    desc: '免费版最多创建 3 个项目。升级 Pro 可创建无限项目，并获得 500 次 AI 调用/月。',
-  },
-  ai_calls: {
-    title: 'AI 调用配额已用完',
-    desc: '本月 AI 调用次数已达上限。升级 Pro 可获得 500 次/月，让 AI 伙伴继续为你出谋划策。',
-  },
-  analysis: {
-    title: 'Pro 功能',
-    desc: '深度分析、竞品模拟、导出 PDF 等功能为 Pro 专属。升级后立即解锁全部能力。',
-  },
-};
-
 export function UpgradePromptModal({ isOpen, onClose, feature }: UpgradePromptProps) {
+  const { showToast } = useToast();
+  const [packs, setPacks] = useState<{ price_usd: number; credits: number; label: string }[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setIsLoading(true);
+    paymentsApi.getCreditPacks()
+      .then(setPacks)
+      .catch(() => {
+        // 如果后端未启用支付，显示空列表
+        setPacks([]);
+      })
+      .finally(() => setIsLoading(false));
+  }, [isOpen]);
+
+  const handlePurchase = async (packIndex: number) => {
+    setIsPurchasing(true);
+    try {
+      const successUrl = `${window.location.origin}/payment/success`;
+      const cancelUrl = `${window.location.origin}/payment/cancel`;
+      const res = await paymentsApi.purchaseCredits({
+        pack_index: packIndex,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+      });
+      if (res.session_url) {
+        window.location.href = res.session_url;
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '购买失败';
+      showToast(msg, 'error');
+    } finally {
+      setIsPurchasing(false);
+    }
+  };
+
   if (!isOpen) return null;
 
-  const msg = MESSAGES[feature];
+  const title = feature === 'ai_calls'
+    ? 'AI 额度已用完'
+    : feature === 'projects'
+    ? '项目数量已达上限'
+    : '额度不足';
+
+  const desc = feature === 'ai_calls'
+    ? '你的 AI 对话额度已用完。购买额度包即可继续使用 AI 伙伴，额度永久有效，永不过期。'
+    : feature === 'projects'
+    ? '免费版项目数量已达上限。升级后可创建无限项目，释放你的所有创意。'
+    : '当前 AI 额度不足以执行此操作。';
 
   return (
     <div className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
@@ -33,7 +69,7 @@ export function UpgradePromptModal({ isOpen, onClose, feature }: UpgradePromptPr
         <div className="flex items-center justify-between p-4 border-b border-brutal-border bg-brutal-bg">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-brutal-accent" />
-            <span className="text-sm font-mono font-bold">{msg.title}</span>
+            <span className="text-sm font-mono font-bold">{title}</span>
           </div>
           <button
             onClick={onClose}
@@ -46,35 +82,56 @@ export function UpgradePromptModal({ isOpen, onClose, feature }: UpgradePromptPr
         {/* Body */}
         <div className="p-6">
           <p className="text-sm text-brutal-muted font-mono leading-relaxed mb-6">
-            {msg.desc}
+            {desc}
           </p>
 
-          <div className="space-y-3">
-            <div className="border border-brutal-border p-3 bg-brutal-bg">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-xs font-mono font-bold">Pro</span>
-                <span className="text-xs font-mono text-brutal-accent">$9/月</span>
-              </div>
-              <ul className="text-[11px] font-mono text-brutal-muted space-y-0.5">
-                <li>• 无限项目</li>
-                <li>• 500 次 AI 调用/月</li>
-                <li>• 深度分析 + 导出 PDF</li>
-                <li>• GitHub 自动备份</li>
-              </ul>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-brutal-accent" />
             </div>
-          </div>
+          ) : packs.length === 0 ? (
+            <div className="border border-brutal-border p-4 bg-brutal-bg text-center">
+              <Coins className="w-6 h-6 text-brutal-muted mx-auto mb-2" />
+              <p className="text-xs font-mono text-brutal-muted">
+                当前为自托管模式，无需购买额度
+              </p>
+              <p className="text-[10px] font-mono text-brutal-muted mt-1">
+                请联系管理员检查 enable_payments 配置
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {packs.map((pack, index) => (
+                <div
+                  key={index}
+                  className="border border-brutal-border p-3 bg-brutal-bg flex items-center justify-between"
+                >
+                  <div>
+                    <div className="text-sm font-mono font-bold flex items-center gap-2">
+                      <Coins className="w-3.5 h-3.5 text-brutal-accent" />
+                      {pack.credits} Credits
+                    </div>
+                    <div className="text-xs font-mono text-brutal-muted mt-0.5">
+                      永久有效 · 永不过期
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handlePurchase(index)}
+                    disabled={isPurchasing}
+                    className="px-4 py-2 bg-brutal-accent text-brutal-bg text-xs font-mono font-bold hover:bg-brutal-accent/90 transition-colors disabled:opacity-50"
+                  >
+                    ${pack.price_usd}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Actions */}
         <div className="flex gap-3 p-4 border-t border-brutal-border bg-brutal-bg">
           <button onClick={onClose} className="flex-1 btn-brutal h-9 py-3">
             稍后再说
-          </button>
-          <button
-            onClick={() => window.open('https://sparkbin.dev/pricing', '_blank')}
-            className="flex-1 btn-brutal-primary h-9 py-3"
-          >
-            查看定价
           </button>
         </div>
       </div>

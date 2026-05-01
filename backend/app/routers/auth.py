@@ -17,7 +17,7 @@ from ..auth import (
     create_email_verification_token, create_password_reset_token, decode_email_token,
     generate_captcha, verify_captcha, is_captcha_required, get_login_attempts_remaining,
 )
-from ..models import User, LoginAuditLog, Project, AICallLog, UserRole
+from ..models import User, LoginAuditLog, Project, AICallLog, UserRole, CreditTransaction
 from ..schemas import (
     LoginRequest, LoginResponse, ChangePasswordRequest, BaseResponse,
     PreferredModelUpdate, PetConfigUpdate, ThemePreferenceUpdate,
@@ -249,50 +249,8 @@ def change_password(
 
 
 def _get_user_quota(user: User, db: Session):
-    """计算用户当前配额使用情况"""
+    """计算用户当前配额使用情况（新额度制）"""
     settings = get_settings()
-
-    # 测试模式 / 调试模式下不限制项目数量，避免 E2E 测试因配额耗尽失败
-    if os.environ.get("SPARKBIN_TESTING") == "1" or settings.debug:
-        return {
-            "ai_calls_used_this_month": 0,
-            "ai_calls_limit": -1,
-            "projects_used": 0,
-            "projects_limit": None,
-        }
-
-    # 自托管模式：无限制
-    if not settings.stripe_secret_key:
-        return {
-            "ai_calls_used_this_month": 0,
-            "ai_calls_limit": -1,
-            "projects_used": 0,
-            "projects_limit": None,
-        }
-
-    # 管理员无限制
-    if user.role.value == "admin":
-        return {
-            "ai_calls_used_this_month": 0,
-            "ai_calls_limit": -1,
-            "projects_used": 0,
-            "projects_limit": None,
-        }
-
-    tier = user.current_tier_id or "free"
-    tier_ai_limits = {"free": 30, "pro": 500, "team": 2000}
-    tier_project_limits = {"free": 3, "pro": None, "team": None}
-
-    ai_limit = tier_ai_limits.get(tier, 30)
-    project_limit = tier_project_limits.get(tier, 3)
-
-    # 本月 AI 调用次数
-    now = datetime.utcnow()
-    start_of_month = datetime(now.year, now.month, 1)
-    ai_used = db.query(func.count(AICallLog.id)).filter(
-        AICallLog.user_id == user.id,
-        AICallLog.created_at >= start_of_month
-    ).scalar() or 0
 
     # 项目数量（排除软删除）
     project_used = db.query(func.count(Project.id)).filter(
@@ -301,10 +259,10 @@ def _get_user_quota(user: User, db: Session):
     ).scalar() or 0
 
     return {
-        "ai_calls_used_this_month": ai_used,
-        "ai_calls_limit": ai_limit,
+        "ai_credits": user.ai_credits,
+        "ai_credits_total_consumed": user.ai_credits_total_consumed,
         "projects_used": project_used,
-        "projects_limit": project_limit,
+        "projects_limit": None,  # 项目无限
     }
 
 
@@ -314,6 +272,7 @@ def get_me(
     db: Session = Depends(get_db)
 ):
     """获取当前用户信息（含配额）"""
+    settings = get_settings()
     quota = _get_user_quota(current_user, db)
     return {
         "id": current_user.id,
@@ -330,6 +289,7 @@ def get_me(
         "require_password_change": current_user.require_password_change,
         "oauth_provider": current_user.oauth_provider,
         "oauth_id": current_user.oauth_id,
+        "enable_payments": settings.enable_payments,
         "quota": quota,
         "created_at": current_user.created_at
     }
@@ -449,6 +409,7 @@ def register(
         )
 
     # 创建用户
+    settings = get_settings()
     new_user = User(
         username=request.username,
         email=request.email,
@@ -456,10 +417,23 @@ def register(
         password_hash=hash_password(request.password),
         role=UserRole.USER,
         require_password_change=False,
+        ai_credits=settings.credits_grant_on_register,
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # 写入注册赠送额度流水
+    if settings.credits_grant_on_register > 0:
+        tx = CreditTransaction(
+            user_id=new_user.id,
+            type="grant",
+            amount=settings.credits_grant_on_register,
+            balance_after=settings.credits_grant_on_register,
+            description="注册赠送",
+        )
+        db.add(tx)
+        db.commit()
 
     # 发送验证邮件（异步，失败不阻断注册）
     settings = get_settings()

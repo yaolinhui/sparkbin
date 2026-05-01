@@ -18,14 +18,6 @@ interface IdeaSuggestModalProps {
   onOverwrite: () => Promise<void>;
 }
 
-const AI_PET_CAT = `
-    /\\_/\\
-   ( o.o )
-    > ^ <
-   /|   |\\
-  (_|   |_)
-`;
-
 const DEFAULT_PLACEHOLDERS = [
   '描述你想解决的核心问题...',
   '谁会使用这个产品？',
@@ -37,6 +29,25 @@ const DEFAULT_PLACEHOLDERS = [
 
 function isPlaceholder(content: string): boolean {
   return DEFAULT_PLACEHOLDERS.some((p) => content.includes(p));
+}
+
+const SKELETON_TITLES = ['核心痛点', '目标用户', '使用场景', '解决方案', '差异化价值'];
+
+function SkeletonCard({ title }: { title: string }) {
+  return (
+    <div className="grid grid-cols-2 border-b border-brutal-border last:border-b-0 animate-pulse">
+      <div className="p-3 border-r border-brutal-border">
+        <div className="text-xs font-mono text-brutal-muted mb-1">{title}</div>
+        <div className="h-4 bg-brutal-border/40 rounded w-3/4 mb-2" />
+        <div className="h-4 bg-brutal-border/40 rounded w-1/2" />
+      </div>
+      <div className="p-3">
+        <div className="text-xs font-mono text-brutal-accent mb-1">{title}</div>
+        <div className="h-4 bg-brutal-accent/20 rounded w-full mb-2" />
+        <div className="h-4 bg-brutal-accent/20 rounded w-2/3" />
+      </div>
+    </div>
+  );
 }
 
 export function IdeaSuggestModal({
@@ -145,16 +156,18 @@ export function IdeaSuggestModal({
           )}
 
           {isLoading && (
-            <div className="flex items-start gap-4 p-4 border border-brutal-border bg-brutal-bg">
-              <pre className="text-xs text-brutal-accent font-mono leading-none">{AI_PET_CAT}</pre>
-              <div>
-                <p className="text-sm font-mono text-brutal-text">正在分析你的想法...</p>
-                <p className="text-xs text-brutal-muted mt-1">AI 正在根据你的原始想法生成建议</p>
-                <div className="mt-3 flex gap-1">
-                  <div className="w-2 h-2 bg-brutal-accent animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 bg-brutal-accent animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-2 h-2 bg-brutal-accent animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
+            <div className="space-y-4">
+              <div className="p-3 border border-brutal-border bg-brutal-bg text-xs font-mono text-brutal-muted">
+                <span className="text-brutal-accent">&gt;</span> AI 正在根据你的原始想法生成建议…
+              </div>
+              <div className="border border-brutal-border">
+                {SKELETON_TITLES.map((title) => (
+                  <SkeletonCard key={title} title={title} />
+                ))}
+              </div>
+              <div className="flex items-center gap-2 text-xs font-mono text-brutal-muted">
+                <div className="w-3 h-3 border border-brutal-accent border-t-transparent animate-spin" />
+                预计需要 10-15 秒，可以先看看右侧现有内容
               </div>
             </div>
           )}
