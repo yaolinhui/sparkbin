@@ -40,13 +40,93 @@ const AI_PET_ROBOT = `
      d b
 `;
 
-const PLATFORMS: { type: PlatformType; label: string; icon: typeof Globe; description: string; recommended?: boolean }[] = [
-  { type: 'web', label: 'Web 网站', icon: Globe, description: '适合大多数用户，易于分享', recommended: true },
-  { type: 'miniapp', label: '小程序', icon: Smartphone, description: '微信/支付宝生态，即用即走' },
-  { type: 'ios', label: 'iOS App', icon: Smartphone, description: 'App Store 发布，体验原生' },
-  { type: 'android', label: 'Android App', icon: Smartphone, description: 'Google Play 或国内渠道' },
-  { type: 'desktop', label: '桌面应用', icon: Monitor, description: 'Windows/Mac 客户端' },
+interface PlatformConfig {
+  type: PlatformType;
+  label: string;
+  icon: typeof Globe;
+  description: string;
+  details: string;
+  pros: string[];
+  cons: string[];
+  recommended?: boolean;
+  recommendReason?: string;
+}
+
+const PLATFORMS: PlatformConfig[] = [
+  {
+    type: 'web',
+    label: 'Web 网站',
+    icon: Globe,
+    description: '适合大多数用户，易于分享',
+    details: '无需安装，打开浏览器即可使用。跨平台兼容（手机、电脑、平板），更新即时生效，适合快速验证和迭代。',
+    pros: ['开发周期短', '无需审核', '跨平台', '易于分享传播'],
+    cons: ['需要联网', '功能受浏览器限制'],
+    recommended: true,
+    recommendReason: '默认首选 — 开发成本最低，用户触达最快',
+  },
+  {
+    type: 'miniapp',
+    label: '小程序',
+    icon: Smartphone,
+    description: '微信/支付宝生态，即用即走',
+    details: '依托超级 App（微信/支付宝/抖音）的流量入口，用户无需下载安装，扫码或搜索即可使用。适合服务类、工具类、电商类产品。',
+    pros: ['庞大流量池', '即用即走', '社交传播强', '开发成本较低'],
+    cons: ['平台规则限制', '功能受限', '依赖微信生态'],
+    recommendReason: '适合需要利用社交裂变或微信生态的项目',
+  },
+  {
+    type: 'ios',
+    label: 'iOS App',
+    icon: Smartphone,
+    description: 'App Store 发布，体验原生',
+    details: '面向 iPhone 和 iPad 用户，原生性能体验最佳。适合需要调用相机、GPS、推送通知等原生能力的重度应用。',
+    pros: ['用户体验最佳', '付费意愿高', '生态成熟', '安全性强'],
+    cons: ['审核周期长', '需要 Mac 设备', '30% 苹果税'],
+    recommendReason: '适合面向高端用户、需要原生体验的复杂应用',
+  },
+  {
+    type: 'android',
+    label: 'Android App',
+    icon: Smartphone,
+    description: 'Google Play 或国内渠道',
+    details: '覆盖最广泛的手机用户群体，支持多种应用商店分发。系统开放性强，可实现更深度的系统集成。',
+    pros: ['用户基数最大', '系统开放', '分发渠道多', '开发门槛较低'],
+    cons: ['设备碎片化', '审核相对宽松但渠道复杂', '付费率较低'],
+    recommendReason: '适合需要覆盖最大用户量、快速获取市场的项目',
+  },
+  {
+    type: 'desktop',
+    label: '桌面应用',
+    icon: Monitor,
+    description: 'Windows/Mac 客户端',
+    details: '为专业用户和重度工作者打造，适合需要大量数据处理、复杂交互或长时间使用的生产力工具。',
+    pros: ['性能最强', '功能无限制', '适合专业场景', '可离线使用'],
+    cons: ['开发成本高', '需要分别适配 Win/Mac', '分发难度大'],
+    recommendReason: '适合面向专业用户、需要高性能和复杂交互的工具类项目',
+  },
 ];
+
+// 根据项目信息智能推荐平台
+function getPlatformRecommendation(project: Project): { platform: PlatformType; reason: string } {
+  const pain = project.painPoint.toLowerCase();
+  const title = project.title.toLowerCase();
+  const text = pain + ' ' + title;
+
+  if (/微信|小程序|社交|群|朋友圈|扫码|附近/.test(text)) {
+    return { platform: 'miniapp', reason: '项目关键词匹配小程序生态（微信/社交/扫码）' };
+  }
+  if (/相机|拍照|定位|导航|地图|传感器|原生|推送/.test(text)) {
+    return { platform: 'ios', reason: '项目需要调用手机原生能力（相机/定位/推送）' };
+  }
+  if (/工具|效率|办公|设计|剪辑|数据处理|桌面/.test(text)) {
+    return { platform: 'desktop', reason: '项目面向专业工作者，适合桌面端重度使用场景' };
+  }
+  if (/安卓|android|小米|华为|oppo|vivo|三星/.test(text)) {
+    return { platform: 'android', reason: '目标用户明确为 Android 用户群体' };
+  }
+
+  return { platform: 'web', reason: 'Web 是最快验证想法的选择，无需审核、跨平台、易于传播' };
+}
 
 const PRIORITY_CONFIG = {
   P0: { label: 'P0 核心', color: 'bg-red-500 text-white', desc: 'MVP必须' },
@@ -367,10 +447,11 @@ export function PrototypeStage({ project, onUpdateContent, isLocked, onToggleLoc
       )}
 
       {/* Main Content */}
-      <div className="flex-1 overflow-hidden min-h-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
         <div className="flex-1 min-h-0 overflow-y-auto p-6">
           {currentStep === 'platform' && (
           <PlatformSelector
+            project={project}
             selected={data.selectedPlatform}
             onSelect={selectPlatform}
             disabled={isLocked}
@@ -674,45 +755,118 @@ function StepIndicator({
 
 // 子组件：平台选择器
 function PlatformSelector({
+  project,
   selected,
   onSelect,
   disabled,
 }: {
+  project: Project;
   selected?: PlatformType;
   onSelect: (p: PlatformType) => void;
   disabled: boolean;
 }) {
+  const recommendation = getPlatformRecommendation(project);
+
   return (
-    <div className="max-w-4xl mx-auto">
-      <h3 className="text-sm font-mono text-brutal-text mb-6">
-        选择目标平台（决定技术方案和用户体验）
-      </h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+    <div className="max-w-5xl mx-auto">
+      {/* 顶部引导 */}
+      <div className="mb-6">
+        <h3 className="text-sm font-mono font-bold text-brutal-text mb-2">
+          选择目标平台
+        </h3>
+        <p className="text-xs font-mono text-brutal-muted">
+          平台决定技术方案、用户体验和分发策略。根据你的项目特点，系统给出了推荐建议。
+        </p>
+      </div>
+
+      {/* 智能推荐提示 */}
+      <div className="mb-6 p-3 border border-brutal-accent bg-brutal-accent/5 flex items-start gap-3">
+        <span className="text-brutal-accent text-lg">💡</span>
+        <div>
+          <span className="text-xs font-mono text-brutal-accent font-bold">
+            推荐方案：{PLATFORMS.find(p => p.type === recommendation.platform)?.label}
+          </span>
+          <p className="text-xs font-mono text-brutal-muted mt-1">
+            {recommendation.reason}
+          </p>
+        </div>
+      </div>
+
+      {/* 平台卡片网格 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {PLATFORMS.map((platform) => {
           const Icon = platform.icon;
           const isSelected = selected === platform.type;
+          const isRecommended = recommendation.platform === platform.type;
 
           return (
             <button
               key={platform.type}
               onClick={() => !disabled && onSelect(platform.type)}
               disabled={disabled}
-              className={`p-6 border-2 text-left transition-all ${
+              className={`group p-5 border-2 text-left transition-all ${
                 isSelected
                   ? 'border-brutal-accent bg-brutal-accent/10'
+                  : isRecommended
+                  ? 'border-brutal-accent/40 hover:border-brutal-accent'
                   : 'border-brutal-border hover:border-brutal-accent/50'
               } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
             >
+              {/* 头部：图标 + 标签 */}
               <div className="flex items-start justify-between mb-3">
-                <Icon className={`w-8 h-8 ${isSelected ? 'text-brutal-accent' : 'text-brutal-muted'}`} />
-                {platform.recommended && (
-                  <span className="text-xs px-2 py-0.5 bg-brutal-accent text-brutal-bg font-mono">
+                <div className="flex items-center gap-3">
+                  <Icon className={`w-7 h-7 ${isSelected ? 'text-brutal-accent' : 'text-brutal-muted group-hover:text-brutal-text'}`} />
+                  <h4 className="font-mono font-bold text-sm text-brutal-text">{platform.label}</h4>
+                </div>
+                {isRecommended && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-brutal-accent text-brutal-bg font-mono">
                     推荐
                   </span>
                 )}
               </div>
-              <h4 className="font-mono font-bold text-brutal-text mb-1">{platform.label}</h4>
-              <p className="text-xs font-mono text-brutal-muted">{platform.description}</p>
+
+              {/* 一句话描述 */}
+              <p className="text-xs font-mono text-brutal-muted mb-3">
+                {platform.description}
+              </p>
+
+              {/* 详细说明 */}
+              <p className="text-[11px] font-mono text-brutal-muted/70 mb-3 leading-relaxed">
+                {platform.details}
+              </p>
+
+              {/* 推荐理由（仅推荐项显示） */}
+              {isRecommended && platform.recommendReason && (
+                <div className="mb-3 text-[11px] font-mono text-brutal-accent bg-brutal-accent/5 p-2 border border-brutal-accent/20">
+                  {platform.recommendReason}
+                </div>
+              )}
+
+              {/* 优劣势标签 */}
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-1">
+                  {platform.pros.map(pro => (
+                    <span key={pro} className="text-[10px] px-1.5 py-0.5 bg-brutal-success/10 text-brutal-success font-mono">
+                      + {pro}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {platform.cons.map(con => (
+                    <span key={con} className="text-[10px] px-1.5 py-0.5 bg-brutal-warning/10 text-brutal-warning font-mono">
+                      - {con}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* 选中指示器 */}
+              {isSelected && (
+                <div className="mt-3 flex items-center gap-2 text-xs font-mono text-brutal-accent">
+                  <Check className="w-3 h-3" />
+                  已选择
+                </div>
+              )}
             </button>
           );
         })}

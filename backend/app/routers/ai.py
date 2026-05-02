@@ -37,22 +37,21 @@ from datetime import datetime
 
 def _check_ai_quota(user: User, db: Session) -> None:
     """检查用户 AI 调用额度，余额不足则抛出 402"""
-    settings = get_settings()
-    # 未启用支付（自托管模式）或管理员：不限制
-    if not settings.enable_payments or user.role.value == "admin":
+    # 管理员不限制额度
+    if user.role.value == "admin":
         return
 
     if user.ai_credits <= 0:
         raise HTTPException(
             status_code=402,
-            detail="AI credits exhausted. Please purchase more credits to continue.",
+            detail="AI 调用额度已耗尽。请联系管理员获取更多额度。",
         )
 
 
 def _deduct_ai_credit(user: User, db: Session, reference_id: str | None = None) -> None:
     """扣除一次 AI 调用额度并写入流水"""
-    settings = get_settings()
-    if not settings.enable_payments or user.role.value == "admin":
+    # 管理员不扣额度
+    if user.role.value == "admin":
         return
 
     user.ai_credits -= 1

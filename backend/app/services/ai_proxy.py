@@ -206,10 +206,9 @@ class AIProxyService:
         payload = {
             "model": config.default_model,
             "messages": messages,
-            "stream": stream
+            "stream": stream,
+            "max_tokens": max_tokens if max_tokens is not None else 2048,
         }
-        if max_tokens is not None:
-            payload["max_tokens"] = max_tokens
         if temperature is not None:
             payload["temperature"] = temperature
 
