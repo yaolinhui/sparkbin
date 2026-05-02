@@ -8,7 +8,7 @@ from uuid import UUID
 
 from ..database import get_db
 from ..auth import get_current_user, require_admin
-from ..models import User, AIProvider, AIConfig, AICallLog, Project, Stage, StageKey, CreditTransaction
+from ..models import User, AIProvider, AIConfig, AICallLog, Project, Stage, StageKey
 from ..schemas import (
     AIProviderInfo, AIConfigUpdate, AIChatRequest,
     AIPromoteSuggestRequest, PromoteSuggestionInfo, BaseResponse,
@@ -33,40 +33,26 @@ from sqlalchemy import func
 from datetime import datetime
 
 
-# ========== AI 额度检查与扣费 ==========
+# ========== AI 额度检查与扣费（开源版本：无限制）==========
 
-def _check_ai_quota(user: User, db: Session) -> None:
-    """检查用户 AI 调用额度，余额不足则抛出 402"""
-    # 管理员不限制额度
-    if user.role.value == "admin":
-        return
-
-    if user.ai_credits <= 0:
-        raise HTTPException(
-            status_code=402,
-            detail="AI 调用额度已耗尽。请联系管理员获取更多额度。",
-        )
+def _check_ai_quota(user: User, db: Session, required: int = 1) -> None:
+    """检查用户 AI 调用额度（开源版本：不做任何限制）"""
+    pass
 
 
-def _deduct_ai_credit(user: User, db: Session, reference_id: str | None = None) -> None:
-    """扣除一次 AI 调用额度并写入流水"""
-    # 管理员不扣额度
-    if user.role.value == "admin":
-        return
+def _hold_ai_credit(user: User, db: Session, reference_id: str | None = None) -> None:
+    """预扣 AI 额度（开源版本：不做任何扣费）"""
+    pass
 
-    user.ai_credits -= 1
-    user.ai_credits_total_consumed += 1
 
-    tx = CreditTransaction(
-        user_id=user.id,
-        type="consume",
-        amount=-1,
-        balance_after=user.ai_credits,
-        description="AI 对话消耗",
-        reference_id=reference_id,
-    )
-    db.add(tx)
-    db.commit()
+def _confirm_ai_credit(tx: None, db: Session) -> None:
+    """确认扣费（开源版本：空操作）"""
+    pass
+
+
+def _refund_ai_credit(user: User, tx: None, db: Session) -> None:
+    """调用失败时退还额度（开源版本：空操作）"""
+    pass
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 logger = logging.getLogger(__name__)
@@ -236,7 +222,6 @@ async def chat_completion(
     返回 SSE 流
     """
     _check_ai_quota(current_user, db)
-    _deduct_ai_credit(current_user, db, reference_id="chat")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
 
     merged_messages = list(request.messages)
@@ -371,15 +356,17 @@ async def generate_promote_suggestions(
 ):
     """生成推广建议"""
     _check_ai_quota(current_user, db)
-    _deduct_ai_credit(current_user, db, reference_id="promote-suggest")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
 
-    suggestions = await ai_service.generate_promote_suggestions(
-        provider=request.provider,
-        project_title=request.project_title,
-        pain_point=request.pain_point,
-        project_description=request.project_description
-    )
+    try:
+        suggestions = await ai_service.generate_promote_suggestions(
+            provider=request.provider,
+            project_title=request.project_title,
+            pain_point=request.pain_point,
+            project_description=request.project_description
+        )
+    except Exception:
+        raise
 
     # 保存到数据库（关联到项目）
     from ..models import PromoteSuggestion
@@ -419,19 +406,21 @@ async def generate_idea_suggestions(
 ):
     """生成想法阶段便利贴建议"""
     _check_ai_quota(current_user, db)
-    _deduct_ai_credit(current_user, db, reference_id="idea-suggest")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
 
     # 使用用户首选模型，如果没有则默认使用 DeepSeek
     provider = current_user.preferred_model or AIProvider.DEEPSEEK
 
-    suggestions = await ai_service.generate_idea_suggestions(
-        provider=provider,
-        title=request.title,
-        pain_point=request.pain_point,
-        original_idea=request.original_idea,
-        current_notes=[{"title": n.title, "content": n.content} for n in request.current_notes]
-    )
+    try:
+        suggestions = await ai_service.generate_idea_suggestions(
+            provider=provider,
+            title=request.title,
+            pain_point=request.pain_point,
+            original_idea=request.original_idea,
+            current_notes=[{"title": n.title, "content": n.content} for n in request.current_notes]
+        )
+    except Exception:
+        raise
 
     return IdeaSuggestResponse(notes=suggestions)
 
@@ -444,20 +433,22 @@ async def generate_validate_suggestions(
 ):
     """生成验证阶段建议（验证项 + 验证工具 + 分析）"""
     _check_ai_quota(current_user, db)
-    _deduct_ai_credit(current_user, db, reference_id="validate-suggest")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
 
     # 使用用户首选模型，如果没有则默认使用 DeepSeek
     provider = current_user.preferred_model or AIProvider.DEEPSEEK
 
-    suggestions = await ai_service.generate_validate_suggestions(
-        provider=provider,
-        title=request.title,
-        pain_point=request.pain_point,
-        original_idea=request.original_idea,
-        current_items=[{"title": i.title, "description": i.description, "method": i.method} for i in request.current_items],
-        current_tools=[{"type": t.type, "title": t.title, "content": t.content} for t in request.current_tools]
-    )
+    try:
+        suggestions = await ai_service.generate_validate_suggestions(
+            provider=provider,
+            title=request.title,
+            pain_point=request.pain_point,
+            original_idea=request.original_idea,
+            current_items=[{"title": i.title, "description": i.description, "method": i.method} for i in request.current_items],
+            current_tools=[{"type": t.type, "title": t.title, "content": t.content} for t in request.current_tools]
+        )
+    except Exception:
+        raise
 
     return ValidateSuggestResponse(
         items=suggestions["items"],
@@ -548,9 +539,7 @@ async def run_agent_cockpit(
     from ..agents import AgentOrchestrator
     from ..services.stage_context import evaluate_stage_content
 
-    # 检查配额并扣费
     _check_ai_quota(current_user, db)
-    _deduct_ai_credit(current_user, db, reference_id="agent-run")
 
     project = db.query(Project).filter(
         Project.id == request.project_id,
@@ -592,13 +581,16 @@ async def run_agent_cockpit(
     }
 
     # 启动编排器
-    orchestrator = AgentOrchestrator(db, user_id=str(current_user.id))
-    result = await orchestrator.run(
-        project=project_snapshot,
-        stage_evaluations=stage_evaluations,
-        strategy=request.strategy,
-        preferred_provider=request.provider,
-    )
+    try:
+        orchestrator = AgentOrchestrator(db, user_id=str(current_user.id))
+        result = await orchestrator.run(
+            project=project_snapshot,
+            stage_evaluations=stage_evaluations,
+            strategy=request.strategy,
+            preferred_provider=request.provider,
+        )
+    except Exception:
+        raise
 
     return AgentRunStatus(
         run_id=UUID(result["run_id"]),

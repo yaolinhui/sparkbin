@@ -25,23 +25,7 @@ class Settings(BaseSettings):
     github_repo: str = ""
     github_file_path: str = "data/projects.json"
 
-    # 商业模式开关
-    enable_payments: bool = False  # 是否启用支付/充值功能（SaaS=true, 自托管=false）
-    enable_saas_features: bool = False  # SaaS 专属功能开关
-    credits_grant_on_register: int = 20  # 注册赠送 AI 额度
-    credits_packs: str = "5:100,10:250,20:600"  # 价格(美元):额度数
-
-    # Stripe 支付配置（测试模式）
-    stripe_secret_key: str = ""
-    stripe_webhook_secret: str = ""
-    stripe_publishable_key: str = ""  # 前端展示用，可选
-    app_url: str = "http://localhost:5173"  # 支付回调基础地址
-
-    # 邮件服务（Resend）
-    resend_api_key: str = ""
-    resend_from_email: str = "SparkBin <noreply@sparkbin.dev>"
-
-    # OAuth 配置
+    # OAuth 配置（可选，用于 GitHub 仓库导入）
     google_client_id: str = ""
     google_client_secret: str = ""
     github_client_id: str = ""

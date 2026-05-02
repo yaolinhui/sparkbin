@@ -9,18 +9,13 @@ import {
   Check,
   RefreshCw,
   Edit3,
-  CreditCard,
   ToggleLeft,
   ToggleRight,
   Zap,
-  ExternalLink,
 } from 'lucide-react';
 import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
 import type { Project, MonetizeData, MonetizeStrategy, PricingTier, FunnelMetrics } from '../types';
-import { PricingPreview } from './PricingPreview';
-import { PaymentResultModal } from './PaymentResultModal';
-import { paymentsApi } from '../services/api';
 
 interface MonetizeStageProps {
   project: Project;
@@ -51,14 +46,6 @@ const DEFAULT_TIERS: PricingTier[] = [
   { id: 'team', name: '团队版', price: 29, period: 'month', features: ['团队协作', 'API访问', '专属客服'] },
 ];
 
-// 测试卡号数据
-const TEST_CARDS = [
-  { number: '4242 4242 4242 4242', brand: 'Visa', result: '成功支付' },
-  { number: '4000 0025 0000 3155', brand: 'Visa', result: '需要 3D Secure 验证' },
-  { number: '4000 0000 0000 9995', brand: 'Visa', result: '卡余额不足（失败测试）' },
-  { number: '5555 5555 5555 4444', brand: 'Mastercard', result: '成功支付' },
-];
-
 export function MonetizeStage({ project, onUpdateContent, isLocked, onToggleLock, onDirtyChange }: MonetizeStageProps) {
   const { t } = useI18n();
   const [data, setData] = useState<MonetizeData>({
@@ -78,9 +65,6 @@ export function MonetizeStage({ project, onUpdateContent, isLocked, onToggleLock
 
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [paymentResult, setPaymentResult] = useState<'success' | 'cancel' | null>(null);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
 
   // 防抖保存定时器
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -101,19 +85,6 @@ export function MonetizeStage({ project, onUpdateContent, isLocked, onToggleLock
     period: 'month',
     features: [''],
   });
-
-  // 解析 URL 参数中的支付结果
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const payment = params.get('payment');
-    if (payment === 'success' || payment === 'cancel') {
-      setPaymentResult(payment);
-      // 清理 URL 参数
-      const url = new URL(window.location.href);
-      url.searchParams.delete('payment');
-      window.history.replaceState({}, '', url.toString());
-    }
-  }, []);
 
   // 加载阶段数据
   useEffect(() => {
@@ -138,15 +109,6 @@ export function MonetizeStage({ project, onUpdateContent, isLocked, onToggleLock
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.stages?.monetize?.content]);
-
-  // 加载用户额度状态（当测试模式开启时）
-  useEffect(() => {
-    if (data.testMode) {
-      paymentsApi.getCreditsStatus()
-        .then((res) => setSubscriptionStatus(res.credits > 0 ? 'active' : 'inactive'))
-        .catch(() => setSubscriptionStatus(null));
-    }
-  }, [data.testMode]);
 
   // 保存数据（立即保存，用于非高频操作）
   const saveData = async (newData: MonetizeData) => {
@@ -233,8 +195,6 @@ export function MonetizeStage({ project, onUpdateContent, isLocked, onToggleLock
     return ((to / from) * 100).toFixed(1);
   };
 
-  const paidTiers = data.pricingTiers.filter(t => t.price > 0);
-
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-brutal-bg">
       {/* Header */}
@@ -314,78 +274,18 @@ export function MonetizeStage({ project, onUpdateContent, isLocked, onToggleLock
           {/* Test Mode Banner */}
           {data.testMode && (
             <div className="border-2 border-brutal-accent bg-brutal-accent/5 p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Zap className="w-5 h-5 text-brutal-accent" />
-                  <div>
-                    <h3 className="text-sm font-mono font-bold">支付测试环境已激活</h3>
-                    <p className="text-xs text-brutal-muted font-mono">
-                      所有交易均通过 Stripe Test Mode 处理，不会扣取真实费用
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[10px] text-brutal-muted font-mono uppercase">Subscription</div>
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${subscriptionStatus === 'active' ? 'bg-brutal-success' : 'bg-brutal-border'}`} />
-                    <span className="text-sm font-mono font-bold uppercase">{subscriptionStatus || 'inactive'}</span>
-                  </div>
+              <div className="flex items-center gap-3">
+                <Zap className="w-5 h-5 text-brutal-accent" />
+                <div>
+                  <h3 className="text-sm font-mono font-bold">支付测试环境已激活</h3>
+                  <p className="text-xs text-brutal-muted font-mono">
+                    此模式仅用于演示定价页面和转化漏斗。开源版本不包含真实支付功能。
+                  </p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={() => setIsPreviewOpen(true)}
-                  disabled={paidTiers.length === 0}
-                  className="btn-brutal-primary h-9 flex items-center gap-2 text-xs disabled:opacity-50"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  打开 Pricing Page 预览
-                </button>
-                <a
-                  href="https://dashboard.stripe.com/test/payments"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn-brutal h-9 flex items-center gap-2 text-xs"
-                >
-                  <CreditCard className="w-3 h-3" />
-                  Stripe 测试控制台
-                </a>
-              </div>
-
-              {paidTiers.length === 0 && (
-                <div className="text-xs text-brutal-warning font-mono">
-                  ⚠ 当前没有付费档位，请先在下方定价方案中添加一个 price &gt; 0 的档位。
-                </div>
-              )}
-
-              {/* Test Card Guide */}
-              <div className="border border-brutal-border bg-brutal-bg">
-                <div className="px-3 py-2 border-b border-brutal-border bg-brutal-surface/50">
-                  <span className="text-xs font-mono font-bold">测试卡号指南</span>
-                </div>
-                <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {TEST_CARDS.map((card) => (
-                    <div key={card.number} className="flex items-center justify-between p-2 border border-brutal-border">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 border border-brutal-border">{card.brand === 'Visa' ? 'VISA' : 'MC'}</span>
-                        <div>
-                          <div className="text-xs font-mono font-bold">{card.number}</div>
-                          <div className="text-[10px] text-brutal-muted font-mono">{card.result}</div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => navigator.clipboard.writeText(card.number.replace(/\s/g, ''))}
-                        className="text-[10px] px-2 py-1 border border-brutal-border hover:border-brutal-accent hover:text-brutal-accent font-mono"
-                      >
-                        Copy
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="px-3 py-2 border-t border-brutal-border text-[10px] text-brutal-muted font-mono">
-                  使用任意未来的过期日期（如 12/30）和任意 3 位 CVC（如 123）即可通过验证。
-                </div>
+              <div className="text-xs text-brutal-muted font-mono">
+                提示：自托管模式下，所有 AI 调用均无额度限制。定价数据仅用于项目管理和规划。
               </div>
             </div>
           )}
@@ -667,32 +567,6 @@ export function MonetizeStage({ project, onUpdateContent, isLocked, onToggleLock
           </div>
         </div>
       )}
-
-      {/* Pricing Preview */}
-      <PricingPreview
-        projectId={project.id}
-        projectTitle={project.title}
-        tiers={data.pricingTiers}
-        isOpen={isPreviewOpen}
-        onClose={() => setIsPreviewOpen(false)}
-      />
-
-      {/* Payment Result Modal */}
-      <PaymentResultModal
-        result={paymentResult}
-        onClose={async () => {
-          // 如果支付成功，刷新 MonetizeStage 中的额度状态
-          if (paymentResult === 'success') {
-            try {
-              const res = await paymentsApi.getCreditsStatus();
-              setSubscriptionStatus(res.credits > 0 ? 'active' : 'inactive');
-            } catch {
-              // 忽略错误
-            }
-          }
-          setPaymentResult(null);
-        }}
-      />
     </div>
   );
 }

@@ -3,9 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from
 import type { FutureConfig } from 'react-router-dom';
 import { LoginModal } from './components/LoginModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
-import { VerifyEmailPage } from './pages/VerifyEmailPage';
-import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { LandingPage } from './components/LandingPage';
+import { SurveyPublicPage } from './pages/SurveyPublicPage';
 
 // 懒加载页面级组件
 const ProjectBoard = lazy(() => import('./components/ProjectBoard'));
@@ -14,7 +13,7 @@ const AdminPage = lazy(() => import('./components/AdminPage'));
 const ProfilePage = lazy(() => import('./components/ProfilePage'));
 import {
   authApi, clearAuthToken, isAuthenticated, setCachedRole, setCachedUserId, setOnUnauthorized,
-  setRefreshToken, startTokenRefreshTimer, stopTokenRefreshTimer, setAuthToken,
+  startTokenRefreshTimer, stopTokenRefreshTimer, setAuthToken,
 } from './services/api';
 
 // React Router v7 兼容配置
@@ -23,23 +22,19 @@ const routerFuture: FutureConfig = {
   v7_relativeSplatPath: true,
 };
 
-function OAuthHandler({ onLogin }: { onLogin: (resp?: { access_token: string; refresh_token: string }) => void }) {
+function OAuthHandler({ onLogin }: { onLogin: () => void }) {
   useEffect(() => {
     // 从 URL fragment 读取 OAuth 参数
     const hash = window.location.hash.slice(1); // 去掉开头的 #
     const params = new URLSearchParams(hash);
     const oauthSuccess = params.get('oauth_success');
     const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
     const githubConnect = params.get('github_connect');
-    const oauthBindSuccess = params.get('oauth_bind_success');
-
-    if (oauthSuccess === '1' && accessToken && refreshToken) {
+    if (oauthSuccess === '1' && accessToken) {
       setAuthToken(accessToken);
-      setRefreshToken(refreshToken);
       // 清除 URL fragment
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      onLogin({ access_token: accessToken, refresh_token: refreshToken });
+      onLogin();
     }
 
     if (githubConnect === 'success') {
@@ -48,10 +43,6 @@ function OAuthHandler({ onLogin }: { onLogin: (resp?: { access_token: string; re
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
 
-    if (oauthBindSuccess === '1') {
-      sessionStorage.setItem('sparkbin_oauth_bind_success', '1');
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
-    }
   }, [onLogin]);
 
   return null;
@@ -81,21 +72,14 @@ function AppRoutes() {
       const params = new URLSearchParams(hash);
       const oauthSuccess = params.get('oauth_success');
       const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
       const githubConnect = params.get('github_connect');
-      const oauthBindSuccess = params.get('oauth_bind_success');
 
-      if (oauthSuccess === '1' && accessToken && refreshToken) {
+      if (oauthSuccess === '1' && accessToken) {
         setAuthToken(accessToken);
-        setRefreshToken(refreshToken);
         window.history.replaceState(null, '', window.location.pathname + window.location.search);
       }
       if (githubConnect === 'success') {
         sessionStorage.setItem('sparkbin_github_connected', '1');
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      }
-      if (oauthBindSuccess === '1') {
-        sessionStorage.setItem('sparkbin_oauth_bind_success', '1');
         window.history.replaceState(null, '', window.location.pathname + window.location.search);
       }
 
@@ -147,11 +131,8 @@ function AppRoutes() {
     };
   }, []);
 
-  const handleLogin = async (loginResponse?: { access_token: string; refresh_token: string }) => {
+  const handleLogin = async () => {
     try {
-      if (loginResponse) {
-        setRefreshToken(loginResponse.refresh_token);
-      }
       const me = await authApi.getMe();
       setCachedRole(me.role);
       setCachedUserId(me.id);
@@ -193,8 +174,7 @@ function AppRoutes() {
   );
 
   // 公共路由（无需登录）
-  const publicPaths = ['/verify-email', '/reset-password'];
-  const isPublicPath = publicPaths.includes(location.pathname);
+  const isPublicPath = location.pathname.startsWith('/s/');
 
   if (isChecking && !isPublicPath) {
     return (
@@ -214,8 +194,7 @@ function AppRoutes() {
       {/* 公共页面 */}
       {isPublicPath && (
         <Routes>
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/s/:public_id" element={<SurveyPublicPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       )}

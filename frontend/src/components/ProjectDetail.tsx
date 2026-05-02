@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
+// 功能开关：Agent 自动化线（V2 功能，当前隐藏）
+const ENABLE_AGENT = false;
+
 // 兼容 BrowserRouter 的 useBlocker（React Router v6 data router 专用 hook 的 polyfill）
 function useBlocker(shouldBlock: boolean) {
   const location = useLocation();
@@ -624,7 +627,6 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   // 计算显示的阶段：如果用户点击了其他阶段查看，则显示该阶段，否则显示当前阶段
   const displayStage = viewingStage ?? validCurrentStage;
   const displayStageData = project.stages?.[displayStage];
-  const isDisplayStageLocked = displayStageData?.isLocked ?? false;
 
   /**
    * 检查阶段内容是否包含用户实质填写的内容。
@@ -764,6 +766,12 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     return true;
   };
 
+  // 防御性检查：如果显示的是当前活跃阶段且内容为空（用户首次进入），视为未锁定
+  const isDisplayStageLocked =
+    displayStage === validCurrentStage && !isStageContentMeaningful(displayStage, displayStageData?.content || '')
+      ? false
+      : (displayStageData?.isLocked ?? false);
+
   const handleCompleteStage = async () => {
     if (isCurrentStageLocked || !currentStageData) return;
 
@@ -780,6 +788,8 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     await completeStage(project.id, validCurrentStage);
     setIsCompleting(false);
     setShowConfirmModal(false);
+    // 完成阶段后重置 viewingStage，确保显示新的当前阶段
+    setViewingStage(null);
   };
 
   const handleReopenStage = async () => {
@@ -993,14 +1003,26 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 <GitGraph className="w-4 h-4" />
                 <span className="hidden sm:inline text-xs">蓝图</span>
               </button>
-              <button
-                onClick={() => setShowAgentCockpit(true)}
-                className="btn-brutal h-9 flex items-center gap-2 text-brutal-success border-brutal-success"
-                title="AI Agent 驾驶舱"
-              >
-                <Cpu className="w-4 h-4" />
-                <span className="hidden sm:inline text-xs">Agent</span>
-              </button>
+              {ENABLE_AGENT && (
+                <button
+                  onClick={() => setShowAgentCockpit(true)}
+                  className="btn-brutal h-9 flex items-center gap-2 text-brutal-success border-brutal-success"
+                  title="AI Agent 驾驶舱"
+                >
+                  <Cpu className="w-4 h-4" />
+                  <span className="hidden sm:inline text-xs">Agent</span>
+                </button>
+              )}
+              {!ENABLE_AGENT && (
+                <button
+                  className="btn-brutal h-9 flex items-center gap-2 text-brutal-muted border-brutal-muted opacity-50 cursor-not-allowed"
+                  title="Agent 功能即将上线"
+                  disabled
+                >
+                  <Cpu className="w-4 h-4" />
+                  <span className="hidden sm:inline text-xs">Agent</span>
+                </button>
+              )}
               {renderStatusButton()}
               {project.status !== 'archived' && (
                 <button
@@ -1426,8 +1448,8 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
         />
       )}
 
-      {/* Agent Cockpit Modal */}
-      {showAgentCockpit && (
+      {/* Agent Cockpit Modal（V2 功能，当前门控隐藏） */}
+      {ENABLE_AGENT && showAgentCockpit && (
         <AgentCockpit
           project={project}
           isOpen={showAgentCockpit}

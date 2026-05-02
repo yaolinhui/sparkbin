@@ -56,6 +56,52 @@ export interface ValidationData {
   decisionReason?: string;
 }
 
+// ========== 问卷系统 ==========
+export type QuestionType = 'single_choice' | 'multi_choice' | 'rating' | 'text';
+
+export interface SurveyQuestion {
+  id: string;
+  type: QuestionType;
+  title: string;
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
+  scale?: number;
+}
+
+export interface SurveyConfig {
+  title: string;
+  description: string;
+  questions: SurveyQuestion[];
+}
+
+export interface Survey {
+  id: string;
+  public_id: string;
+  title: string;
+  description: string;
+  status: 'active' | 'closed' | 'archived';
+  response_count: number;
+  config: SurveyConfig;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SurveyResponse {
+  id: string;
+  answers: Record<string, string | string[]>;
+  respondent_meta: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface SurveyAnalysis {
+  summary: string;
+  key_findings: string[];
+  sentiment: Record<string, number>;
+  recommendations: string[];
+  next_steps: string;
+}
+
 // 原型阶段专用类型
 export type PlatformType = 'web' | 'ios' | 'android' | 'miniapp' | 'desktop';
 
@@ -183,26 +229,6 @@ export interface MonetizeData {
   paidUsers: number;
   funnel: FunnelMetrics;
   testMode?: boolean; // 支付测试模式开关
-}
-
-// 支付相关类型
-export interface CheckoutItem {
-  name: string;
-  price: number;
-  period: 'month' | 'year' | 'lifetime';
-  tierId: string;
-}
-
-export interface CheckoutSession {
-  sessionUrl: string;
-  sessionId: string;
-}
-
-export interface SubscriptionStatus {
-  status: 'inactive' | 'active' | 'past_due' | 'canceled';
-  tierId: string | null;
-  stripeCustomerId: string | null;
-  stripeSubscriptionId: string | null;
 }
 
 export interface Stages {

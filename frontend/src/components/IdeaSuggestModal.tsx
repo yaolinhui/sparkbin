@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { X, Check, ArrowRight, AlertTriangle } from 'lucide-react';
+import { X, Check, ArrowRight, AlertTriangle, Sparkles } from 'lucide-react';
 import { useI18n } from '../i18n/hooks';
+import { SafeMarkdown } from './SafeMarkdown';
 
 interface NoteSuggestion {
   title: string;
@@ -12,10 +13,12 @@ interface IdeaSuggestModalProps {
   onClose: () => void;
   currentNotes: NoteSuggestion[];
   suggestedNotes: NoteSuggestion[] | null;
-  isLoading: boolean;
+  streamingContent?: string;
+  isLoading?: boolean;
+  isStreaming?: boolean;
   error: string | null;
-  onMerge: () => Promise<void>;
-  onOverwrite: () => Promise<void>;
+  onMerge: (edited: NoteSuggestion[]) => Promise<void>;
+  onOverwrite: (edited: NoteSuggestion[]) => Promise<void>;
 }
 
 const DEFAULT_PLACEHOLDERS = [
@@ -31,31 +34,13 @@ function isPlaceholder(content: string): boolean {
   return DEFAULT_PLACEHOLDERS.some((p) => content.includes(p));
 }
 
-const SKELETON_TITLES = ['核心痛点', '目标用户', '使用场景', '解决方案', '差异化价值'];
-
-function SkeletonCard({ title }: { title: string }) {
-  return (
-    <div className="grid grid-cols-2 border-b border-brutal-border last:border-b-0 animate-pulse">
-      <div className="p-3 border-r border-brutal-border">
-        <div className="text-xs font-mono text-brutal-muted mb-1">{title}</div>
-        <div className="h-4 bg-brutal-border/40 rounded w-3/4 mb-2" />
-        <div className="h-4 bg-brutal-border/40 rounded w-1/2" />
-      </div>
-      <div className="p-3">
-        <div className="text-xs font-mono text-brutal-accent mb-1">{title}</div>
-        <div className="h-4 bg-brutal-accent/20 rounded w-full mb-2" />
-        <div className="h-4 bg-brutal-accent/20 rounded w-2/3" />
-      </div>
-    </div>
-  );
-}
-
 export function IdeaSuggestModal({
   isOpen,
   onClose,
   currentNotes,
   suggestedNotes,
-  isLoading,
+  streamingContent,
+  isStreaming,
   error,
   onMerge,
   onOverwrite,
@@ -92,9 +77,9 @@ export function IdeaSuggestModal({
     setIsApplying(true);
     try {
       if (selectedMode === 'merge') {
-        await onMerge();
+        await onMerge(editedSuggestions);
       } else {
-        await onOverwrite();
+        await onOverwrite(editedSuggestions);
       }
     } finally {
       setIsApplying(false);
@@ -135,9 +120,15 @@ export function IdeaSuggestModal({
       <div className="border border-brutal-border bg-brutal-surface w-full max-w-3xl relative max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-brutal-border flex-shrink-0">
-          <div>
+          <div className="flex items-center gap-2">
             <span className="text-xs text-brutal-muted font-mono">// </span>
             <span className="text-sm font-mono font-bold">AI 建议预览</span>
+            {isStreaming && (
+              <span className="flex items-center gap-1 text-xs font-mono text-brutal-accent">
+                <Sparkles className="w-3 h-3 animate-pulse" />
+                生成中...
+              </span>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -155,59 +146,60 @@ export function IdeaSuggestModal({
             </div>
           )}
 
-          {isLoading && (
-            <div className="space-y-4">
-              <div className="p-3 border border-brutal-border bg-brutal-bg text-xs font-mono text-brutal-muted">
-                <span className="text-brutal-accent">&gt;</span> AI 正在根据你的原始想法生成建议…
-              </div>
-              <div className="border border-brutal-border">
-                {SKELETON_TITLES.map((title) => (
-                  <SkeletonCard key={title} title={title} />
-                ))}
-              </div>
-              <div className="flex items-center gap-2 text-xs font-mono text-brutal-muted">
-                <div className="w-3 h-3 border border-brutal-accent border-t-transparent animate-spin" />
-                预计需要 10-15 秒，可以先看看右侧现有内容
+          {/* 预览说明 */}
+          <div className="p-3 border border-brutal-border bg-brutal-bg text-xs font-mono text-brutal-muted mb-4">
+            <span className="text-brutal-accent">&gt;</span> 左侧为你的原始内容，右侧为 AI 建议。你可以在右侧直接编辑建议内容。
+          </div>
+
+          {/* 对比表格 - 始终显示原始数据 */}
+          <div className="border border-brutal-border">
+            {/* 表头 */}
+            <div className="grid grid-cols-2 border-b border-brutal-border bg-brutal-bg">
+              <div className="p-2 text-xs font-mono text-brutal-muted border-r border-brutal-border">当前内容</div>
+              <div className="p-2 text-xs font-mono text-brutal-accent">
+                {isStreaming ? 'AI 正在生成...' : 'AI 建议（可编辑）'}
               </div>
             </div>
-          )}
 
-          {!isLoading && suggestedNotes && (
-            <div className="space-y-4">
-              {/* 预览说明 */}
-              <div className="p-3 border border-brutal-border bg-brutal-bg text-xs font-mono text-brutal-muted">
-                <span className="text-brutal-accent">&gt;</span> 左侧为当前内容，右侧为 AI 建议。你可以在右侧直接编辑建议内容。
-              </div>
-
-              {/* 对比表格 */}
-              <div className="border border-brutal-border">
-                {/* 表头 */}
-                <div className="grid grid-cols-2 border-b border-brutal-border bg-brutal-bg">
-                  <div className="p-2 text-xs font-mono text-brutal-muted border-r border-brutal-border">当前内容</div>
-                  <div className="p-2 text-xs font-mono text-brutal-accent">AI 建议（可编辑）</div>
+            {/* 行 */}
+            {mergedPreview.map((row, index) => (
+              <div
+                key={index}
+                className={`grid grid-cols-2 border-b border-brutal-border last:border-b-0 ${
+                  !isStreaming && row.willReplace ? 'bg-brutal-accent/5' : ''
+                }`}
+              >
+                {/* 左侧：始终显示原始数据 */}
+                <div className="p-3 border-r border-brutal-border">
+                  <div className="text-xs font-mono text-brutal-muted mb-1">{row.title}</div>
+                  <p className={`text-sm font-mono ${row.isPlaceholder ? 'text-brutal-muted' : 'text-brutal-text'}`}>
+                    {row.currentContent}
+                  </p>
+                  {row.isPlaceholder && (
+                    <span className="inline-block mt-1 text-[10px] px-1 border border-brutal-warning text-brutal-warning font-mono">
+                      占位符
+                    </span>
+                  )}
                 </div>
 
-                {/* 行 */}
-                {mergedPreview.map((row, index) => (
-                  <div
-                    key={index}
-                    className={`grid grid-cols-2 border-b border-brutal-border last:border-b-0 ${
-                      row.willReplace ? 'bg-brutal-accent/5' : ''
-                    }`}
-                  >
-                    <div className="p-3 border-r border-brutal-border">
-                      <div className="text-xs font-mono text-brutal-muted mb-1">{row.title}</div>
-                      <p className={`text-sm font-mono ${row.isPlaceholder ? 'text-brutal-muted' : 'text-brutal-text'}`}>
-                        {row.currentContent}
-                      </p>
-                      {row.isPlaceholder && (
-                        <span className="inline-block mt-1 text-[10px] px-1 border border-brutal-warning text-brutal-warning font-mono">
-                          占位符
-                        </span>
+                {/* 右侧：根据状态显示 */}
+                <div className="p-3">
+                  <div className="text-xs font-mono text-brutal-accent mb-1">{row.title}</div>
+                  {isStreaming ? (
+                    /* 流式状态：显示整体流式内容或等待提示 */
+                    <div className="text-sm font-mono text-brutal-text">
+                      {streamingContent ? (
+                        <SafeMarkdown content={streamingContent} className="text-sm font-mono" />
+                      ) : (
+                        <div className="flex items-center gap-2 text-brutal-muted">
+                          <div className="w-3 h-3 border border-brutal-accent border-t-transparent animate-spin" />
+                          <span className="text-xs">正在分析你的原始内容...</span>
+                        </div>
                       )}
                     </div>
-                    <div className="p-3">
-                      <div className="text-xs font-mono text-brutal-accent mb-1">{row.title}</div>
+                  ) : suggestedNotes ? (
+                    /* 已生成：显示可编辑文本框 */
+                    <>
                       <textarea
                         value={editedSuggestions[index]?.content || ''}
                         onChange={(e) => handleSuggestionEdit(index, e.target.value)}
@@ -220,71 +212,79 @@ export function IdeaSuggestModal({
                           智能合并：此条保留原内容
                         </div>
                       )}
+                    </>
+                  ) : (
+                    /* 等待状态 */
+                    <div className="flex items-center gap-2 text-brutal-muted">
+                      <div className="w-3 h-3 border border-brutal-accent border-t-transparent animate-spin" />
+                      <span className="text-xs">等待 AI 建议...</span>
                     </div>
-                  </div>
-                ))}
+                  )}
+                </div>
               </div>
+            ))}
+          </div>
 
-              {/* 操作模式选择 */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setSelectedMode('merge')}
-                  className={`flex-1 p-3 border text-left transition-colors ${
-                    selectedMode === 'merge'
-                      ? 'border-brutal-accent bg-brutal-accent/15'
-                      : 'border-brutal-border hover:border-brutal-text'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <div
-                      className={`w-4 h-4 border flex items-center justify-center ${
-                        selectedMode === 'merge'
-                          ? 'bg-brutal-accent border-brutal-accent text-brutal-bg'
-                          : 'border-brutal-border'
-                      }`}
-                    >
-                      {selectedMode === 'merge' && (
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M1 5L4 8L9 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square"/>
-                        </svg>
-                      )}
-                    </div>
-                    <span className={`text-sm font-mono font-bold ${selectedMode === 'merge' ? 'text-brutal-accent' : ''}`}>智能合并</span>
+          {/* 操作模式选择 - 只在非流式且已有建议时显示 */}
+          {!isStreaming && suggestedNotes && (
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => setSelectedMode('merge')}
+                className={`flex-1 p-3 border text-left transition-colors ${
+                  selectedMode === 'merge'
+                    ? 'border-brutal-accent bg-brutal-accent/15'
+                    : 'border-brutal-border hover:border-brutal-text'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <div
+                    className={`w-4 h-4 border flex items-center justify-center ${
+                      selectedMode === 'merge'
+                        ? 'bg-brutal-accent border-brutal-accent text-brutal-bg'
+                        : 'border-brutal-border'
+                    }`}
+                  >
+                    {selectedMode === 'merge' && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 5L4 8L9 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square"/>
+                      </svg>
+                    )}
                   </div>
-                  <p className="text-xs font-mono text-brutal-muted">
-                    只覆盖内容为占位符的便利贴，保留你已编辑的内容
-                  </p>
-                </button>
+                  <span className={`text-sm font-mono font-bold ${selectedMode === 'merge' ? 'text-brutal-accent' : ''}`}>智能合并</span>
+                </div>
+                <p className="text-xs font-mono text-brutal-muted">
+                  只覆盖内容为占位符的便利贴，保留你已编辑的内容
+                </p>
+              </button>
 
-                <button
-                  onClick={() => setSelectedMode('overwrite')}
-                  className={`flex-1 p-3 border text-left transition-colors ${
-                    selectedMode === 'overwrite'
-                      ? 'border-brutal-accent bg-brutal-accent/15'
-                      : 'border-brutal-border hover:border-brutal-text'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <div
-                      className={`w-4 h-4 border flex items-center justify-center ${
-                        selectedMode === 'overwrite'
-                          ? 'bg-brutal-accent border-brutal-accent text-brutal-bg'
-                          : 'border-brutal-border'
-                      }`}
-                    >
-                      {selectedMode === 'overwrite' && (
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M1 5L4 8L9 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square"/>
-                        </svg>
-                      )}
-                    </div>
-                    <span className={`text-sm font-mono font-bold ${selectedMode === 'overwrite' ? 'text-brutal-accent' : ''}`}>全部覆盖</span>
+              <button
+                onClick={() => setSelectedMode('overwrite')}
+                className={`flex-1 p-3 border text-left transition-colors ${
+                  selectedMode === 'overwrite'
+                    ? 'border-brutal-accent bg-brutal-accent/15'
+                    : 'border-brutal-border hover:border-brutal-text'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <div
+                    className={`w-4 h-4 border flex items-center justify-center ${
+                      selectedMode === 'overwrite'
+                        ? 'bg-brutal-accent border-brutal-accent text-brutal-bg'
+                        : 'border-brutal-border'
+                    }`}
+                  >
+                    {selectedMode === 'overwrite' && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 5L4 8L9 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square"/>
+                      </svg>
+                    )}
                   </div>
-                  <p className="text-xs font-mono text-brutal-muted">
-                    用 AI 建议替换所有便利贴内容（包括你已编辑的）
-                  </p>
-                </button>
-              </div>
+                  <span className={`text-sm font-mono font-bold ${selectedMode === 'overwrite' ? 'text-brutal-accent' : ''}`}>全部覆盖</span>
+                </div>
+                <p className="text-xs font-mono text-brutal-muted">
+                  用 AI 建议替换所有便利贴内容（包括你已编辑的）
+                </p>
+              </button>
             </div>
           )}
         </div>
@@ -295,7 +295,7 @@ export function IdeaSuggestModal({
             取消
           </button>
 
-          {!isLoading && suggestedNotes && (
+          {!isStreaming && suggestedNotes && (
             <button
               onClick={handleApply}
               disabled={!selectedMode || isApplying}

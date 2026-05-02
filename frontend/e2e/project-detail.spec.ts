@@ -145,14 +145,20 @@ test.describe('项目详情页', () => {
     const designTab = page.locator('button').filter({ hasText: '挑选设计' }).first();
     await expect(designTab).toBeVisible({ timeout: 5000 });
     await designTab.click();
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(500);
 
-    // 选择第一个设计模板（按钮形式）
-    const firstTemplate = page.locator('button').filter({ hasText: /简洁仪表板|卡片列表|时间轴|落地页/i }).first();
-    if (await firstTemplate.isVisible().catch(() => false)) {
-      await firstTemplate.click();
-      await page.waitForTimeout(300);
-    }
+    // 在新的三栏设计选择器中，点击第一个参考项目
+    const firstReference = page.locator('[data-testid="design-reference-item"]').first();
+    await expect(firstReference).toBeVisible({ timeout: 5000 });
+    await firstReference.click();
+    await page.waitForTimeout(500);
+
+    // 点击右侧"使用此风格"按钮
+    const useStyleBtn = page.locator('[data-testid="use-style-button"]').first();
+    await expect(useStyleBtn).toBeVisible({ timeout: 5000 });
+    await expect(useStyleBtn).toBeEnabled({ timeout: 5000 });
+    await useStyleBtn.click();
+    await page.waitForTimeout(800);
 
     // 进入"功能开发"步骤
     const devTab = page.locator('button').filter({ hasText: '功能开发' }).first();

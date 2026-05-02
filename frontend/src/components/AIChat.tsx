@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, ChevronRight, ChevronLeft, Maximize2, X, Heart, BarChart3, Coffee, Zap, AlertTriangle } from 'lucide-react';
+import { Send, ChevronRight, ChevronLeft, Maximize2, X, Heart, BarChart3, Coffee, Zap } from 'lucide-react';
 import { SafeMarkdown } from './SafeMarkdown';
 import { useI18n } from '../i18n/hooks';
 import { aiService, aiApi, type StageStreamMeta } from '../services/ai';
@@ -7,7 +7,6 @@ import { getUserId, authApi, isAuthenticated } from '../services/api';
 import { PET_OPTIONS } from './AIPetConfig.constants';
 import { PixelPet } from './PixelPet';
 import { PIXEL_PET_CATALOG } from './PixelPet.frames';
-import { UpgradePromptModal } from './UpgradePromptModal';
 import type { AIPetConfig } from '../types';
 import type { StageSnapshot } from '../services/api';
 
@@ -43,7 +42,7 @@ const WELCOME_MESSAGES: Record<string, Record<string, string>> = {
     zh: '准备帮你验证想法！\n\n我们一起确认方向对不对～',
     en: 'Ready to validate your idea!\n\nLet\'s confirm the direction together~',
     ja: 'アイデアを検証しよう！\n\n一緒に方向性を確認しよう～',
-    ko: '아이디어를 검증하자!\n\n함께 방향성을 확인해보자~',
+    ko: '아이디어를 검증하자!\n\n함께 방향성을 확인핸보자~',
     es: '¡Listo para validar tu idea!\n\nConfirmemos la dirección juntos~',
     fr: 'Prêt à valider ton idée !\n\nConfirmons la direction ensemble~',
     de: 'Bereit, deine Idee zu validieren!\n\nLass uns zusammen die Richtung bestätigen~',
@@ -180,19 +179,16 @@ export function AIChat({
   const [stageSnapshot, setStageSnapshot] = useState<StageSnapshot | null>(null);
   const [retryUsed, setRetryUsed] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [aiCredits, setAiCredits] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const fullscreenInputRef = useRef<HTMLTextAreaElement>(null);
   const streamingContentRef = useRef('');
   const streamingUpdateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const creditSyncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const petConfigKey = `sparkbin_pet_config_${getUserId() || 'guest'}`;
 
-  // 加载宠物配置和配额（已登录用户从后端获取，游客从 localStorage 获取）
+  // 加载宠物配置（已登录用户从后端获取，游客从 localStorage 获取）
   useEffect(() => {
     if (isAuthenticated()) {
       authApi.getMe()
@@ -207,12 +203,9 @@ export function AIChat({
             setPetConfig(config);
             localStorage.setItem(petConfigKey, JSON.stringify(config));
           }
-          if (data.quota) {
-            setAiCredits(data.quota.ai_credits);
-          }
         })
         .catch(() => {
-          // 后端失败时静默处理，不回落到 localStorage
+          // 后端失败时静默处理
         });
     } else {
       const saved = localStorage.getItem(petConfigKey);
@@ -232,39 +225,6 @@ export function AIChat({
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isFullscreen]);
-
-  // ===== 循环的优化：额度状态同步循环 =====
-  // 1. 轮询同步：每 30 秒从后端同步一次额度状态
-  useEffect(() => {
-    if (!isAuthenticated()) return;
-
-    const syncCredits = async () => {
-      try {
-        const data = await authApi.getMe();
-        if (data.quota) {
-          setAiCredits(data.quota.ai_credits);
-        }
-      } catch {
-        // 静默失败，不中断用户体验
-      }
-    };
-
-    // 立即执行一次
-    syncCredits();
-
-    // 每 30 秒轮询
-    creditSyncTimerRef.current = setInterval(syncCredits, 30000);
-
-    return () => {
-      if (creditSyncTimerRef.current) {
-        clearInterval(creditSyncTimerRef.current);
-        creditSyncTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  // 2. 临界阈值预警：额度 <= 3 时显示警告
-  const showCreditWarning = aiCredits !== null && aiCredits > 0 && aiCredits <= 3;
 
   const handleToggleCollapse = () => {
     onCollapsedChange?.(!isCollapsed);
@@ -367,17 +327,6 @@ export function AIChat({
     const textToSend = (messageText ?? input).trim();
     if (!textToSend || isThinking) return;
 
-    // AI 额度检查（启用支付模式时）
-    if (aiCredits !== null && aiCredits <= 0) {
-      setShowUpgradeModal(true);
-      return;
-    }
-
-    // 乐观扣费：先本地扣减 1 次额度，提升响应感知速度
-    if (aiCredits !== null && aiCredits > 0) {
-      setAiCredits((prev) => (prev !== null ? prev - 1 : prev));
-    }
-
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -472,7 +421,6 @@ export function AIChat({
         onGenerateContent?.(fullContent);
       }
 
-      // ===== 循环的设计：AI 阶段推进循环 =====
       // 流结束后，如果有 next_question，自动聚焦输入框并预填充建议
       const finalMsg = [...messages, userMessage].find((m) => m.id === aiMessage.id);
       if (finalMsg?.nextQuestion) {
@@ -486,20 +434,10 @@ export function AIChat({
                            errorMessage.includes('inactive') ||
                            errorMessage.includes('未配置') ||
                            errorMessage.includes('未激活');
-      const isCreditExhausted = errorMessage.includes('credits exhausted') ||
-                                errorMessage.includes('额度已用完') ||
-                                errorMessage.includes('402');
-      if (isCreditExhausted) {
-        setShowUpgradeModal(true);
-        setError(`${t('ai.error_prefix')} AI 额度已用完，请购买额度包继续`);
+      if (isConfigError) {
+        setError(`${t('ai.error_prefix')} ${t('ai.config_required')}`);
       } else {
-        // 非额度错误：恢复乐观扣减的额度（因为实际未消费）
-        setAiCredits((prev) => (prev !== null ? prev + 1 : prev));
-        if (isConfigError) {
-          setError(`${t('ai.error_prefix')} ${t('ai.config_required')}`);
-        } else {
-          setError(`${t('ai.error_prefix')} ${errorMessage}`);
-        }
+        setError(`${t('ai.error_prefix')} ${errorMessage}`);
       }
       setMessages((prev) => prev.filter((msg) => msg.id !== aiMessage.id));
     } finally {
@@ -583,11 +521,6 @@ export function AIChat({
               <div>
                 <div className="flex items-center gap-2">
                   <div className="font-mono text-sm font-bold">{petName}</div>
-                  {aiCredits !== null && (
-                    <span className={`text-[10px] font-mono px-1 py-0.5 border ${aiCredits <= 3 ? 'text-brutal-warning border-brutal-warning/30' : 'text-brutal-muted border-brutal-border'}`}>
-                      AI: {aiCredits}
-                    </span>
-                  )}
                 </div>
                 <div className="text-[10px] text-brutal-muted font-mono">{projectTitle || '未命名项目'} · {stage}</div>
               </div>
@@ -661,20 +594,6 @@ export function AIChat({
             ))}
             <div ref={messagesEndRef} />
           </div>
-
-          {/* 额度预警 */}
-          {showCreditWarning && (
-            <div className="mx-6 mb-2 p-2 border border-brutal-warning/60 bg-brutal-warning/10 text-brutal-warning text-xs font-mono flex items-center gap-2 flex-shrink-0">
-              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>AI 额度仅剩 {aiCredits} 次，建议及时补充</span>
-              <button
-                onClick={() => setShowUpgradeModal(true)}
-                className="ml-auto underline hover:text-brutal-accent transition-colors"
-              >
-                购买额度
-              </button>
-            </div>
-          )}
 
           {/* 错误提示 */}
           {error && (
@@ -837,11 +756,6 @@ export function AIChat({
                 NATIVE
               </span>
             )}
-            {aiCredits !== null && (
-              <span className={`text-[10px] font-mono px-1 py-0.5 border ${aiCredits <= 3 ? 'text-brutal-warning border-brutal-warning/30' : 'text-brutal-muted border-brutal-border'}`}>
-                AI: {aiCredits}
-              </span>
-            )}
           </div>
           {stageSnapshot && (
             <div className="flex items-center gap-2 mt-0.5">
@@ -944,20 +858,6 @@ export function AIChat({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 额度预警 */}
-      {showCreditWarning && (
-        <div className="mx-4 mb-2 p-2 border border-brutal-warning/60 bg-brutal-warning/10 text-brutal-warning text-xs font-mono flex items-center gap-2 flex-shrink-0">
-          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-          <span>AI 额度仅剩 {aiCredits} 次，建议及时补充</span>
-          <button
-            onClick={() => setShowUpgradeModal(true)}
-            className="ml-auto underline hover:text-brutal-accent transition-colors"
-          >
-            购买额度
-          </button>
-        </div>
-      )}
-
       {/* Error */}
       {error && (
         <div className="mx-4 mb-2 p-2 border border-brutal-warning text-brutal-warning text-xs font-mono flex-shrink-0">
@@ -985,12 +885,6 @@ export function AIChat({
           </div>
         </div>
       )}
-
-      <UpgradePromptModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        feature="ai_calls"
-      />
 
       {/* Input */}
       <div className="p-3 border-t border-brutal-border flex-shrink-0 bg-brutal-surface">

@@ -36,7 +36,7 @@ if _auth_module_spec and _auth_module_spec.origin:
         f"(mtime: {_auth_mtime})"
     )
 
-from .routers import auth, projects, ai, admin, payments, github
+from .routers import auth, projects, ai, admin, github, surveys
 
 
 class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
@@ -79,19 +79,29 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # 权限策略
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
 
-        # 内容安全策略（CSP）— 根据实际前端资源调整
-        # 当前为 SPA + 本地开发环境设置；生产环境部署 HTTPS 时需进一步收紧
-        csp = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: https:; "
-            "font-src 'self'; "
-            "connect-src 'self' http://localhost:8000 https://api.stripe.com; "
-            "frame-src https://js.stripe.com https://hooks.stripe.com; "
-            "object-src 'none'; "
-            "base-uri 'self';"
-        )
+        # 内容安全策略（CSP）— 开发环境保留 unsafe-inline，生产环境收紧
+        if settings.debug:
+            csp = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5173; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: https:; "
+                "font-src 'self'; "
+                "connect-src 'self' http://localhost:8000 ws://localhost:5173; "
+                "object-src 'none'; "
+                "base-uri 'self';"
+            )
+        else:
+            csp = (
+                "default-src 'self'; "
+                "script-src 'self'; "
+                "style-src 'self'; "
+                "img-src 'self' data: https:; "
+                "font-src 'self'; "
+                "connect-src 'self'; "
+                "object-src 'none'; "
+                "base-uri 'self';"
+            )
         response.headers["Content-Security-Policy"] = csp
 
         # HSTS（通过环境变量控制，生产环境启用）
@@ -113,14 +123,6 @@ def _ensure_sqlite_columns():
     # users 表
     user_columns = {col["name"] for col in inspector.get_columns("users")}
     with engine.connect() as conn:
-        if "subscription_status" not in user_columns:
-            conn.execute(text("ALTER TABLE users ADD COLUMN subscription_status VARCHAR(20) DEFAULT 'inactive' NOT NULL"))
-        if "stripe_customer_id" not in user_columns:
-            conn.execute(text("ALTER TABLE users ADD COLUMN stripe_customer_id VARCHAR(255)"))
-        if "stripe_subscription_id" not in user_columns:
-            conn.execute(text("ALTER TABLE users ADD COLUMN stripe_subscription_id VARCHAR(255)"))
-        if "current_tier_id" not in user_columns:
-            conn.execute(text("ALTER TABLE users ADD COLUMN current_tier_id VARCHAR(50)"))
         if "pet_config" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN pet_config JSON DEFAULT '{}'"))
         if "theme_preference" not in user_columns:
@@ -208,9 +210,15 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestSizeLimitMiddleware)
 
 # 可信 Host 中间件（防止 Host Header 攻击）
+if settings.debug:
+    allowed_hosts = ["localhost", "127.0.0.1", "*.localhost"]
+    logging.getLogger(__name__).warning("WARNING: Running in debug mode with relaxed host checking. NEVER enable debug in production!")
+else:
+    allowed_hosts = ["sparkbin.dev", "*.sparkbin.dev", "localhost"]
+
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["*"] if settings.debug else ["sparkbin.dev", "*.sparkbin.dev", "localhost"],
+    allowed_hosts=allowed_hosts,
 )
 
 # 注册路由
@@ -218,8 +226,9 @@ app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(ai.router)
 app.include_router(admin.router)
-app.include_router(payments.router)
 app.include_router(github.router)
+app.include_router(surveys.router)
+app.include_router(surveys.public_router)
 
 
 @app.get("/")
@@ -243,5 +252,4 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=settings.api_port,
         reload=True,
-        h11_max_request_size=10 * 1024 * 1024,  # 10MB
     )

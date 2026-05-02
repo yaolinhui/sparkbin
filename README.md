@@ -1,7 +1,7 @@
 # SparkBin
 
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/yaolinhui/sparkbin)
-[![License](https://img.shields.io/badge/license-Elastic%202.0-blue)](./LICENSE)
+[![License](https://img.shields.io/badge/license-AGPL%20v3-green)](./LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-blue)](./SELF_HOSTING.md)
 
 An AI-native project coach for indie hackers and vibe coders. **Validate before you build.** From idea to monetization in 6 structured stages.
@@ -98,6 +98,8 @@ See [SECURITY.md](./SECURITY.md) for vulnerability reporting and security best p
 
 ## License
 
-[Elastic License 2.0](./LICENSE)
+[GNU Affero General Public License v3.0 (AGPL-3.0)](./LICENSE)
 
-You are free to use, modify, and self-host SparkBin. The Elastic License prevents cloud providers from offering SparkBin as a managed service without permission, protecting the project's sustainability while keeping it open for individual developers and small teams.
+SparkBin is free software: you can use, modify, and self-host it. Under AGPL-3.0, anyone who runs a modified version of SparkBin as a network service must release their source code to users. This ensures the project and all its derivatives remain open and available to the community.
+
+If you need a commercial license (e.g., to embed SparkBin in a closed-source product), please contact the author.

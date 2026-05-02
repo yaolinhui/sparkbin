@@ -55,30 +55,14 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=True, index=True)
     password_hash = Column(String(255), nullable=True)
     email = Column(String(255), unique=True, nullable=True, index=True)
-    email_verified = Column(Boolean, default=False, nullable=False)
-    role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
+    role = Column(Enum(UserRole), default=UserRole.ADMIN, nullable=False)
     preferred_model = Column(Enum(AIProvider), nullable=True)  # 用户首选 AI 模型
-
-    # 第三方登录
-    oauth_provider = Column(String(20), nullable=True)  # google / github
-    oauth_id = Column(String(255), nullable=True, index=True)
-    avatar_url = Column(String(500), nullable=True)
-
-    # 订阅/支付状态（Stripe Test Mode）
-    subscription_status = Column(String(20), default="inactive", nullable=False)  # inactive / active / past_due / canceled
-    stripe_customer_id = Column(String(255), nullable=True)
-    stripe_subscription_id = Column(String(255), nullable=True)
-    current_tier_id = Column(String(50), nullable=True)  # 当前订阅的 pricing tier id
 
     # AI 宠物配置（JSON 格式持久化）
     pet_config = Column(JSON, default=dict, nullable=True)
 
     # 主题偏好
     theme_preference = Column(String(20), default="dark", nullable=True)  # dark / light
-
-    # AI 额度系统（替代订阅制）
-    ai_credits = Column(Integer, default=20, nullable=False)  # 当前可用 AI 额度
-    ai_credits_total_consumed = Column(Integer, default=0, nullable=False)  # 累计消耗统计
 
     # 安全字段
     require_password_change = Column(Boolean, default=False, nullable=False)
@@ -245,20 +229,40 @@ class AgentTask(Base):
     run = relationship("AgentRun", back_populates="tasks")
 
 
-# 额度流水表
-class CreditTransaction(Base):
-    __tablename__ = "credit_transactions"
+# 问卷表
+class Survey(Base):
+    __tablename__ = "surveys"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    type = Column(String(20), nullable=False)  # grant | purchase | consume | refund
-    amount = Column(Integer, nullable=False)   # 正数=增加，负数=扣除
-    balance_after = Column(Integer, nullable=False)  # 变动后的余额
-    description = Column(String(255), nullable=True)
-    reference_id = Column(String(255), nullable=True)  # Stripe session_id 或 AI call log id
+    public_id = Column(String(16), unique=True, nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, default="")
+    config = Column(JSON, default=dict, nullable=False)  # 问卷结构化配置
+    status = Column(String(20), default="active", nullable=False)  # active / closed / archived
+    response_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    project = relationship("Project")
+    user = relationship("User")
+    responses = relationship("SurveyResponse", back_populates="survey", cascade="all, delete-orphan")
+
+
+# 问卷回答表
+class SurveyResponse(Base):
+    __tablename__ = "survey_responses"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    survey_id = Column(UUID(as_uuid=True), ForeignKey("surveys.id"), nullable=False, index=True)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False, index=True)
+    answers = Column(JSON, default=dict, nullable=False)  # { "q1": "answer", ... }
+    respondent_meta = Column(JSON, default=dict, nullable=False)  # { ip_hash, ua_hint, source }
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-    user = relationship("User")
+    survey = relationship("Survey", back_populates="responses")
+    project = relationship("Project")
 
 
 # 操作日志表

@@ -6,19 +6,19 @@
       "localStorage": [
         {
           "name": "sparkbin_token",
-          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTc3NzMzNTY3MywidHlwZSI6ImFjY2VzcyJ9.TSBoPDRFRY78-9OxwPJm7LfOhxKCsNDwZFX6KAVMbi8"
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlMmV1c2VyMTc3NzY5NTMyODU4NCIsInJvbGUiOiJ1c2VyIiwiZXhwIjoxNzc3Njk2MjI5LCJ0eXBlIjoiYWNjZXNzIiwidmVyIjowfQ.q5Hk5p4ZRhbvCD685_R-14k5tQuQ0lWUu-0EdoWDdqY"
         },
         {
           "name": "sparkbin_refresh_token",
-          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTc3NzkzOTU3MywidHlwZSI6InJlZnJlc2gifQ.Mdz3aTBD_wEC_yPyMj0rYeDBRH7o0-S02lkv1eno_7I"
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlMmV1c2VyMTc3NzY5NTMyODU4NCIsInJvbGUiOiJ1c2VyIiwiZXhwIjoxNzc4MzAwMTI5LCJ0eXBlIjoicmVmcmVzaCIsInZlciI6MH0.hSI6GGvRTS4o2oLMooiMzqf_OaBLY02nWpLw0XY381g"
         },
         {
           "name": "sparkbin_role",
-          "value": "admin"
+          "value": "user"
         },
         {
           "name": "sparkbin_user_id",
-          "value": "ef0898d1-e787-4698-9faa-9c4d9bde972e"
+          "value": "4da19240-ad35-4975-9c2b-733b17c411e3"
         }
       ]
     }

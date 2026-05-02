@@ -1,10 +1,9 @@
-﻿// Backend API Service
+// Backend API Service
 // Cache-bust: 2026-04-29
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Token 和角色管理
 let authToken: string | null = localStorage.getItem('sparkbin_token');
-let refreshToken: string | null = localStorage.getItem('sparkbin_refresh_token');
 let userRole: string | null = localStorage.getItem('sparkbin_role');
 let userId: string | null = localStorage.getItem('sparkbin_user_id');
 let onUnauthorizedCallback: (() => void) | null = null;
@@ -19,11 +18,9 @@ export function setAuthToken(token: string) {
 
 export function clearAuthToken() {
   authToken = null;
-  refreshToken = null;
   userRole = null;
   userId = null;
   localStorage.removeItem('sparkbin_token');
-  localStorage.removeItem('sparkbin_refresh_token');
   localStorage.removeItem('sparkbin_role');
   localStorage.removeItem('sparkbin_user_id');
 }
@@ -48,15 +45,6 @@ export function setCachedUserId(id: string | null) {
   }
 }
 
-export function setRefreshToken(token: string) {
-  refreshToken = token;
-  localStorage.setItem('sparkbin_refresh_token', token);
-}
-
-export function getRefreshToken(): string | null {
-  return refreshToken;
-}
-
 export function clearRememberedUsername() {
   localStorage.removeItem('sparkbin_remembered_username');
 }
@@ -77,15 +65,13 @@ export function stopTokenRefreshTimer() {
 }
 
 async function refreshAccessToken(): Promise<boolean> {
-  const token = getRefreshToken();
-  if (!token) return false;
-
   const tryRefresh = async (): Promise<boolean> => {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: token }),
+        credentials: 'include',
+        body: JSON.stringify({}),
       });
 
       if (!response.ok) {
@@ -95,9 +81,6 @@ async function refreshAccessToken(): Promise<boolean> {
       const data = await response.json() as LoginResponse;
       if (data.access_token) {
         setAuthToken(data.access_token);
-        if (data.refresh_token) {
-          setRefreshToken(data.refresh_token);
-        }
         return true;
       }
       return false;
@@ -245,11 +228,12 @@ async function request<T>(
   const response = await fetch(url, {
     ...options,
     headers,
+    credentials: 'include',
   });
 
   if (response.status === 401) {
-    // 登录/注册的 401 是正常业务错误，不走 refresh 逻辑
-    if (endpoint === '/auth/login' || endpoint === '/auth/register') {
+    // 登录的 401 是正常业务错误，不走 refresh 逻辑
+    if (endpoint === '/auth/login') {
       const responseText = await response.text();
       const headers: Record<string, string> = {};
       response.headers.forEach((value, key) => { headers[key] = value; });
@@ -317,23 +301,11 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   access_token: string;
-  refresh_token: string;
   token_type: string;
 }
 
-export interface RegisterRequest {
-  username: string;
-  email: string;
-  password: string;
-  honeypot?: string;
-}
-
-export interface ForgotPasswordRequest {
-  email: string;
-}
-
-export interface ResetPasswordRequest {
-  token: string;
+export interface ChangePasswordRequest {
+  old_password: string;
   new_password: string;
 }
 
@@ -342,20 +314,9 @@ export interface BaseResponse {
   message: string;
 }
 
-export interface VerifyEmailResponse {
-  success: boolean;
-  message: string;
-}
-
 export const authApi = {
   login: (data: LoginRequest) =>
     request<LoginResponse>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
-  register: (data: RegisterRequest) =>
-    request<LoginResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -368,22 +329,11 @@ export const authApi = {
       id: string;
       username: string;
       email: string | null;
-      email_verified: boolean;
-      avatar_url: string | null;
       role: string;
       preferred_model: AIProvider | null;
-      enable_payments: boolean;
       pet_config: { type: string; name: string; personality: string; verbosity: string } | null;
       theme_preference: string | null;
       require_password_change: boolean;
-      oauth_provider: string | null;
-      oauth_id: string | null;
-      quota: {
-        ai_credits: number;
-        ai_credits_total_consumed: number;
-        projects_used: number;
-        projects_limit: number | null;
-      };
       created_at: string;
     }>('/auth/me'),
 
@@ -392,24 +342,6 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
     }),
-
-  forgotPassword: (data: ForgotPasswordRequest) =>
-    request<BaseResponse>('/auth/forgot-password', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
-  resetPassword: (data: ResetPasswordRequest) =>
-    request<BaseResponse>('/auth/reset-password', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
-  verifyEmail: (token: string) =>
-    request<VerifyEmailResponse>(`/auth/verify-email?token=${encodeURIComponent(token)}`),
-
-  getOAuthUrl: (provider: 'google' | 'github') =>
-    `${API_BASE_URL}/auth/oauth/${provider}`,
 
   getCaptcha: () =>
     request<{ question: string; answer_hash: string }>('/auth/captcha'),
@@ -444,17 +376,6 @@ export const authApi = {
     request<{ message: string }>('/auth/me/pet-config', {
       method: 'PUT',
       body: JSON.stringify(config),
-    }),
-
-  // 获取 OAuth 绑定授权 URL
-  getOAuthBindUrl: (provider: 'google' | 'github') =>
-    `${API_BASE_URL}/auth/oauth/${provider}/bind`,
-
-  // 解绑 OAuth 账号
-  unbindOAuth: (provider: 'google' | 'github') =>
-    request<{ message: string }>('/auth/oauth/unbind', {
-      method: 'POST',
-      body: JSON.stringify({ provider }),
     }),
 };
 
@@ -630,6 +551,7 @@ export const aiApi = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${authToken || ''}`,
       },
+      credentials: 'include',
       body: JSON.stringify({ provider, messages, stream: true }),
     });
     return response;
@@ -795,70 +717,54 @@ export const githubApi = {
     }),
 };
 
-// ===== 支付 API (额度制) =====
-export interface CreditPack {
-  price_usd: number;
-  credits: number;
-  label: string;
-}
+// ===== 问卷 API =====
+import type { Survey, SurveyConfig, SurveyResponse, SurveyAnalysis } from '../types';
 
-export interface CheckoutSessionResponse {
-  session_url: string;
-  session_id: string;
-}
-
-export interface CreditsStatusResponse {
-  credits: number;
-  total_consumed: number;
-}
-
-export interface CreditTransaction {
-  id: string;
-  type: string; // grant | purchase | consume | refund
-  amount: number;
-  balance_after: number;
-  description: string;
-  reference_id: string | null;
-  created_at: string;
-}
-
-export const paymentsApi = {
-  // 获取可用额度包
-  getCreditPacks: () =>
-    request<CreditPack[]>('/payments/credit-packs'),
-
-  // 购买额度（创建 Stripe Checkout）
-  purchaseCredits: (data: {
-    pack_index: number;
-    success_url: string;
-    cancel_url: string;
-  }) =>
-    request<CheckoutSessionResponse>('/payments/purchase-credits', {
+export const surveyApi = {
+  // AI 生成问卷
+  generate: (projectId: string, data: { topic: string; target_users?: string; question_count?: number }) =>
+    request<Survey>(`/projects/${projectId}/surveys/generate`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
-  // 获取当前额度状态
-  getCreditsStatus: () =>
-    request<CreditsStatusResponse>('/payments/credits-status'),
+  // 列出项目问卷
+  list: (projectId: string) =>
+    request<Survey[]>(`/projects/${projectId}/surveys`),
 
-  // 获取额度流水
-  getCreditTransactions: (limit = 50) =>
-    request<CreditTransaction[]>(`/payments/credit-transactions?limit=${limit}`),
-
-  // === 兼容/演示接口（MonetizeStage 测试模式使用） ===
-  createCheckoutSession: (data: {
-    items: { name: string; price: number; period: string; tier_id: string }[];
-    success_url: string;
-    cancel_url: string;
-  }) =>
-    request<CheckoutSessionResponse>('/payments/create-checkout-session', {
-      method: 'POST',
-      body: JSON.stringify(data),
+  // 发布/关闭/归档问卷
+  publish: (projectId: string, surveyId: string, status: 'active' | 'closed' | 'archived') =>
+    request<Survey>(`/projects/${projectId}/surveys/${surveyId}/publish`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
     }),
 
-  getSubscriptionStatus: () =>
-    request<{ status: string; tier_id: string | null; stripe_customer_id: string | null; stripe_subscription_id: string | null }>('/payments/subscription-status'),
+  // 获取回答列表
+  getResponses: (projectId: string, surveyId: string) =>
+    request<SurveyResponse[]>(`/projects/${projectId}/surveys/${surveyId}/responses`),
+
+  // 删除问卷
+  delete: (projectId: string, surveyId: string) =>
+    request<{ success: boolean; message: string }>(`/projects/${projectId}/surveys/${surveyId}`, {
+      method: 'DELETE',
+    }),
+
+  // 公开获取问卷（无需认证）
+  getPublic: (publicId: string) =>
+    request<SurveyConfig>(`/surveys/${publicId}`, { __skipCache: true }),
+
+  // 公开提交回答（无需认证）
+  submitResponse: (publicId: string, answers: Record<string, string | string[]>) =>
+    request<{ success: boolean; message: string }>(`/surveys/${publicId}/responses`, {
+      method: 'POST',
+      body: JSON.stringify({ answers }),
+    }),
+
+  // AI 分析回答
+  analyze: (projectId: string, surveyId: string) =>
+    request<SurveyAnalysis>(`/projects/${projectId}/surveys/${surveyId}/analyze`, {
+      method: 'POST',
+    }),
 };
 
 // ===== 管理 API =====

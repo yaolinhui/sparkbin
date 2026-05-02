@@ -14,14 +14,13 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from .config import get_settings
 from .database import get_db
 from .models import User, UserRole
+from .rate_limiter import _login_limiter, _register_limiter
 
 logger = logging.getLogger(__name__)
 
 # HTTP Bearer 认证
 security = HTTPBearer()
 
-# 内存中的认证失败记录: {"{ip}:{action}": deque([timestamp, ...])}
-_auth_attempts: dict[str, deque] = {}
 _MAX_LOGIN_ATTEMPTS = 5
 _LOGIN_WINDOW_SECONDS = 300  # 5分钟
 
@@ -67,19 +66,17 @@ def _get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def _is_rate_limit_disabled() -> bool:
+    return os.environ.get("SPARKBIN_TESTING") == "1"
+
+
 def get_login_attempts_remaining(request: Request) -> int:
     """计算当前 IP 在登录动作上还剩下几次尝试机会"""
     if _is_rate_limit_disabled():
         return _MAX_LOGIN_ATTEMPTS
     client_ip = _get_client_ip(request)
-    key = f"{client_ip}:登录"
-    attempts = _auth_attempts.get(key)
-    if not attempts:
-        return _MAX_LOGIN_ATTEMPTS
-    now = datetime.utcnow().timestamp()
-    while attempts and attempts[0] < now - _LOGIN_WINDOW_SECONDS:
-        attempts.popleft()
-    return max(0, _MAX_LOGIN_ATTEMPTS - len(attempts))
+    count = _login_limiter.peek_count(client_ip)
+    return max(0, _MAX_LOGIN_ATTEMPTS - count)
 
 
 def is_captcha_required(request: Request) -> bool:
@@ -87,18 +84,8 @@ def is_captcha_required(request: Request) -> bool:
     if _is_rate_limit_disabled():
         return False
     client_ip = _get_client_ip(request)
-    key = f"{client_ip}:登录"
-    attempts = _auth_attempts.get(key)
-    if not attempts:
-        return False
-    now = datetime.utcnow().timestamp()
-    while attempts and attempts[0] < now - _LOGIN_WINDOW_SECONDS:
-        attempts.popleft()
-    return len(attempts) >= 2
-
-
-def _is_rate_limit_disabled() -> bool:
-    return os.environ.get("SPARKBIN_TESTING") == "1"
+    count = _login_limiter.peek_count(client_ip)
+    return count >= 2
 
 
 def check_rate_limit(request: Request, action: str) -> None:
@@ -107,21 +94,10 @@ def check_rate_limit(request: Request, action: str) -> None:
         return
 
     client_ip = _get_client_ip(request)
-    key = f"{client_ip}:{action}"
-    now = datetime.utcnow().timestamp()
+    limiter = _register_limiter if action == "注册" else _login_limiter
+    allowed, retry_after = limiter.is_allowed(client_ip)
 
-    attempts = _auth_attempts.get(key)
-    if attempts is None:
-        return
-
-    # 清理过期记录
-    while attempts and attempts[0] < now - _LOGIN_WINDOW_SECONDS:
-        attempts.popleft()
-
-    if len(attempts) >= _MAX_LOGIN_ATTEMPTS:
-        # 动态计算 Retry-After：距离最早一次尝试过期还剩多少秒
-        oldest_attempt = attempts[0]
-        retry_after = max(1, int(oldest_attempt + _LOGIN_WINDOW_SECONDS - now))
+    if not allowed:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"{action}尝试次数过多，请{retry_after}秒后重试",
@@ -135,10 +111,8 @@ def record_rate_limit_failure(request: Request, action: str) -> None:
         return
 
     client_ip = _get_client_ip(request)
-    key = f"{client_ip}:{action}"
-    if key not in _auth_attempts:
-        _auth_attempts[key] = deque()
-    _auth_attempts[key].append(datetime.utcnow().timestamp())
+    limiter = _register_limiter if action == "注册" else _login_limiter
+    limiter.record(client_ip)
 
 
 def check_login_rate_limit(request: Request) -> None:

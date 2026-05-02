@@ -16,7 +16,6 @@ import { AIPetConfig } from './AIPetConfig';
 import { PetHabitat } from './PetHabitat';
 import { PixelPet } from './PixelPet';
 import { PIXEL_PET_CATALOG } from './PixelPet.frames';
-import { UpgradePromptModal } from './UpgradePromptModal';
 import { PET_OPTIONS, getContextDialogue } from './AIPetConfig.constants';
 import type { AIPetConfig as AIPetConfigType } from '../types';
 
@@ -96,16 +95,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   });
   const [filter, setFilter] = useState<'all' | 'active' | 'paused' | 'archived'>('all');
   const [isArchivedExpanded, setIsArchivedExpanded] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [quota, setQuota] = useState<{
-    ai_credits: number;
-    ai_credits_total_consumed: number;
-    projects_used: number;
-    projects_limit: number | null;
-  } | null>(null);
-  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
-  const [oauthProvider, setOauthProvider] = useState<string | null>(null);
   const { toast, showToast, hideToast } = useToast();
 
   // 初始加载（仅执行一次，避免 store action 引用变化导致重复请求）
@@ -114,7 +104,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
     fetchProjects();
     checkAIConfig(); // 检查 AI 配置状态
 
-    // 如果已登录，从后端加载宠物配置和配额
+    // 如果已登录，从后端加载宠物配置
     if (isAuthenticated()) {
       authApi.getMe()
         .then((data) => {
@@ -128,12 +118,6 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
             setPetConfig(config);
             localStorage.setItem(petConfigKey, JSON.stringify(config));
           }
-          if (data.quota) {
-            setQuota(data.quota);
-          }
-          if (data.oauth_provider) {
-            setOauthProvider(data.oauth_provider);
-          }
         })
         .catch(() => {
           // 失败时保持 localStorage 的值
@@ -145,22 +129,6 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
       sessionStorage.removeItem('sparkbin_github_connected');
       setIsGitHubModalOpen(true);
     }
-
-    // 检查是否刚从 OAuth 绑定成功返回
-    if (sessionStorage.getItem('sparkbin_oauth_bind_success') === '1') {
-      sessionStorage.removeItem('sparkbin_oauth_bind_success');
-      showToast('第三方账号绑定成功', 'success');
-      // 刷新 OAuth 状态
-      authApi.getMe()
-        .then((data) => {
-          if (data.oauth_provider) {
-            setOauthProvider(data.oauth_provider);
-          }
-        })
-        .catch(() => {});
-    }
-  // petConfigKey 由 userId 派生，登录后不会改变；showToast 是稳定引用
-  // fetchProjects / checkAIConfig 来自 Zustand，首次挂载时即确定
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -290,15 +258,6 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                 </div>
               </div>
 
-              {quota && quota.ai_credits !== undefined && (
-                <div className="text-right">
-                  <div className="text-xs text-brutal-muted">AI 额度</div>
-                  <div className={`text-xs font-mono ${quota.ai_credits <= 3 ? 'text-brutal-warning' : 'text-brutal-text'}`}>
-                    {quota.ai_credits}
-                  </div>
-                </div>
-              )}
-
               <div className="text-right">
                 <div className="text-xs text-brutal-muted">{t('system.last_sync')}</div>
                 <div className="text-xs font-mono text-brutal-text">{formatLastSync()}</div>
@@ -411,9 +370,9 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         {/* Backend Mode Badge */}
         <div className="mb-4 p-2 border border-brutal-accent bg-brutal-accent/5 text-xs font-mono flex items-center gap-2">
           <Server className="w-3 h-3 text-brutal-accent" />
-          <span className="text-brutal-accent">BACKEND MODE</span>
+          <span className="text-brutal-accent">SELF-HOSTED MODE</span>
           <span className="text-brutal-muted">|</span>
-          <span className="text-brutal-muted">Data stored in PostgreSQL</span>
+          <span className="text-brutal-muted">Data stored in SQLite</span>
         </div>
 
         {/* Filter Status */}
@@ -563,192 +522,28 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         isOpen={isGitHubModalOpen}
         onClose={() => setIsGitHubModalOpen(false)}
       />
-      <UpgradePromptModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        feature="ai_calls"
-      />
 
-      {/* 账号设置模态框 */}
-      {isAccountModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-md border-2 border-brutal-border bg-brutal-surface p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-sm font-mono font-bold uppercase tracking-wider">账号设置</h2>
-              <button
-                type="button"
-                onClick={() => setIsAccountModalOpen(false)}
-                className="text-brutal-muted hover:text-brutal-text text-lg"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* 第三方账号绑定 */}
-              <div className="border border-brutal-border p-4">
-                <div className="text-xs font-mono text-brutal-muted mb-3 uppercase tracking-wider">
-                  第三方账号绑定
-                </div>
-
-                {/* Google */}
-                <div className="flex items-center justify-between py-2">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24">
-                      <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
-                      <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                      <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                      <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                    <span className="text-sm font-mono">Google</span>
-                  </div>
-                  {oauthProvider === 'google' ? (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          await authApi.unbindOAuth('google');
-                          setOauthProvider(null);
-                          showToast('Google 账号已解绑', 'success');
-                        } catch (e: unknown) {
-                          const msg = e instanceof Error ? e.message : '解绑失败';
-                          showToast(msg, 'error');
-                        }
-                      }}
-                      className="text-xs font-mono px-3 py-1 border border-brutal-warning text-brutal-warning hover:bg-brutal-warning hover:text-brutal-bg transition-colors"
-                    >
-                      解绑
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        window.location.href = authApi.getOAuthBindUrl('google');
-                      }}
-                      className="text-xs font-mono px-3 py-1 border border-brutal-accent text-brutal-accent hover:bg-brutal-accent hover:text-brutal-bg transition-colors"
-                    >
-                      绑定
-                    </button>
-                  )}
-                </div>
-
-                {/* GitHub */}
-                <div className="flex items-center justify-between py-2">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                    </svg>
-                    <span className="text-sm font-mono">GitHub</span>
-                  </div>
-                  {oauthProvider === 'github' ? (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          await authApi.unbindOAuth('github');
-                          setOauthProvider(null);
-                          showToast('GitHub 账号已解绑', 'success');
-                        } catch (e: unknown) {
-                          const msg = e instanceof Error ? e.message : '解绑失败';
-                          showToast(msg, 'error');
-                        }
-                      }}
-                      className="text-xs font-mono px-3 py-1 border border-brutal-warning text-brutal-warning hover:bg-brutal-warning hover:text-brutal-bg transition-colors"
-                    >
-                      解绑
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        window.location.href = authApi.getOAuthBindUrl('github');
-                      }}
-                      className="text-xs font-mono px-3 py-1 border border-brutal-accent text-brutal-accent hover:bg-brutal-accent hover:text-brutal-bg transition-colors"
-                    >
-                      绑定
-                    </button>
-                  )}
-                </div>
-
-                {oauthProvider && (
-                  <div className="text-[10px] font-mono text-brutal-muted mt-2">
-                    当前已绑定: {oauthProvider}
-                  </div>
-                )}
-                {!oauthProvider && (
-                  <div className="text-[10px] font-mono text-brutal-muted mt-2">
-                    未绑定第三方账号
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 退出登录确认对话框 —— 宠物挽留版 */}
+      {/* 退出登录确认对话框 */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-sm border-2 border-brutal-border bg-brutal-surface p-6 flex flex-col items-center">
-            {/* 宠物挽留对话气泡 */}
-            <div className="mb-4 relative self-stretch">
-              <div
-                className="px-4 py-3 text-sm font-mono text-center"
-                style={{
-                  backgroundColor: petColor,
-                  color: 'var(--brutal-bg)',
-                  border: '2px solid var(--brutal-text)',
-                  boxShadow: '4px 4px 0px var(--brutal-text)',
-                }}
-              >
-                {getContextDialogue(
-                  petConfig?.type || 'cat',
-                  petConfig?.personality || 'gentle',
-                  { isLeaving: true }
-                )}
-              </div>
-              {/* 气泡尾巴 */}
-              <div
-                className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0"
-                style={{
-                  borderLeft: '8px solid transparent',
-                  borderRight: '8px solid transparent',
-                  borderTop: `8px solid ${petColor}`,
-                }}
-              />
-            </div>
-
-            {/* 宠物动画 */}
-            <div className="w-20 h-20 flex items-center justify-center mb-4">
-              <PixelPet frames={petFrames} scale={3} animation="idle" />
-            </div>
-
-            {/* 操作按钮 */}
-            <div className="flex gap-3 w-full">
+          <div className="w-full max-w-sm border-2 border-brutal-border bg-brutal-surface p-6">
+            <h3 className="text-sm font-mono font-bold mb-4">确认退出登录？</h3>
+            <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setShowLogoutConfirm(false)}
-                className="flex-1 py-3 bg-brutal-accent text-brutal-bg font-mono font-bold
-                           border-2 border-brutal-accent
-                           hover:bg-brutal-bg hover:text-brutal-accent
-                           transition-colors
-                           active:translate-x-[2px] active:translate-y-[2px]"
+                className="flex-1 py-3 bg-brutal-bg text-brutal-text font-mono font-bold
+                           border-2 border-brutal-border hover:border-brutal-accent hover:text-brutal-accent transition-colors"
               >
-                留下陪我
+                取消
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setShowLogoutConfirm(false);
-                  onLogout();
-                }}
-                className="flex-1 py-3 bg-brutal-bg text-brutal-text font-mono font-bold
-                           border-2 border-brutal-border
-                           hover:border-brutal-accent hover:text-brutal-accent
-                           transition-colors
-                           active:translate-x-[2px] active:translate-y-[2px]"
+                onClick={onLogout}
+                className="flex-1 py-3 bg-brutal-warning text-brutal-bg font-mono font-bold
+                           border-2 border-brutal-warning hover:bg-brutal-bg hover:text-brutal-warning transition-colors"
               >
-                狠心离开
+                确认退出
               </button>
             </div>
           </div>
@@ -767,10 +562,9 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
               } catch {
                 // 后端保存失败，不更新本地状态
               }
-            // } else {
-              setPetConfig(config);
-              localStorage.setItem(petConfigKey, JSON.stringify(config));
             }
+            setPetConfig(config);
+            localStorage.setItem(petConfigKey, JSON.stringify(config));
           }}
           onClose={() => setIsPetConfigOpen(false)}
         />

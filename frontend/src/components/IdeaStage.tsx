@@ -46,6 +46,22 @@ const NOTE_COLORS: Record<string, string> = {
   success: 'border-brutal-success bg-brutal-success/10',
 };
 
+function parseStreamingSuggestions(text: string): { title: string; content: string }[] {
+  const suggestions: { title: string; content: string }[] = [];
+  const regex = /^###\s+(.+?)[\r\n]+([\s\S]*?)(?=(?:^###\s+)|$)/gm;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const content = match[2].trim();
+    if (content) {
+      suggestions.push({
+        title: match[1].trim(),
+        content,
+      });
+    }
+  }
+  return suggestions;
+}
+
 function SortableNote({
   note,
   isEditing,
@@ -181,8 +197,10 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
   const [editContent, setEditContent] = useState('');
   const [editTitle, setEditTitle] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [suggestedNotes, setSuggestedNotes] = useState<{ title: string; content: string }[] | null>(null);
+  const [streamingContent, setStreamingContent] = useState('');
   const [modalError, setModalError] = useState<string | null>(null);
   const { showToast } = useToast();
 
@@ -321,8 +339,10 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
 
   const getAiSuggestion = async () => {
     setIsGenerating(true);
+    setIsStreaming(true);
     setModalError(null);
     setSuggestedNotes(null);
+    setStreamingContent('');
     setModalOpen(true);
 
     try {
@@ -334,31 +354,48 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
         suggestions = preGeneratedNotesRef.current;
       }
 
-      // 预生成未触发或失败，走正常请求
-      if (!suggestions) {
-        suggestions = await aiService.generateIdeaSuggestion(
-          project.id,
-          project.title,
-          project.painPoint,
-          project.originalIdea || project.painPoint,
-          notes.map((n) => ({ title: n.title, content: n.content }))
-        );
+      if (suggestions) {
+        // 预生成数据已就绪，直接显示
+        setSuggestedNotes(suggestions);
+        setIsStreaming(false);
+        setIsGenerating(false);
+        return;
       }
 
-      setSuggestedNotes(suggestions);
+      // 预生成未触发或失败，走流式请求
+      let fullText = '';
+      const stream = aiService.streamIdeaSuggestion(
+        project.id,
+        project.title,
+        project.painPoint,
+        project.originalIdea || project.painPoint,
+        notes.map((n) => ({ title: n.title, content: n.content }))
+      );
+
+      for await (const chunk of stream) {
+        fullText += chunk;
+        setStreamingContent(fullText);
+      }
+
+      const parsed = parseStreamingSuggestions(fullText);
+      if (parsed.length === 0 && fullText.trim()) {
+        setSuggestedNotes([{ title: 'AI 建议', content: fullText.trim() }]);
+      } else {
+        setSuggestedNotes(parsed);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : '获取 AI 建议失败';
       setModalError(message);
       showToast(message, 'error');
     } finally {
       setIsGenerating(false);
+      setIsStreaming(false);
     }
   };
 
-  const handleMerge = async () => {
-    if (!suggestedNotes) return;
+  const handleMerge = async (editedSuggestions: { title: string; content: string }[]) => {
     const newNotes = notes.map((note, index) => {
-      const suggestion = suggestedNotes[index];
+      const suggestion = editedSuggestions[index];
       if (!suggestion) return note;
       if (isPlaceholder(note.content)) {
         return { ...note, content: suggestion.content };
@@ -372,10 +409,9 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
     showToast('AI 建议已智能合并到便利贴', 'success');
   };
 
-  const handleOverwrite = async () => {
-    if (!suggestedNotes) return;
+  const handleOverwrite = async (editedSuggestions: { title: string; content: string }[]) => {
     const newNotes = notes.map((note, index) => {
-      const suggestion = suggestedNotes[index];
+      const suggestion = editedSuggestions[index];
       if (!suggestion) return note;
       return { ...note, content: suggestion.content };
     });
@@ -482,10 +518,14 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
           setModalOpen(false);
           setSuggestedNotes(null);
           setModalError(null);
+          setStreamingContent('');
+          setIsStreaming(false);
         }}
         currentNotes={notes.map((n) => ({ title: n.title, content: n.content }))}
         suggestedNotes={suggestedNotes}
+        streamingContent={streamingContent}
         isLoading={isGenerating}
+        isStreaming={isStreaming}
         error={modalError}
         onMerge={handleMerge}
         onOverwrite={handleOverwrite}

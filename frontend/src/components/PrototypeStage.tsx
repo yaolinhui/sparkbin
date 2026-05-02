@@ -19,6 +19,13 @@ import {
   Save,
   Copy,
   ExternalLink,
+  Sparkles,
+  Eye,
+  BookOpen,
+  Lightbulb,
+  Code2,
+  Wand2,
+  ArrowLeft,
 } from 'lucide-react';
 import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
@@ -134,6 +141,237 @@ const PRIORITY_CONFIG = {
   P2: { label: 'P2 可选', color: 'bg-brutal-muted text-brutal-bg', desc: '后续迭代' },
 };
 
+// ============ 风格分类与参考项目数据 ============
+
+interface StyleCategory {
+  id: string;
+  name: string;
+  description: string;
+  visualTraits: string[];
+  colorClass: string;
+  borderClass: string;
+  bgClass: string;
+}
+
+interface DesignReference {
+  id: string;
+  name: string;
+  url: string;
+  description: string;
+  categoryId: string;
+  keyFeatures: string[];
+  tags: string[];
+}
+
+interface GeneratedSample {
+  categoryId: string;
+  name: string;
+  description: string;
+  prompt: string;
+  generatedAt: number;
+}
+
+const STYLE_CATEGORIES: StyleCategory[] = [
+  {
+    id: 'minimal',
+    name: '极简风',
+    description: '极致简洁，留白为主，信息密度低但精准',
+    visualTraits: ['大量留白', '单色或双色配色', '无装饰元素', '精确排版', '内容即设计'],
+    colorClass: 'text-brutal-text',
+    borderClass: 'border-brutal-border',
+    bgClass: 'bg-brutal-bg',
+  },
+  {
+    id: 'tech',
+    name: '科技风',
+    description: '深色主题，霓虹点缀，开发者友好',
+    visualTraits: ['深色背景', '霓虹/荧光点缀色', '等宽字体', '代码块样式', '数据可视化'],
+    colorClass: 'text-cyan-400',
+    borderClass: 'border-cyan-500/30',
+    bgClass: 'bg-cyan-950/20',
+  },
+  {
+    id: 'cozy',
+    name: '温馨风',
+    description: '柔和暖色调，圆润元素，人文气息浓厚',
+    visualTraits: ['暖色调（橙/粉/米）', '圆角设计', '手写体或柔和字体', '插画元素', '情感化文案'],
+    colorClass: 'text-amber-600',
+    borderClass: 'border-amber-500/30',
+    bgClass: 'bg-amber-50/10',
+  },
+  {
+    id: 'industrial',
+    name: '工业风',
+    description: '粗粝质感，金属色调，结构感强',
+    visualTraits: ['金属/混凝土纹理', '粗边框', '等宽字体', '高对比度', '网格系统'],
+    colorClass: 'text-stone-500',
+    borderClass: 'border-stone-500/30',
+    bgClass: 'bg-stone-900/20',
+  },
+  {
+    id: 'retro',
+    name: '复古风',
+    description: '怀旧像素，经典排版，旧时代美学',
+    visualTraits: ['像素/点阵字体', '低保真色彩', '复古图标', '经典布局', '怀旧滤镜'],
+    colorClass: 'text-purple-500',
+    borderClass: 'border-purple-500/30',
+    bgClass: 'bg-purple-950/20',
+  },
+  {
+    id: 'nature',
+    name: '自然风',
+    description: '绿色系为主，有机形态，生态气息',
+    visualTraits: ['绿色/大地色系', '有机曲线', '自然纹理', '手写字体', '植物元素'],
+    colorClass: 'text-emerald-500',
+    borderClass: 'border-emerald-500/30',
+    bgClass: 'bg-emerald-950/20',
+  },
+];
+
+const DESIGN_REFERENCES: DesignReference[] = [
+  // === 极简风 ===
+  {
+    id: 'ref-linear',
+    name: 'Linear',
+    url: 'https://linear.app',
+    description: 'Issue tracking 工具，深色极简设计的典范。信息层级清晰，交互细腻，是 SaaS 产品极简设计的标杆。',
+    categoryId: 'minimal',
+    keyFeatures: ['深色主题但保持通透感', '精确到像素的间距控制', '无多余装饰的组件设计', '流畅的微动效', '键盘优先的交互设计'],
+    tags: ['SaaS', '深色', '生产力工具'],
+  },
+  {
+    id: 'ref-notion',
+    name: 'Notion',
+    url: 'https://notion.so',
+    description: '全能工作空间，白色极简设计的代表。内容即界面，通过排版和层级而非装饰来组织信息。',
+    categoryId: 'minimal',
+    keyFeatures: ['内容即设计的理念', '大量留白创造呼吸感', '简单的线框和分割线', '一致的排版层级', '轻量级图标系统'],
+    tags: ['文档', '白色', '工作空间'],
+  },
+  {
+    id: 'ref-figma',
+    name: 'Figma',
+    url: 'https://figma.com',
+    description: '设计协作工具，现代工具类产品的极简典范。界面完全为内容服务，没有视觉噪音。',
+    categoryId: 'minimal',
+    keyFeatures: ['工具栏极简隐藏', '画布为中心的布局', '最小化 UI chrome', '中性灰调色板', '精准的 8px 网格系统'],
+    tags: ['设计工具', '协作', '专业'],
+  },
+  // === 科技风 ===
+  {
+    id: 'ref-github',
+    name: 'GitHub',
+    url: 'https://github.com',
+    description: '全球最大的开发者平台，深色科技风的经典代表。代码和数据驱动的界面设计。',
+    categoryId: 'tech',
+    keyFeatures: ['深色主题配高对比文字', '等宽字体展示代码', '绿色成功态和红色错误态', '数据密度高的信息架构', '标签页式代码浏览'],
+    tags: ['开发者', '代码', '深色'],
+  },
+  {
+    id: 'ref-vercel',
+    name: 'Vercel',
+    url: 'https://vercel.com',
+    description: '前端部署平台，现代科技 SaaS 的设计标杆。深色背景配霓虹渐变，极具未来感。',
+    categoryId: 'tech',
+    keyFeatures: ['深色背景配霓虹渐变', '大面积留白与聚焦区域', '玻璃拟态效果', '部署状态可视化', '命令行风格的交互元素'],
+    tags: ['SaaS', '部署', '现代'],
+  },
+  {
+    id: 'ref-supabase',
+    name: 'Supabase',
+    url: 'https://supabase.com',
+    description: '开源 Firebase 替代品，深色科技风与明亮品牌色（绿色）的完美结合。',
+    categoryId: 'tech',
+    keyFeatures: ['深色主题配品牌绿点缀', '代码片段展示', '终端/命令行视觉元素', '数据表格展示', '开发者文档风格'],
+    tags: ['开源', '数据库', 'BaaS'],
+  },
+  // === 温馨风 ===
+  {
+    id: 'ref-spotify',
+    name: 'Spotify',
+    url: 'https://spotify.com',
+    description: '音乐流媒体平台，深色背景上的温馨渐变封面，情感化音乐体验设计。',
+    categoryId: 'cozy',
+    keyFeatures: ['渐变封面色彩系统', '圆角卡片和按钮', '情感化播放界面', '柔和的阴影', '个性化推荐表达'],
+    tags: ['音乐', '娱乐', '情感化'],
+  },
+  {
+    id: 'ref-patreon',
+    name: 'Patreon',
+    url: 'https://patreon.com',
+    description: '创作者支持平台，温暖的品牌色调（珊瑚色），强调社区和连接感。',
+    categoryId: 'cozy',
+    keyFeatures: ['温暖的珊瑚/橙色系', '创作者个人故事展示', '社区感排版', '亲切的手写体点缀', '圆润的 UI 元素'],
+    tags: ['创作者', '社区', '支持'],
+  },
+  {
+    id: 'ref-substack',
+    name: 'Substack',
+    url: 'https://substack.com',
+    description: ' newsletter 平台，以阅读体验为核心，温馨舒适的排版设计。',
+    categoryId: 'cozy',
+    keyFeatures: ['阅读优先的排版', '温和的字体选择', '简单的配色（黑/白/橙）', '内容聚焦的布局', '人性化的推荐语'],
+    tags: ['写作', '阅读', 'newsletter'],
+  },
+  // === 工业风 ===
+  {
+    id: 'ref-archdaily',
+    name: 'ArchDaily',
+    url: 'https://archdaily.com',
+    description: '建筑资讯网站，结构化、网格化的信息呈现，强烈的编辑设计感。',
+    categoryId: 'industrial',
+    keyFeatures: ['严格的网格系统', '大标题 + 图片瀑布流', '黑白灰为主的色调', '建筑摄影展示', '理性的信息层级'],
+    tags: ['建筑', '杂志', '摄影'],
+  },
+  {
+    id: 'ref-awwwards',
+    name: 'Awwwards',
+    url: 'https://awwwards.com',
+    description: '网页设计奖项平台，展示先锋设计作品，工业感与现代感并存。',
+    categoryId: 'industrial',
+    keyFeatures: ['大胆的排版比例', '黑白对比为主', '结构性网格布局', '作品展示导向', '评分和数据展示'],
+    tags: ['设计', '奖项', '展示'],
+  },
+  // === 复古风 ===
+  {
+    id: 'ref-neocities',
+    name: 'Neocities',
+    url: 'https://neocities.org',
+    description: '免费网页托管平台，鼓励个性化主页，保留了早期互联网的 DIY 精神。',
+    categoryId: 'retro',
+    keyFeatures: ['像素风格元素', '鲜艳的高对比色彩', '复古字体（如 MS Gothic）', '简单的表格布局', 'GIF 和像素画装饰'],
+    tags: ['托管', '个人主页', 'DIY'],
+  },
+  {
+    id: 'ref-cameronsworld',
+    name: 'Camerons World',
+    url: 'https://cameronsworld.net',
+    description: '复古网页设计致敬网站，展示了 90 年代和 00 年代初的网页美学。',
+    categoryId: 'retro',
+    keyFeatures: ['星幕背景图案', '复古图标和按钮', 'marquee 滚动文字', '访客计数器', '拼贴式布局'],
+    tags: ['艺术', '怀旧', '展示'],
+  },
+  // === 自然风 ===
+  {
+    id: 'ref-patagonia',
+    name: 'Patagonia',
+    url: 'https://patagonia.com',
+    description: '户外品牌官网，大量使用自然摄影，绿色和大地色系，环保理念贯穿设计。',
+    categoryId: 'nature',
+    keyFeatures: ['全幅自然摄影', '大地色/绿色调色板', '环保理念文案', '粗犷的字体选择', '户外场景沉浸感'],
+    tags: ['户外', '品牌', '环保'],
+  },
+  {
+    id: 'ref-allbirds',
+    name: 'Allbirds',
+    url: 'https://allbirds.com',
+    description: '可持续鞋履品牌，米色/灰色自然色调，简洁但温暖的产品展示。',
+    categoryId: 'nature',
+    keyFeatures: ['米白/浅灰自然色调', '产品材质特写', '可持续发展故事', '简洁的产品卡片', '柔和的光影'],
+    tags: ['电商', '可持续', '品牌'],
+  },
+];
+
 const DEFAULT_TEMPLATES: DesignTemplate[] = [
   {
     id: 'dashboard',
@@ -199,7 +437,7 @@ export function PrototypeStage({ project, onUpdateContent, isLocked, onToggleLoc
             },
           });
           // 根据已有数据设置当前步骤
-          if (parsed.selectedPlatform && parsed.selectedTemplate && parsed.features?.length > 0) {
+          if (parsed.selectedPlatform && parsed.selectedTemplate) {
             setCurrentStep('features');
           } else if (parsed.selectedPlatform) {
             setCurrentStep('template');
@@ -233,20 +471,19 @@ export function PrototypeStage({ project, onUpdateContent, isLocked, onToggleLoc
     setCurrentStep('template');
   };
 
-  // 选择模板
-  const selectTemplate = async (templateId: string) => {
-    const template = DEFAULT_TEMPLATES.find(t => t.id === templateId);
+  // 选择模板/风格（由 TemplateSelector 调用，传入已生成的提示词）
+  const selectTemplate = async (templateId: string, prompt: string) => {
     const newData = {
       ...data,
       selectedTemplate: templateId,
-      designPrompt: template?.prompt,
+      designPrompt: prompt,
     };
     setData(newData);
     await saveData(newData);
     setCurrentStep('features');
   };
 
-  // 生成设计提示词
+  // 生成设计提示词（旧版兼容）
   const generateDesignPrompt = async () => {
     if (!data.selectedPlatform || !data.selectedTemplate) return;
 
@@ -460,7 +697,8 @@ export function PrototypeStage({ project, onUpdateContent, isLocked, onToggleLoc
 
         {currentStep === 'template' && (
           <TemplateSelector
-            selected={data.selectedTemplate}
+            project={project}
+            selectedPlatform={data.selectedPlatform}
             onSelect={selectTemplate}
             onBack={() => setCurrentStep('platform')}
             disabled={isLocked}
@@ -875,55 +1113,568 @@ function PlatformSelector({
   );
 }
 
-// 子组件：模板选择器
+// 子组件：模板选择器（三栏布局：风格分类 | 参考列表 | 预览面板）
 function TemplateSelector({
-  selected,
+  project,
+  selectedPlatform,
   onSelect,
   onBack,
   disabled,
 }: {
-  selected?: string;
-  onSelect: (id: string) => void;
+  project: Project;
+  selectedPlatform?: PlatformType;
+  onSelect: (templateId: string, designPrompt: string) => void;
   onBack: () => void;
   disabled: boolean;
 }) {
+  const [activeCategory, setActiveCategory] = useState<string>(STYLE_CATEGORIES[0].id);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [generatedSamples, setGeneratedSamples] = useState<Record<string, GeneratedSample>>({});
+  const [isGeneratingSample, setIsGeneratingSample] = useState(false);
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
+  const [previewPrompt, setPreviewPrompt] = useState<string>('');
+
+  const activeCategoryData = STYLE_CATEGORIES.find(c => c.id === activeCategory)!;
+  const categoryReferences = DESIGN_REFERENCES.filter(r => r.categoryId === activeCategory);
+  const categorySample = generatedSamples[activeCategory];
+
+  // 选中某个项目（参考或样板）
+  const handleSelectItem = (itemId: string) => {
+    setSelectedItemId(itemId);
+    setPreviewPrompt('');
+  };
+
+  // AI 生成此风格样板
+  const handleGenerateSample = async () => {
+    if (!selectedPlatform) return;
+    setIsGeneratingSample(true);
+    try {
+      const platform = PLATFORMS.find(p => p.type === selectedPlatform);
+      const sample = await aiService.generateStyleSample(
+        activeCategoryData.name,
+        activeCategoryData.visualTraits,
+        project.title,
+        project.painPoint,
+        platform?.label || 'Web'
+      );
+      const newSample: GeneratedSample = {
+        categoryId: activeCategory,
+        ...sample,
+        generatedAt: Date.now(),
+      };
+      setGeneratedSamples(prev => ({ ...prev, [activeCategory]: newSample }));
+      setSelectedItemId(`sample:${activeCategory}`);
+      setPreviewPrompt(sample.prompt);
+    } catch (error) {
+      console.error('Failed to generate style sample:', error);
+      alert('生成失败，请检查 AI 配置后重试');
+    } finally {
+      setIsGeneratingSample(false);
+    }
+  };
+
+  // 基于参考项目生成提示词
+  const handleGenerateFromReference = async (ref: DesignReference) => {
+    if (!selectedPlatform) return;
+    setIsGeneratingPrompt(true);
+    try {
+      const platform = PLATFORMS.find(p => p.type === selectedPlatform);
+      const prompt = await aiService.generatePromptFromReference(
+        ref.name,
+        ref.keyFeatures,
+        ref.url,
+        project.title,
+        project.painPoint,
+        platform?.label || 'Web'
+      );
+      setPreviewPrompt(prompt);
+    } catch (error) {
+      console.error('Failed to generate prompt from reference:', error);
+      alert('生成失败，请检查 AI 配置后重试');
+    } finally {
+      setIsGeneratingPrompt(false);
+    }
+  };
+
+  // 使用当前选中的风格
+  const handleUseStyle = () => {
+    if (!selectedItemId) return;
+    const sampleCategoryId = selectedItemId.startsWith('sample:') ? selectedItemId.slice(7) : null;
+    let prompt = previewPrompt || (sampleCategoryId
+      ? generatedSamples[sampleCategoryId]?.prompt || ''
+      : '');
+    // 如果选择了参考项目但没有生成提示词，使用参考项目特征自动构建一个基础提示词
+    if (!prompt && selectedRef) {
+      prompt = `参考 ${selectedRef.name}（${selectedRef.url}）的设计风格，为产品「${project.title}」创建界面设计。\n\n核心设计特征：\n${selectedRef.keyFeatures.map((f, i) => `${i + 1}. ${f}`).join('\n')}\n\n平台：${PLATFORMS.find(p => p.type === selectedPlatform)?.label || 'Web'}\n\n请确保设计围绕核心痛点「${project.painPoint}」展开，在借鉴参考项目风格的同时保持功能导向。`;
+    }
+    if (!prompt) {
+      alert('提示词尚未生成，请先生成提示词');
+      return;
+    }
+    onSelect(selectedItemId, prompt);
+  };
+
+  // 判断当前选中的项目
+  const selectedRef = categoryReferences.find(r => r.id === selectedItemId);
+  const selectedSample = selectedItemId?.startsWith('sample:')
+    ? generatedSamples[selectedItemId.slice(7)]
+    : null;
+
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-sm font-mono text-brutal-text">
-          选择设计模板（可选，用于生成提示词）
-        </h3>
-        <button onClick={onBack} className="btn-brutal h-9 text-xs">
-          ← 返回
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-3 border-b border-brutal-border bg-brutal-surface flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <Palette className="w-4 h-4 text-brutal-accent" />
+          <h3 className="text-sm font-mono font-bold text-brutal-text">
+            设计风格选择
+          </h3>
+          <span className="text-xs font-mono text-brutal-muted">
+            选择风格 → 浏览参考 → 生成提示词
+          </span>
+        </div>
+        <button onClick={onBack} className="btn-brutal h-9 flex items-center gap-2 text-xs">
+          <ArrowLeft className="w-3 h-3" />
+          返回
         </button>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        {DEFAULT_TEMPLATES.map((template) => {
-          const isSelected = selected === template.id;
 
-          return (
-            <button
-              key={template.id}
-              onClick={() => !disabled && onSelect(template.id)}
-              disabled={disabled}
-              className={`p-4 border-2 text-left transition-all ${
-                isSelected
-                  ? 'border-brutal-accent bg-brutal-accent/10'
-                  : 'border-brutal-border hover:border-brutal-accent/50'
-              } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
-            >
-              <div className="w-full h-20 bg-brutal-bg border border-brutal-border mb-3 flex items-center justify-center">
-                <Layout className="w-8 h-8 text-brutal-muted" />
+      {/* 三栏主体 */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* 左栏：风格分类 */}
+        <div className="w-56 border-r border-brutal-border bg-brutal-surface/50 flex-shrink-0 overflow-y-auto">
+          <div className="p-3">
+            <p className="text-[10px] font-mono text-brutal-muted mb-3 uppercase tracking-wider">
+              风格分类
+            </p>
+            <div className="space-y-1">
+              {STYLE_CATEGORIES.map(cat => {
+                const isActive = activeCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => {
+                      setActiveCategory(cat.id);
+                      setSelectedItemId(null);
+                      setPreviewPrompt('');
+                    }}
+                    className={`w-full text-left p-3 border transition-all ${
+                      isActive
+                        ? `${cat.borderClass} ${cat.bgClass}`
+                        : 'border-transparent hover:border-brutal-border/50'
+                    }`}
+                  >
+                    <div className={`text-sm font-mono font-bold ${isActive ? cat.colorClass : 'text-brutal-text'}`}>
+                      {cat.name}
+                    </div>
+                    <p className="text-[10px] font-mono text-brutal-muted mt-1 leading-relaxed">
+                      {cat.description}
+                    </p>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {cat.visualTraits.slice(0, 2).map(trait => (
+                        <span key={trait} className="text-[9px] px-1 py-0.5 bg-brutal-bg border border-brutal-border font-mono text-brutal-muted">
+                          {trait}
+                        </span>
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* 中栏：参考项目 + AI样板 */}
+        <div className="w-80 border-r border-brutal-border bg-brutal-bg flex-shrink-0 overflow-y-auto">
+          <div className="p-4">
+            {/* AI 生成样板区域 */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Wand2 className="w-3 h-3 text-brutal-accent" />
+                <span className="text-xs font-mono font-bold text-brutal-text">AI 风格样板</span>
               </div>
-              <h4 className="font-mono font-bold text-sm mb-1">{template.name}</h4>
-              <p className="text-xs font-mono text-brutal-muted">{template.description}</p>
-            </button>
-          );
-        })}
+
+              {categorySample ? (
+                <button
+                  onClick={() => handleSelectItem(`sample:${activeCategory}`)}
+                  className={`w-full p-4 border-2 text-left transition-all ${
+                    selectedItemId === `sample:${activeCategory}`
+                      ? 'border-brutal-accent bg-brutal-accent/10'
+                      : 'border-brutal-border hover:border-brutal-accent/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-3 h-3 text-brutal-accent" />
+                    <span className="text-sm font-mono font-bold text-brutal-text">
+                      {categorySample.name}
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-mono text-brutal-muted leading-relaxed line-clamp-3">
+                    {categorySample.description}
+                  </p>
+                  <div className="mt-2 text-[10px] font-mono text-brutal-accent">
+                    点击预览完整提示词 →
+                  </div>
+                </button>
+              ) : (
+                <button
+                  onClick={handleGenerateSample}
+                  disabled={isGeneratingSample || disabled}
+                  className="w-full p-4 border-2 border-dashed border-brutal-border hover:border-brutal-accent/50 transition-all text-center disabled:opacity-50"
+                >
+                  {isGeneratingSample ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-4 h-4 border border-brutal-text border-t-transparent animate-spin" />
+                      <span className="text-xs font-mono text-brutal-muted">AI 正在生成样板...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <Wand2 className="w-5 h-5 text-brutal-muted" />
+                      <span className="text-xs font-mono text-brutal-accent">
+                        生成 {activeCategoryData.name} 样板
+                      </span>
+                      <span className="text-[10px] font-mono text-brutal-muted">
+                        基于你的项目信息定制
+                      </span>
+                    </div>
+                  )}
+                </button>
+              )}
+            </div>
+
+            {/* 公开参考项目 */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <BookOpen className="w-3 h-3 text-brutal-accent" />
+                <span className="text-xs font-mono font-bold text-brutal-text">公开参考项目</span>
+              </div>
+              <div className="space-y-2">
+                {categoryReferences.map(ref => (
+                  <button
+                    key={ref.id}
+                    data-testid="design-reference-item"
+                    onClick={() => handleSelectItem(ref.id)}
+                    className={`w-full p-3 border text-left transition-all ${
+                      selectedItemId === ref.id
+                        ? 'border-brutal-accent bg-brutal-accent/10'
+                        : 'border-brutal-border hover:border-brutal-accent/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-mono font-bold text-brutal-text">
+                        {ref.name}
+                      </span>
+                      <ExternalLink className="w-3 h-3 text-brutal-muted" />
+                    </div>
+                    <p className="text-[11px] font-mono text-brutal-muted leading-relaxed line-clamp-2">
+                      {ref.description}
+                    </p>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {ref.tags.map(tag => (
+                        <span key={tag} className="text-[9px] px-1 py-0.5 bg-brutal-surface border border-brutal-border font-mono text-brutal-muted">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 右栏：预览面板 */}
+        <div className="flex-1 bg-brutal-surface/30 flex flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto p-6">
+            {!selectedItemId && (
+              <div className="h-full">
+                {activeCategory ? (
+                  <div className="space-y-6 py-2">
+                    {/* 风格概览 */}
+                    <div className="border border-brutal-border bg-brutal-surface p-5">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={`w-3 h-3 ${activeCategoryData.bgClass} border ${activeCategoryData.borderClass}`} />
+                        <h4 className={`text-base font-mono font-bold ${activeCategoryData.colorClass}`}>
+                          {activeCategoryData.name}
+                        </h4>
+                      </div>
+                      <p className="text-xs font-mono text-brutal-muted mb-4 leading-relaxed">
+                        {activeCategoryData.description}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {activeCategoryData.visualTraits.map(trait => (
+                          <span key={trait} className="text-[10px] px-2 py-1 border border-brutal-border bg-brutal-bg font-mono text-brutal-muted">
+                            {trait}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 视觉特征示意 */}
+                    <div className="border border-brutal-border bg-brutal-surface p-4">
+                      <p className="text-[10px] font-mono text-brutal-muted uppercase tracking-wider mb-3">
+                        视觉特征示意
+                      </p>
+                      <div className="border border-brutal-border/50 bg-brutal-bg p-4" style={{ minHeight: '120px' }}>
+                        {activeCategory === 'minimal' && (
+                          <div className="space-y-4">
+                            <div className="h-px bg-brutal-border/30 w-full" />
+                            <div className="space-y-2">
+                              <div className="h-1.5 bg-brutal-text/10 w-3/4" />
+                              <div className="h-1.5 bg-brutal-text/5 w-1/2" />
+                              <div className="h-1.5 bg-brutal-text/5 w-2/3" />
+                            </div>
+                            <div className="pt-3">
+                              <div className="h-5 border border-brutal-border/30 w-16" />
+                            </div>
+                          </div>
+                        )}
+                        {activeCategory === 'tech' && (
+                          <div className="space-y-2 bg-black/40 p-3 border border-cyan-500/20">
+                            <div className="flex gap-1">
+                              <div className="h-1 bg-cyan-400/40 w-6" />
+                              <div className="h-1 bg-cyan-400/20 w-10" />
+                              <div className="h-1 bg-cyan-400/30 w-4" />
+                            </div>
+                            <div className="font-mono text-[10px] text-cyan-400/50">{'>'} system.init()</div>
+                            <div className="grid grid-cols-3 gap-1 mt-2">
+                              <div className="h-4 bg-cyan-400/10" />
+                              <div className="h-4 bg-cyan-400/20" />
+                              <div className="h-4 bg-cyan-400/10" />
+                            </div>
+                          </div>
+                        )}
+                        {activeCategory === 'cozy' && (
+                          <div className="space-y-3 bg-amber-950/10 p-3 border border-amber-500/20">
+                            <div className="h-1.5 bg-amber-600/20 w-2/3" />
+                            <div className="h-1.5 bg-amber-600/10 w-1/2" />
+                            <div className="flex gap-2 pt-1">
+                              <div className="h-6 border border-amber-500/20 w-10" />
+                              <div className="h-6 border border-amber-500/20 w-10" />
+                            </div>
+                          </div>
+                        )}
+                        {activeCategory === 'industrial' && (
+                          <div className="space-y-2 bg-stone-900/20 p-3 border-2 border-stone-500/30">
+                            <div className="h-2 bg-stone-500/20 w-full" />
+                            <div className="grid grid-cols-4 gap-1">
+                              <div className="h-3 bg-stone-500/10" />
+                              <div className="h-3 bg-stone-500/10" />
+                              <div className="h-3 bg-stone-500/10" />
+                              <div className="h-3 bg-stone-500/10" />
+                            </div>
+                            <div className="h-px bg-stone-500/30 w-full" />
+                            <div className="h-1.5 bg-stone-500/15 w-3/4" />
+                          </div>
+                        )}
+                        {activeCategory === 'retro' && (
+                          <div className="space-y-2 bg-purple-950/20 p-3 border border-purple-500/30">
+                            <div className="font-mono text-[10px] text-purple-400/60">{'>>'} LOAD "DESIGN"</div>
+                            <div className="h-1 bg-purple-400/20 w-1/2" />
+                            <div className="h-1 bg-purple-400/10 w-3/4" />
+                            <div className="grid grid-cols-4 gap-1 mt-1">
+                              {[...Array(8)].map((_, i) => (
+                                <div key={i} className="h-2 bg-purple-400/15" />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {activeCategory === 'nature' && (
+                          <div className="space-y-3 bg-emerald-950/10 p-3 border border-emerald-500/20">
+                            <div className="flex items-end gap-2">
+                              <div className="w-1 h-4 bg-emerald-500/30" />
+                              <div className="w-1 h-6 bg-emerald-500/40" />
+                              <div className="w-1 h-3 bg-emerald-500/20" />
+                              <div className="w-1 h-5 bg-emerald-500/35" />
+                            </div>
+                            <div className="h-px bg-emerald-500/20 w-full" />
+                            <div className="h-1.5 bg-emerald-600/10 w-2/3" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 引导提示 */}
+                    <div className="border border-brutal-accent/30 bg-brutal-accent/5 p-4">
+                      <p className="text-xs font-mono text-brutal-accent leading-relaxed">
+                        → 在中间栏选择一个参考项目，或点击「生成 AI 样板」来创建定制化设计方向，然后在此处预览详情并生成提示词
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-center gap-4 py-20">
+                    <Eye className="w-10 h-10 text-brutal-muted/30" />
+                    <div>
+                      <p className="text-sm font-mono text-brutal-muted mb-1">
+                        在左侧选择一个风格分类
+                      </p>
+                      <p className="text-xs font-mono text-brutal-muted/60">
+                        浏览设计方向并生成定制提示词
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {selectedItemId && (
+              <div className="space-y-4">
+                {/* 预览头部 */}
+                <div className="border border-brutal-border bg-brutal-surface p-4">
+                  {selectedSample && (
+                    <>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Sparkles className="w-4 h-4 text-brutal-accent" />
+                        <h4 className="text-sm font-mono font-bold text-brutal-text">
+                          {selectedSample.name}
+                        </h4>
+                        <span className="text-[10px] px-1.5 py-0.5 bg-brutal-accent text-brutal-bg font-mono">
+                          AI 生成
+                        </span>
+                      </div>
+                      <p className="text-xs font-mono text-brutal-muted mb-3">
+                        {selectedSample.description}
+                      </p>
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {activeCategoryData.visualTraits.map(trait => (
+                          <span key={trait} className="text-[10px] px-2 py-0.5 border border-brutal-border bg-brutal-bg font-mono text-brutal-muted">
+                            {trait}
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {selectedRef && (
+                    <>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4 text-brutal-accent" />
+                          <h4 className="text-sm font-mono font-bold text-brutal-text">
+                            {selectedRef.name}
+                          </h4>
+                          <span className="text-[10px] px-1.5 py-0.5 bg-brutal-success/20 text-brutal-success border border-brutal-success/30 font-mono">
+                            公开项目
+                          </span>
+                        </div>
+                        <a
+                          href={selectedRef.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs font-mono text-brutal-accent hover:underline flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          访问网站
+                        </a>
+                      </div>
+                      <p className="text-xs font-mono text-brutal-muted mb-3">
+                        {selectedRef.description}
+                      </p>
+                      <div className="space-y-2 mb-3">
+                        <p className="text-[10px] font-mono text-brutal-muted uppercase tracking-wider">
+                          关键设计特征
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {selectedRef.keyFeatures.map(feature => (
+                            <span key={feature} className="text-[10px] px-2 py-0.5 border border-brutal-border bg-brutal-bg font-mono text-brutal-muted">
+                              {feature}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedRef.tags.map(tag => (
+                          <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-brutal-surface border border-brutal-border font-mono text-brutal-muted">
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* 提示词生成区域 */}
+                <div className="border border-brutal-border bg-brutal-surface">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-brutal-border">
+                    <div className="flex items-center gap-2">
+                      <Code2 className="w-4 h-4 text-brutal-accent" />
+                      <span className="text-sm font-mono font-bold text-brutal-text">
+                        设计提示词
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {previewPrompt && (
+                        <button
+                          onClick={() => navigator.clipboard.writeText(previewPrompt)}
+                          className="btn-brutal h-8 flex items-center gap-1.5 text-[10px]"
+                        >
+                          <Copy className="w-3 h-3" />
+                          复制
+                        </button>
+                      )}
+                      {selectedRef && !previewPrompt && (
+                        <button
+                          onClick={() => handleGenerateFromReference(selectedRef)}
+                          disabled={isGeneratingPrompt}
+                          className="btn-brutal h-8 flex items-center gap-1.5 text-[10px]"
+                        >
+                          {isGeneratingPrompt ? (
+                            <div className="w-3 h-3 border border-brutal-text border-t-transparent animate-spin" />
+                          ) : (
+                            <Wand2 className="w-3 h-3 text-brutal-accent" />
+                          )}
+                          生成提示词
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-4">
+                    {previewPrompt ? (
+                      <div className="p-3 bg-brutal-bg border border-brutal-border font-mono text-xs text-brutal-muted whitespace-pre-wrap max-h-80 overflow-y-auto">
+                        {previewPrompt}
+                      </div>
+                    ) : selectedSample ? (
+                      <div className="p-3 bg-brutal-bg border border-brutal-border font-mono text-xs text-brutal-muted whitespace-pre-wrap max-h-80 overflow-y-auto">
+                        {selectedSample.prompt}
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center">
+                        <Lightbulb className="w-6 h-6 text-brutal-muted/30 mx-auto mb-2" />
+                        <p className="text-xs font-mono text-brutal-muted">
+                          点击"生成提示词"按钮，AI 将基于此参考项目为你的产品定制设计提示词
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 底部固定操作区 */}
+          {selectedItemId && (
+            <div className="p-4 border-t border-brutal-border bg-brutal-surface flex-shrink-0 space-y-2">
+              {selectedRef && !previewPrompt && !selectedSample && (
+                <p className="text-[10px] font-mono text-brutal-muted">
+                  提示：可直接使用此风格（将基于参考特征自动生成基础提示词），或点击上方「生成提示词」获取更定制化的方案
+                </p>
+              )}
+              <div className="flex justify-end">
+                <button
+                  data-testid="use-style-button"
+                  onClick={handleUseStyle}
+                  disabled={disabled || (!previewPrompt && !selectedSample && !selectedRef)}
+                  className="btn-brutal-primary h-10 px-6 flex items-center gap-2 text-sm disabled:opacity-50"
+                >
+                  <Check className="w-4 h-4" />
+                  使用此风格
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-      <p className="mt-4 text-xs text-brutal-muted font-mono">
-        💡 选择模板后，可以使用 AI 生成详细的设计提示词
-      </p>
     </div>
   );
 }

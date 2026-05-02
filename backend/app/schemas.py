@@ -29,27 +29,6 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
 
 
-class RegisterRequest(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50)
-    email: str = Field(..., pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
-    password: str = Field(..., min_length=8)
-    honeypot: Optional[str] = Field(default=None)
-
-
-class ForgotPasswordRequest(BaseModel):
-    email: str
-
-
-class ResetPasswordRequest(BaseModel):
-    token: str
-    new_password: str = Field(..., min_length=8)
-
-
-class VerifyEmailResponse(BaseModel):
-    success: bool
-    message: str
-
-
 class TokenPairResponse(BaseModel):
     access_token: str
     refresh_token: str
@@ -57,11 +36,7 @@ class TokenPairResponse(BaseModel):
 
 
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str
-
-
-class OAuthUnbindRequest(BaseModel):
-    provider: str = Field(..., pattern="^(google|github)$")
+    refresh_token: Optional[str] = None
 
 
 # ========== 用户 ==========
@@ -73,26 +48,13 @@ class PetConfig(BaseModel):
     verbosity: str = "moderate"  # quiet | moderate | chatty
 
 
-class UserQuotaInfo(BaseModel):
-    ai_credits: int
-    ai_credits_total_consumed: int
-    projects_used: int
-    projects_limit: Optional[int] = None  # 始终返回 None（无限）
-
-
 class UserInfo(BaseModel):
     id: UUID
     username: str
     preferred_model: Optional[AIProvider] = None
-    subscription_status: str = "inactive"
-    stripe_customer_id: Optional[str] = None
-    stripe_subscription_id: Optional[str] = None
-    current_tier_id: Optional[str] = None
     pet_config: Optional[PetConfig] = None
     theme_preference: Optional[str] = "dark"
     require_password_change: bool = False
-    enable_payments: bool = False  # 后端是否开启支付功能
-    quota: UserQuotaInfo
     created_at: datetime
 
     class Config:
@@ -299,62 +261,6 @@ class ValidateSuggestResponse(BaseModel):
     analysis: str = ""
 
 
-# ========== 支付 ==========
-class CheckoutItem(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255)
-    price: float = Field(..., ge=0)  # 美元，支持小数（如 9.99）
-    period: str = Field(default="month", pattern="^(month|year|lifetime)$")
-    tier_id: str = Field(..., min_length=1)
-
-
-class CreateCheckoutRequest(BaseModel):
-    items: List[CheckoutItem]
-    success_url: str
-    cancel_url: str
-
-
-class CheckoutSessionResponse(BaseModel):
-    session_url: str
-    session_id: str
-
-
-class SubscriptionStatusResponse(BaseModel):
-    status: str = "inactive"
-    tier_id: Optional[str] = None
-    stripe_customer_id: Optional[str] = None
-    stripe_subscription_id: Optional[str] = None
-
-
-class CreditsStatusResponse(BaseModel):
-    credits: int
-    total_consumed: int
-
-
-class CreditPack(BaseModel):
-    price_usd: float
-    credits: int
-    label: str
-
-
-class CreditTransactionInfo(BaseModel):
-    id: UUID
-    type: str  # grant | purchase | consume | refund
-    amount: int
-    balance_after: int
-    description: str
-    reference_id: Optional[str] = None
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class PurchaseCreditsRequest(BaseModel):
-    pack_index: int = Field(..., ge=0, le=2)
-    success_url: str
-    cancel_url: str
-
-
 # ========== 数据导出 ==========
 class ExportData(BaseModel):
     projects: List[ProjectDetail]
@@ -438,6 +344,84 @@ class AgentRunHistoryItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ========== 问卷 ==========
+class SurveyQuestion(BaseModel):
+    id: str
+    type: str = Field(..., pattern="^(single_choice|multi_choice|rating|text)$")
+    title: str
+    required: bool = True
+    options: Optional[List[str]] = None
+    placeholder: Optional[str] = None
+    scale: Optional[int] = None  # rating 题型用
+
+
+class SurveyConfig(BaseModel):
+    title: str
+    description: str = ""
+    questions: List[SurveyQuestion]
+
+
+class SurveyGenerateRequest(BaseModel):
+    topic: str = Field(..., min_length=1)
+    target_users: str = ""
+    question_count: int = Field(default=8, ge=3, le=15)
+
+
+class SurveyCreate(BaseModel):
+    title: str
+    description: str = ""
+    config: SurveyConfig
+
+
+class SurveyInfo(BaseModel):
+    id: UUID
+    public_id: str
+    title: str
+    description: str
+    status: str
+    response_count: int
+    config: SurveyConfig
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SurveyDetail(SurveyInfo):
+    config: SurveyConfig
+
+
+class SurveyPublishRequest(BaseModel):
+    status: str = Field(..., pattern="^(active|closed|archived)$")
+
+
+class SurveyResponseSubmit(BaseModel):
+    answers: Dict[str, Any]
+
+
+class SurveyResponseInfo(BaseModel):
+    id: UUID
+    answers: Dict[str, Any]
+    respondent_meta: Dict[str, Any]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SurveyAnalysisRequest(BaseModel):
+    pass  # 空请求体，AI 自动分析所有回答
+
+
+class SurveyAnalysisResponse(BaseModel):
+    summary: str
+    key_findings: List[str]
+    sentiment: Dict[str, int]
+    recommendations: List[str]
+    next_steps: str
 
 
 # ========== AI 日志 ==========

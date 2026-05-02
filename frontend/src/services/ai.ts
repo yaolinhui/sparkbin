@@ -456,6 +456,149 @@ class AIService {
     return response.notes;
   }
 
+  // 流式生成想法阶段建议（使用通用 chat 接口）
+  async *streamIdeaSuggestion(
+    projectId: string,
+    title: string,
+    painPoint: string,
+    originalIdea: string,
+    notes: { title: string; content: string }[]
+  ): AsyncGenerator<string, void, unknown> {
+    const notesText = notes.map((n, i) => `${i + 1}. ${n.title}：${n.content}`).join('\n');
+
+    const messages: KimiMessage[] = [
+      {
+        role: 'system',
+        content: `你是一个资深产品顾问，擅长帮助独立开发者梳理和打磨产品思路。
+
+请根据用户提供的项目信息，为每个维度提供具体、可执行的改进建议。
+
+输出格式要求：
+- 每个维度用 ### 开头，后跟维度标题
+- 标题下方直接写建议内容，不要编号
+- 内容要具体、 actionable，避免空话
+- 如果某个维度内容已经很好，可以说"当前内容已经比较清晰，建议补充..."
+
+例如：
+### 核心痛点
+建议补充用户遇到这个痛点的具体频率和场景...
+
+### 目标用户
+可以更精确地描述用户画像，比如年龄、职业、使用习惯...`,
+      },
+      {
+        role: 'user',
+        content: `项目标题：${title}
+痛点描述：${painPoint}
+原始想法：${originalIdea || painPoint}
+
+当前各维度内容：
+${notesText}
+
+请为每个维度提供改进建议。`,
+      },
+    ];
+
+    yield* this.chatCompletionStream(messages, {
+      projectId,
+      stageKey: 'idea',
+    });
+  }
+
+  // 分析验证数据并给出 GO/NO-GO 决策建议
+  async analyzeDecision(
+    _projectId: string,
+    title: string,
+    painPoint: string,
+    items: {
+      title: string;
+      description: string;
+      status: string;
+      result?: {
+        sampleSize: number;
+        keyFindings: string[];
+        conclusion: string;
+        notes: string;
+      };
+    }[]
+  ): Promise<string> {
+    const itemsText = items
+      .map((item, i) => {
+        let statusText = '';
+        switch (item.status) {
+          case 'validated':
+            statusText = '已验证通过';
+            break;
+          case 'failed':
+            statusText = '验证失败';
+            break;
+          case 'in_progress':
+            statusText = '进行中';
+            break;
+          default:
+            statusText = '待验证';
+        }
+        let resultText = '';
+        if (item.result) {
+          const findings = item.result.keyFindings.filter((f) => f.trim()).join('；') || '无';
+          resultText = `\n  - 样本量：${item.result.sampleSize}人\n  - 关键发现：${findings}\n  - 验证结论：${item.result.conclusion === 'passed' ? '通过' : item.result.conclusion === 'failed' ? '失败' : '需更多数据'}\n  - 验证笔记：${item.result.notes || '无'}`;
+        }
+        return `${i + 1}. ${item.title}（${statusText}）\n   描述：${item.description}${resultText}`;
+      })
+      .join('\n\n');
+
+    const messages: KimiMessage[] = [
+      {
+        role: 'system',
+        content: `你是一个资深产品决策顾问，擅长根据验证数据给出客观的 Go/No-Go 建议。
+
+你的分析必须基于验证项的具体内容，而不是简单的数量统计。
+
+分析框架（必须全部覆盖）：
+
+1. **核心假设覆盖度**
+   - 验证项是否覆盖了产品的所有关键假设？
+   - 是否有遗漏的致命假设（如付费意愿、痛点真实性）？
+
+2. **验证质量评估**
+   - 每个验证项的样本量是否足够（N≥5 为最低标准）？
+   - 验证方法是否可靠（访谈 > 问卷 > 猜测）？
+   - 是否有明显的验证偏差（如只问了朋友）？
+
+3. **致命假设风险评估**
+   - 识别哪些假设是"致命假设"（如果失败项目必须终止）
+   - 这些致命假设的验证结果如何？
+   - 如果致命假设验证失败，必须建议 NO-GO
+
+4. **数据一致性分析**
+   - 不同验证项的结果是否互相支持？
+   - 是否有矛盾的数据需要解释？
+
+5. **综合决策建议**
+   - 基于以上分析，给出 GO / NO-GO / MAYBE 建议
+   - 必须说明理由，不能简单基于通过/失败数量
+   - 如果是 MAYBE，说明还需要验证什么
+
+语气要求：
+- 专业、客观、有理有据
+- 不要给模糊的安慰，也不要过度悲观
+- 如果数据不足以支持任何结论，明确指出`,
+      },
+      {
+        role: 'user',
+        content: `产品名称：${title}
+痛点描述：${painPoint}
+
+验证项详情：
+${itemsText}
+
+请按照上述框架进行深度分析，给出综合决策建议。`,
+      },
+    ];
+
+    return this.chatCompletion(messages);
+  }
+
   // 生成验证工具（问卷、访谈提纲等）
   async generateValidationTools(
     title: string,
@@ -600,6 +743,112 @@ ${itemsText}
 模板风格：${templateName}
 
 请生成详细的设计提示词。`,
+      },
+    ];
+
+    return this.chatCompletion(messages);
+  }
+
+  // 基于风格生成设计样板
+  async generateStyleSample(
+    styleName: string,
+    styleTraits: string[],
+    title: string,
+    painPoint: string,
+    platform: string
+  ): Promise<{ name: string; description: string; prompt: string }> {
+    const messages: KimiMessage[] = [
+      {
+        role: 'system',
+        content: `你是一个专业的 UI/UX 设计师，擅长将产品概念转化为具体的设计方案。
+请根据指定的设计风格，为这个产品生成一份设计样板方案。
+
+输出格式（严格遵循）：
+【名称】
+[5-10字的设计方案名称]
+
+【描述】
+[2-3句话描述这个设计方案如何解决问题，包含视觉风格特点]
+
+【提示词】
+[详细的设计提示词，包含：
+1. 整体视觉风格和氛围
+2. 配色方案（具体色值或色系）
+3. 布局结构建议
+4. 字体和排版风格
+5. 关键组件设计
+6. 动效和交互建议
+7. 响应式适配（如适用）
+8. 技术实现建议]
+
+语气要具体、可操作，适合直接用于 Vibe Coding。`,
+      },
+      {
+        role: 'user',
+        content: `产品：${title}
+痛点：${painPoint}
+平台：${platform}
+设计风格：${styleName}
+风格特征：${styleTraits.join('、')}
+
+请生成设计样板方案。`,
+      },
+    ];
+
+    const response = await this.chatCompletion(messages);
+
+    const nameMatch = response.match(/【名称】\s*\n?\s*([\s\S]*?)(?=【描述】)/);
+    const descMatch = response.match(/【描述】\s*\n?\s*([\s\S]*?)(?=【提示词】)/);
+    const promptMatch = response.match(/【提示词】\s*\n?\s*([\s\S]*)/);
+
+    return {
+      name: nameMatch?.[1]?.trim() || `${styleName}方案`,
+      description: descMatch?.[1]?.trim() || `基于${styleName}的设计方案`,
+      prompt: promptMatch?.[1]?.trim() || response,
+    };
+  }
+
+  // 基于参考项目生成设计提示词
+  async generatePromptFromReference(
+    referenceName: string,
+    referenceFeatures: string[],
+    referenceUrl: string,
+    title: string,
+    painPoint: string,
+    platform: string
+  ): Promise<string> {
+    const messages: KimiMessage[] = [
+      {
+        role: 'system',
+        content: `你是一个专业的 UI/UX 设计师，擅长从优秀的设计参考中提取核心设计语言，并转化为具体的实现提示词。
+请分析参考项目的设计特点，然后为当前产品生成一份定制化的设计提示词。
+
+提示词应该包含：
+1. 整体视觉风格和氛围（借鉴参考项目的哪些设计元素）
+2. 配色方案建议（具体色值）
+3. 布局和排版结构
+4. 关键组件设计细节
+5. 动效和交互建议
+6. 响应式考虑
+7. 技术栈和实现建议
+
+语气要具体、可操作，适合直接复制到 Claude Code、Cursor 等 AI 编程工具中使用。`,
+      },
+      {
+        role: 'user',
+        content: `参考项目：${referenceName}
+参考项目 URL：${referenceUrl}
+参考项目设计特征：
+${referenceFeatures.map((f, i) => `${i + 1}. ${f}`).join('\n')}
+
+目标产品：${title}
+痛点：${painPoint}
+平台：${platform}
+
+请生成详细的设计提示词，要求：
+- 借鉴参考项目的优秀设计语言
+- 但要适配当前产品的具体需求
+- 包含具体可执行的配色、布局、组件建议`,
       },
     ];
 
@@ -786,6 +1035,62 @@ ${metricsText || '暂无数据'}
 最佳渠道：${bestChannel?.channel || 'N/A'} (${bestChannel?.conversionRate || 0}% 转化)
 
 请给出分析和建议。`,
+      },
+    ];
+
+    return this.chatCompletion(messages);
+  }
+
+  // 生成问卷配置（AI 直接输出 JSON）
+  async generateSurveyConfig(
+    projectTitle: string,
+    painPoint: string,
+    originalIdea: string,
+    topic: string,
+    targetUsers: string,
+    questionCount: number = 8
+  ): Promise<string> {
+    const messages: KimiMessage[] = [
+      {
+        role: 'system',
+        content: `你是一个专业的用户研究问卷设计专家。
+请根据用户提供的项目信息，设计一份结构化的验证问卷。
+
+要求：
+1. 输出必须是合法的 JSON，不要任何 Markdown 代码块标记，不要任何解释文字
+2. 问卷包含 ${questionCount} 题
+3. 前 2 题为筛选/画像题（single_choice），中间为验证题（混合 single_choice、multi_choice、rating），最后 1 题为开放题（text）
+4. 每题必须包含 id、type、title、required、options（如适用）
+5. 单选/多选选项不超过 5 个，措辞中立
+6. rating 题为 5 分制
+7. 总填写时间控制在 3 分钟内
+8. id 使用 q1, q2, q3... 格式
+
+JSON 结构：
+{
+  "title": "问卷标题",
+  "description": "简短说明",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "single_choice",
+      "title": "问题内容",
+      "required": true,
+      "options": ["选项1", "选项2"]
+    }
+  ]
+}`,
+      },
+      {
+        role: 'user',
+        content: `产品名称：${projectTitle}
+痛点描述：${painPoint || '暂无'}
+想法阶段内容：${originalIdea || '暂无'}
+调研主题：${topic}
+目标用户：${targetUsers || '未指定'}
+题目数量：${questionCount}
+
+请生成问卷 JSON。`,
       },
     ];
 
