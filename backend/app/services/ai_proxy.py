@@ -3,6 +3,7 @@ import json
 import ssl
 import hashlib
 import time
+import re
 from uuid import UUID
 from typing import AsyncGenerator, List, Dict, Any
 from sqlalchemy.orm import Session
@@ -14,6 +15,24 @@ from ..encryption import get_encryption_manager
 
 # 配置日志
 logger = logging.getLogger(__name__)
+
+# 敏感信息正则模式（用于 AI 日志 error_msg 脱敏）
+_SENSITIVE_PATTERNS = [
+    re.compile(r"Bearer\s+[A-Za-z0-9_\-\.]+", re.I),
+    re.compile(r"sk-[A-Za-z0-9]{20,}", re.I),
+    re.compile(r"api[_-]?key\s*[=:]\s*['\"]?[A-Za-z0-9_\-\.]+['\"]?", re.I),
+    re.compile(r"[A-Za-z0-9_\-\.]+@[A-Za-z0-9\-]+\.[A-Za-z0-9\-.]+", re.I),  # 邮箱
+]
+
+
+def _redact_error_msg(msg: str | None) -> str:
+    """对 AI 调用日志的 error_msg 进行脱敏，防止泄露 API key、token 等"""
+    if not msg:
+        return ""
+    redacted = msg
+    for pattern in _SENSITIVE_PATTERNS:
+        redacted = pattern.sub("[REDACTED]", redacted)
+    return redacted
 
 # 有界 LRU 缓存，防止内存耗尽 DoS
 class _LRUCache:
@@ -307,7 +326,7 @@ class AIProxyService:
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 status=status,
-                error_msg=error_msg[:500]
+                error_msg=_redact_error_msg(error_msg)[:500]
             )
             if first_chunk_at is not None:
                 logger.info(f"AICallLog TTFT: provider={provider.value}, ttft={first_chunk_at:.3f}s")
@@ -325,9 +344,13 @@ class AIProxyService:
         """
         聊天接口（带 provider fallback），一个 provider 失败自动尝试下一个
         """
+        # 构建 fallback 链：只包含已激活的 provider
+        active_providers = {
+            p.provider for p in self.db.query(AIConfig).filter(AIConfig.is_active == True).all()
+        }
         providers_to_try = [provider]
         for p in [AIProvider.DEEPSEEK, AIProvider.KIMI, AIProvider.DOUBAO, AIProvider.OPENAI]:
-            if p not in providers_to_try:
+            if p not in providers_to_try and p in active_providers:
                 providers_to_try.append(p)
 
         last_error = ""
@@ -455,7 +478,7 @@ class AIProxyService:
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 status=status,
-                error_msg=error_msg[:500]
+                error_msg=_redact_error_msg(error_msg)[:500]
             )
             self.db.add(log)
             self.db.commit()
@@ -581,7 +604,7 @@ class AIProxyService:
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 status=status,
-                error_msg=error_msg[:500]
+                error_msg=_redact_error_msg(error_msg)[:500]
             )
             self.db.add(log)
             self.db.commit()
@@ -608,10 +631,13 @@ class AIProxyService:
                 logger.info("Idea suggestion cache hit")
                 return cached_result
 
-        # 构建 fallback 链：首选 -> DEEPSEEK -> KIMI -> DOUBAO -> OPENAI
+        # 构建 fallback 链：只包含已激活的 provider
+        active_providers = {
+            p.provider for p in self.db.query(AIConfig).filter(AIConfig.is_active == True).all()
+        }
         providers_to_try = [provider]
         for p in [AIProvider.DEEPSEEK, AIProvider.KIMI, AIProvider.DOUBAO, AIProvider.OPENAI]:
-            if p not in providers_to_try:
+            if p not in providers_to_try and p in active_providers:
                 providers_to_try.append(p)
 
         last_error = ""
@@ -766,7 +792,170 @@ class AIProxyService:
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 status=status,
-                error_msg=error_msg[:500]
+                error_msg=_redact_error_msg(error_msg)[:500]
+            )
+            self.db.add(log)
+            self.db.commit()
+
+
+    async def generate_smoke_test_suggestions(
+        self,
+        provider: AIProvider,
+        title: str,
+        pain_point: str,
+        original_idea: str,
+        platforms: List[str],
+        styles: List[str]
+    ) -> Dict[str, Any]:
+        """
+        生成试水帖（Smoke Test）文案建议
+        只暴露痛点、不暴露解决方案，适配不同平台和风格
+        返回：{"variants": [{"platform": "...", "style": "...", "title": "...", "content": "...", "tags": [...]}, ...]}
+        """
+        config = self.get_active_config(provider)
+        api_key = self.decrypt_api_key(config)
+
+        platform_list = ", ".join(platforms) if platforms else "小红书, Twitter/X, V2EX"
+        style_list = ", ".join(styles) if styles else "help, rant, research"
+
+        platform_guide = {
+            "xiaohongshu": "小红书风格：多用emoji，口语化表达，亲切自然，像姐妹聊天",
+            "jike": "即刻风格：轻松随意，带点幽默感，适合短平快的表达",
+            "v2ex": "V2EX风格：技术社区讨论式，理性分析问题，寻求技术人共鸣",
+            "twitter": "Twitter/X风格：简洁有力，适合英文，1-2句话直击痛点，可加hashtag",
+            "reddit": "Reddit风格：英文，maker/entrepreneur社区口吻，真诚分享困境",
+            "indiehackers": "IndieHackers风格：英文，独立开发者口吻，分享building过程中的痛点",
+            "producthunt": "ProductHunt风格：英文，产品人视角，简洁描述问题场景",
+            "wechat_moments": "朋友圈风格：生活化，真情实感，不刻意营销",
+            "zhihu": "知乎风格：理性分析，结构化表达，以'如何评价/如何看待'引发讨论",
+            "douban": "豆瓣风格：文艺腔调，感性表达，适合生活方式类痛点"
+        }
+
+        style_guide = {
+            "help": "求助型：真诚发问，寻求共鸣和建议，语气谦虚",
+            "rant": "吐槽型：夸张表达frustration，引发讨论和共情",
+            "research": "调研型：以'做调研'口吻收集意见，显得客观中立",
+            "share": "分享型：分享个人经历，轻描淡写，不刻意引导",
+            "teaser": "预告型：暗示'正在关注这个问题'，制造悬念和好奇"
+        }
+
+        platform_guides_text = "\n".join(
+            f"- {k}: {v}" for k, v in platform_guide.items() if k in platforms
+        )
+        style_guides_text = "\n".join(
+            f"- {k}: {v}" for k, v in style_guide.items() if k in styles
+        )
+
+        prompt = f"""你是社交媒体内容专家，擅长写"试水帖"——只暴露痛点、不暴露解决方案的teaser文案。
+
+项目标题：{title}
+痛点：{pain_point}
+原始想法：{original_idea or '未填写'}
+
+要求生成的平台：{platform_list}
+要求生成的风格：{style_list}
+
+平台适配指南：
+{platform_guides_text}
+
+风格指南：
+{style_guides_text}
+
+核心规则（绝对遵守）：
+1. 只讨论痛点本身，绝不提及产品名称、功能细节、定价、或解决方案
+2. 不要出现"我们正在做..."、"我们的产品..."、"欢迎试用..."等暴露项目的表述
+3. 文案要像真实用户自发发帖，不是广告
+4. 每个variant必须包含：platform（平台key）、style（风格key）、title（帖子标题）、content（正文内容）、tags（推荐标签数组）
+
+请为每个平台×风格的组合生成1个variant，严格按以下JSON格式返回，不要包含其他内容：
+{{
+    "variants": [
+        {{
+            "platform": "xiaohongshu",
+            "style": "help",
+            "title": "帖子标题",
+            "content": "正文内容...",
+            "tags": ["标签1", "标签2"]
+        }}
+    ]
+}}
+
+要求：
+1. 标题吸引人点击，不超过20字
+2. 正文长度适配平台（小红书/知乎可稍长，Twitter/即刻要短）
+3. tags 2-5个，贴合平台调性
+4. 用中文回复（英文平台如Twitter/Reddit/PH/IH的内容用英文）"""
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": config.default_model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "max_tokens": 2000,
+            "temperature": 0.7
+        }
+
+        prompt_tokens = len(prompt) // 4
+        completion_tokens = 0
+        status = "success"
+        error_msg = ""
+
+        try:
+            async with httpx.AsyncClient(timeout=60.0, follow_redirects=False) as client:
+                response = await client.post(
+                    f"{config.base_url}/chat/completions",
+                    headers=headers,
+                    json=payload
+                )
+
+                if response.status_code != 200:
+                    status = "error"
+                    error_msg = f"HTTP {response.status_code}: {response.text}"
+                    raise HTTPException(
+                        status_code=response.status_code,
+                        detail=f"AI API error: {response.text}"
+                    )
+
+                result = response.json()
+                content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                completion_tokens = len(content) // 4
+
+                # 清理可能的 markdown 代码块
+                if "```json" in content:
+                    content = content.split("```json")[1].split("```")[0]
+                elif "```" in content:
+                    content = content.split("```")[1].split("```")[0]
+
+                parsed = json.loads(content.strip())
+                return {"variants": parsed.get("variants", [])}
+
+        except json.JSONDecodeError:
+            logger.error(f"Failed to parse AI response as JSON: {content[:200]}")
+            return {"variants": []}
+        except Exception as e:
+            import sys
+            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+            status = "error"
+            error_msg = str(e) or f"{provider.value} API 调用失败"
+            raise HTTPException(
+                status_code=503,
+                detail=f"AI 服务暂时不可用: {error_msg}"
+            )
+        finally:
+            log = AICallLog(
+                user_id=self.user_id,
+                provider=provider,
+                model=config.default_model,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                status=status,
+                error_msg=_redact_error_msg(error_msg)[:500]
             )
             self.db.add(log)
             self.db.commit()

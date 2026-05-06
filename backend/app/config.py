@@ -91,4 +91,11 @@ def get_settings() -> Settings:
 
 def get_cors_origins() -> list[str]:
     settings = get_settings()
-    return [origin.strip() for origin in settings.cors_origins.split(",")]
+    origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+    # 拒绝通配符 origin（与 allow_credentials=True 组合时有安全风险）
+    if "*" in origins:
+        raise ValueError(
+            "SECURITY ERROR: CORS_ORIGINS cannot contain '*'. "
+            "Please specify explicit origins in your .env file."
+        )
+    return origins

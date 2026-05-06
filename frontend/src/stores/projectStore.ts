@@ -74,18 +74,23 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
     set({ isLoading: true, error: null });
     try {
       const projects = await projectsApi.list();
+      const currentProjects = get().projects;
       // 将后端返回的数据转换为前端 Project 类型
-      const convertedProjects = projects.map((p: { id: string; title: string; pain_point: string; original_idea: string; status: string; current_stage: string; created_at: string; updated_at: string }) => ({
-        id: p.id,
-        title: p.title,
-        painPoint: p.pain_point,
-        originalIdea: p.original_idea || '',
-        status: p.status,
-        currentStage: p.current_stage,
-        stages: {} as Project['stages'], // 列表接口不返回完整 stages
-        createdAt: p.created_at,
-        updatedAt: p.updated_at,
-      })) as Project[];
+      // 保留本地已有的 stages 数据，避免列表接口返回空 stages 覆盖详情页已加载的数据
+      const convertedProjects = projects.map((p: { id: string; title: string; pain_point: string; original_idea: string; status: string; current_stage: string; created_at: string; updated_at: string }) => {
+        const existing = currentProjects.find((cp) => cp.id === p.id);
+        return {
+          id: p.id,
+          title: p.title,
+          painPoint: p.pain_point,
+          originalIdea: p.original_idea || '',
+          status: p.status,
+          currentStage: p.current_stage,
+          stages: (existing?.stages ?? {}) as Project['stages'],
+          createdAt: p.created_at,
+          updatedAt: p.updated_at,
+        };
+      }) as Project[];
       set({ projects: convertedProjects, isLoading: false, lastSyncAt: new Date().toISOString() });
     } catch (error) {
       set({
