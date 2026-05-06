@@ -198,7 +198,11 @@ const buildSyncedStageContent = (
       createdAt: now,
     };
     if (isReplace) {
-      return JSON.stringify({ items: [item], tools: [] });
+      // replace 模式只替换 items，保留 tools / smokeTests / decision 等其他字段
+      return JSON.stringify({
+        ...existing,
+        items: [item],
+      });
     }
     return JSON.stringify({
       ...existing,
@@ -540,6 +544,11 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const statusLabelValue = useStatusLabel(project?.status ?? 'active');
   const statusLabel = project ? statusLabelValue : 'ACTIVE';
 
+  // 计算显示的阶段：如果用户点击了其他阶段查看，则显示该阶段，否则显示当前阶段
+  const displayStage = viewingStage ?? validCurrentStage;
+  const displayStageData = project?.stages?.[displayStage];
+  const isDisplayStageLocked = displayStageData?.isLocked ?? false;
+
   const handleContentChange = useCallback(async (content: string) => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -550,14 +559,16 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     setSaveStatus('saving');
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        await updateStageContent(project!.id, validCurrentStage, content);
+        // 必须保存到用户正在查看的阶段，而不是项目的 currentStage
+        const targetStage = displayStage || validCurrentStage;
+        await updateStageContent(project!.id, targetStage, content);
         setSaveStatus('saved');
         saveStatusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
       } catch {
         setSaveStatus('error');
       }
     }, 1000);
-  }, [project?.id, validCurrentStage, updateStageContent]);
+  }, [project?.id, validCurrentStage, displayStage, updateStageContent]);
 
   // 加载中状态
   if (isLoading) {
@@ -620,11 +631,6 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
   const currentStageData = project.stages?.[validCurrentStage];
   const isCurrentStageLocked = currentStageData?.isLocked ?? false;
-
-  // 计算显示的阶段：如果用户点击了其他阶段查看，则显示该阶段，否则显示当前阶段
-  const displayStage = viewingStage ?? validCurrentStage;
-  const displayStageData = project.stages?.[displayStage];
-  const isDisplayStageLocked = displayStageData?.isLocked ?? false;
 
   /**
    * 检查阶段内容是否包含用户实质填写的内容。
@@ -890,10 +896,11 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     setSyncError(null);
 
     try {
-      const stageData = project.stages?.[validCurrentStage];
+      const targetStage = displayStage || validCurrentStage;
+      const stageData = project.stages?.[targetStage];
       const currentContent = stageData?.content || '';
-      const nextContent = buildSyncedStageContent(validCurrentStage, currentContent, syncCandidate, syncMode);
-      await updateStageContent(project.id, validCurrentStage, nextContent);
+      const nextContent = buildSyncedStageContent(targetStage, currentContent, syncCandidate, syncMode);
+      await updateStageContent(project.id, targetStage, nextContent);
       setShowSyncModal(false);
       setSyncCandidate('');
       setSyncMode('append');

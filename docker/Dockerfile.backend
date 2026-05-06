@@ -5,6 +5,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Create non-root user
+RUN groupadd -r sparkbin && useradd -r -g sparkbin sparkbin
+
 # Install system dependencies for psycopg2
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
@@ -18,8 +21,18 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ .
 
-# Expose FastAPI port
+# Create startup script
+RUN printf '#!/bin/sh\nset -e\necho "[start] Running database startup..."\npython /app/startup.py\necho "[start] Starting SparkBin API server..."\nexec uvicorn app.main:app --host 0.0.0.0 --port 8000\n' > /app/start.sh && chmod +x /app/start.sh
+
+# Fix ownership
+RUN chown -R sparkbin:sparkbin /app
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
+USER sparkbin
+
 EXPOSE 8000
 
-# Run migrations then start server
-CMD alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000
+CMD ["/app/start.sh"]

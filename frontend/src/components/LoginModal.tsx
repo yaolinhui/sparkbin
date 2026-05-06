@@ -46,6 +46,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
   const [regPassword, setRegPassword] = useState('');
   const [regConfirm, setRegConfirm] = useState('');
   const [honeypot, setHoneypot] = useState('');
+  const [formStartTime, setFormStartTime] = useState<number>(0);
 
   // Forgot password fields
   const [forgotEmail, setForgotEmail] = useState('');
@@ -239,6 +240,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
         email: regEmail,
         password: regPassword,
         honeypot,
+        form_start_time: formStartTime > 0 ? formStartTime / 1000 : 0,
       });
       setAuthToken(response.access_token);
       setRefreshToken(response.refresh_token);
@@ -269,6 +271,9 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     setTab(t);
     resetErrors();
     setForgotSent(false);
+    if (t === 'register') {
+      setFormStartTime(Date.now());
+    }
   };
 
   const handleOAuth = (provider: 'google' | 'github') => {

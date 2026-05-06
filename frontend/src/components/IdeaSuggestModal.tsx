@@ -160,14 +160,49 @@ export function IdeaSuggestModal({
               <div className="p-3 border border-brutal-border bg-brutal-bg text-xs font-mono text-brutal-muted">
                 <span className="text-brutal-accent">&gt;</span> AI 正在根据你的原始想法生成建议…
               </div>
+
+              {/* 加载时也显示当前已有内容，方便用户对照 */}
               <div className="border border-brutal-border">
-                {SKELETON_TITLES.map((title) => (
-                  <SkeletonCard key={title} title={title} />
+                {/* 表头 */}
+                <div className="grid grid-cols-2 border-b border-brutal-border bg-brutal-bg">
+                  <div className="p-2 text-xs font-mono text-brutal-muted border-r border-brutal-border">当前内容</div>
+                  <div className="p-2 text-xs font-mono text-brutal-accent">AI 建议生成中…</div>
+                </div>
+
+                {currentNotes.map((note, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-2 border-b border-brutal-border last:border-b-0"
+                  >
+                    <div className="p-3 border-r border-brutal-border">
+                      <div className="text-xs font-mono text-brutal-muted mb-1">{note.title}</div>
+                      <p className={`text-sm font-mono ${isPlaceholder(note.content) ? 'text-brutal-muted' : 'text-brutal-text'}`}>
+                        {note.content}
+                      </p>
+                      {isPlaceholder(note.content) && (
+                        <span className="inline-block mt-1 text-[10px] px-1 border border-brutal-warning text-brutal-warning font-mono">
+                          占位符
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <div className="text-xs font-mono text-brutal-accent mb-1">{note.title}</div>
+                      <div className="h-4 bg-brutal-accent/20 rounded w-3/4 mb-2" />
+                      <div className="h-4 bg-brutal-accent/20 rounded w-1/2" />
+                    </div>
+                  </div>
                 ))}
+
+                {/* 如果 currentNotes 不足 5 条，补全骨架行 */}
+                {currentNotes.length < 5 &&
+                  SKELETON_TITLES.slice(currentNotes.length).map((title) => (
+                    <SkeletonCard key={`skeleton-${title}`} title={title} />
+                  ))}
               </div>
+
               <div className="flex items-center gap-2 text-xs font-mono text-brutal-muted">
                 <div className="w-3 h-3 border border-brutal-accent border-t-transparent animate-spin" />
-                预计需要 10-15 秒，可以先看看右侧现有内容
+                预计需要 10-15 秒，可以先看看左侧现有内容
               </div>
             </div>
           )}

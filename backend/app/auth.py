@@ -31,15 +31,17 @@ _CAPTCHA_TTL_SECONDS = 300  # 5分钟
 
 
 def generate_captcha(ip: str) -> dict:
-    """生成纯文本数学验证码（1-20 的加法）"""
+    """生成纯文本数学验证码（乘法，扩大数值范围，增加时间戳 salt 防预计算）"""
     import random
-    a = random.randint(1, 10)
-    b = random.randint(1, 10)
-    answer = str(a + b)
-    question = f"{a} + {b}"
-    answer_hash = hashlib.sha256(answer.encode("utf-8")).hexdigest()
+    a = random.randint(3, 20)
+    b = random.randint(3, 20)
+    answer = str(a * b)
+    question = f"{a} x {b}"
+    # 加入时间戳 salt，使同一答案的 hash 每次不同，防止预计算彩虹表
+    salt = str(int(datetime.utcnow().timestamp()))
+    answer_hash = hashlib.sha256(f"{answer}:{salt}".encode("utf-8")).hexdigest()
     expire_at = datetime.utcnow().timestamp() + _CAPTCHA_TTL_SECONDS
-    _captcha_store[ip] = (answer, expire_at)
+    _captcha_store[ip] = (answer, expire_at, salt)
     return {"question": question, "answer_hash": answer_hash}
 
 
@@ -48,7 +50,7 @@ def verify_captcha(ip: str, answer: str) -> bool:
     stored = _captcha_store.get(ip)
     if not stored:
         return False
-    correct_answer, expire_at = stored
+    correct_answer, expire_at, _salt = stored
     now = datetime.utcnow().timestamp()
     del _captcha_store[ip]
     if now > expire_at:

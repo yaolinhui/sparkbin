@@ -376,8 +376,20 @@ def register(
     """用户注册（邮箱 + 用户名 + 密码）"""
     check_rate_limit(req, "注册")
 
-    # Honeypot 反机器人校验
+    # Honeypot + 时间校验 反机器人
     if request.honeypot:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="请求异常，请重试",
+        )
+    # 表单提交时间校验：小于 2 秒视为机器人
+    if not request.form_start_time:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="请求异常，请重试",
+        )
+    elapsed = datetime.utcnow().timestamp() - request.form_start_time
+    if elapsed < 2.0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请求异常，请重试",

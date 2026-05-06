@@ -456,6 +456,26 @@ class AIService {
     return response.notes;
   }
 
+  // 生成试水帖（Smoke Test）文案建议
+  async generateSmokeTestSuggestions(
+    projectId: string,
+    title: string,
+    painPoint: string,
+    originalIdea: string,
+    platforms: string[],
+    styles: string[]
+  ): Promise<{ platform: string; style: string; title: string; content: string; tags: string[] }[]> {
+    const response = await originalAiApi.suggestSmokeTests({
+      project_id: projectId,
+      title,
+      pain_point: painPoint,
+      original_idea: originalIdea,
+      platforms,
+      styles,
+    });
+    return response.variants;
+  }
+
   // 生成验证工具（问卷、访谈提纲等）
   async generateValidationTools(
     title: string,

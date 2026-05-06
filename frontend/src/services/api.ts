@@ -1,14 +1,19 @@
 ﻿// Backend API Service
-// Cache-bust: 2026-04-29
+// Cache-bust: 2026-05-05
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Token 和角色管理
+// 注意：userRole / userId 不再持久化到 localStorage（防止客户端篡改导致 UI 欺骗）
 let authToken: string | null = localStorage.getItem('sparkbin_token');
 let refreshToken: string | null = localStorage.getItem('sparkbin_refresh_token');
-let userRole: string | null = localStorage.getItem('sparkbin_role');
-let userId: string | null = localStorage.getItem('sparkbin_user_id');
+let userRole: string | null = null;
+let userId: string | null = null;
 let onUnauthorizedCallback: (() => void) | null = null;
 let refreshTimerId: ReturnType<typeof setInterval> | null = null;
+
+// 清理旧版本残留的 localStorage 缓存（一次性迁移）
+localStorage.removeItem('sparkbin_role');
+localStorage.removeItem('sparkbin_user_id');
 
 export function setAuthToken(token: string) {
   authToken = token;
@@ -24,28 +29,16 @@ export function clearAuthToken() {
   userId = null;
   localStorage.removeItem('sparkbin_token');
   localStorage.removeItem('sparkbin_refresh_token');
-  localStorage.removeItem('sparkbin_role');
-  localStorage.removeItem('sparkbin_user_id');
 }
 
-/** 设置用户角色（仅应由 /auth/me 调用后写入） */
+/** 设置用户角色（仅应由 /auth/me 调用后写入，不持久化到 localStorage） */
 export function setCachedRole(role: string | null) {
   userRole = role;
-  if (role) {
-    localStorage.setItem('sparkbin_role', role);
-  } else {
-    localStorage.removeItem('sparkbin_role');
-  }
 }
 
-/** 设置用户 ID（仅应由 /auth/me 调用后写入） */
+/** 设置用户 ID（仅应由 /auth/me 调用后写入，不持久化到 localStorage） */
 export function setCachedUserId(id: string | null) {
   userId = id;
-  if (id) {
-    localStorage.setItem('sparkbin_user_id', id);
-  } else {
-    localStorage.removeItem('sparkbin_user_id');
-  }
 }
 
 export function setRefreshToken(token: string) {
@@ -326,6 +319,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   honeypot?: string;
+  form_start_time?: number;
 }
 
 export interface ForgotPasswordRequest {
@@ -576,6 +570,14 @@ export interface AIConfig {
   is_active: boolean;
 }
 
+export interface SmokeTestVariantSuggestion {
+  platform: string;
+  style: string;
+  title: string;
+  content: string;
+  tags: string[];
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
@@ -695,6 +697,20 @@ export const aiApi = {
       tools: { type: string; title: string; content: string }[];
       analysis: string;
     }>('/ai/validate-suggest', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // 试水帖（Smoke Test）建议
+  suggestSmokeTests: (data: {
+    project_id?: string;
+    title: string;
+    pain_point: string;
+    original_idea: string;
+    platforms: string[];
+    styles: string[];
+  }) =>
+    request<{ variants: SmokeTestVariantSuggestion[] }>('/ai/smoke-test-suggest', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

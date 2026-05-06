@@ -14,6 +14,7 @@ from ..schemas import (
     AIPromoteSuggestRequest, PromoteSuggestionInfo, BaseResponse,
     IdeaSuggestRequest, IdeaSuggestResponse, AITestConfigRequest,
     ValidateSuggestRequest, ValidateSuggestResponse,
+    SmokeTestSuggestRequest, SmokeTestSuggestResponse,
     AgentRunRequest, AgentRunStatus, AgentRunHistoryItem,
 )
 from ..services.ai_proxy import AIProxyService
@@ -37,22 +38,21 @@ from datetime import datetime
 
 def _check_ai_quota(user: User, db: Session) -> None:
     """检查用户 AI 调用额度，余额不足则抛出 402"""
-    settings = get_settings()
-    # 未启用支付（自托管模式）或管理员：不限制
-    if not settings.enable_payments or user.role.value == "admin":
+    # 管理员不限制额度
+    if user.role.value == "admin":
         return
 
     if user.ai_credits <= 0:
         raise HTTPException(
             status_code=402,
-            detail="AI credits exhausted. Please purchase more credits to continue.",
+            detail="AI 调用额度已耗尽。请联系管理员获取更多额度。",
         )
 
 
 def _deduct_ai_credit(user: User, db: Session, reference_id: str | None = None) -> None:
     """扣除一次 AI 调用额度并写入流水"""
-    settings = get_settings()
-    if not settings.enable_payments or user.role.value == "admin":
+    # 管理员不扣额度
+    if user.role.value == "admin":
         return
 
     user.ai_credits -= 1
@@ -465,6 +465,31 @@ async def generate_validate_suggestions(
         tools=suggestions["tools"],
         analysis=suggestions["analysis"]
     )
+
+
+@router.post("/smoke-test-suggest", response_model=SmokeTestSuggestResponse)
+async def generate_smoke_test_suggestions(
+    request: SmokeTestSuggestRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """生成试水帖（Smoke Test）文案建议——只暴露痛点、不暴露解决方案"""
+    _check_ai_quota(current_user, db)
+    _deduct_ai_credit(current_user, db, reference_id="smoke-test-suggest")
+    ai_service = AIProxyService(db, user_id=str(current_user.id))
+
+    provider = current_user.preferred_model or AIProvider.DEEPSEEK
+
+    suggestions = await ai_service.generate_smoke_test_suggestions(
+        provider=provider,
+        title=request.title,
+        pain_point=request.pain_point,
+        original_idea=request.original_idea,
+        platforms=request.platforms,
+        styles=request.styles
+    )
+
+    return SmokeTestSuggestResponse(variants=suggestions["variants"])
 
 
 @router.get("/call-logs")

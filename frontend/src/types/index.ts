@@ -52,8 +52,56 @@ export interface ValidationTool {
 export interface ValidationData {
   items: ValidationItem[];
   tools: ValidationTool[];
+  smokeTests?: SmokeTest[];
   decision?: 'go' | 'no_go' | 'maybe';
   decisionReason?: string;
+}
+
+// 试水帖（Smoke Test）类型
+export type SmokeTestPlatform =
+  | 'xiaohongshu'
+  | 'jike'
+  | 'v2ex'
+  | 'twitter'
+  | 'reddit'
+  | 'indiehackers'
+  | 'producthunt'
+  | 'wechat_moments'
+  | 'zhihu'
+  | 'douban';
+
+export type SmokeTestStyle = 'help' | 'rant' | 'research' | 'share' | 'teaser';
+
+export interface SmokeTestVariant {
+  id: string;
+  platform: SmokeTestPlatform;
+  style: SmokeTestStyle;
+  title: string;
+  content: string;
+  tags?: string[];
+  generatedAt: string;
+}
+
+export interface SmokeTestMetrics {
+  postUrl: string;
+  impressions: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  dms: number;
+  keyQuotes: string[];
+  positiveSignals: string[];
+  negativeSignals: string[];
+  notes: string;
+  recordedAt: string;
+}
+
+export interface SmokeTest {
+  id: string;
+  variants: SmokeTestVariant[];
+  publishedVariantId?: string;
+  metrics?: SmokeTestMetrics;
+  createdAt: string;
 }
 
 // 原型阶段专用类型

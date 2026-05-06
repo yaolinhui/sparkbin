@@ -34,6 +34,7 @@ class RegisterRequest(BaseModel):
     email: str = Field(..., pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
     password: str = Field(..., min_length=8)
     honeypot: Optional[str] = Field(default=None)
+    form_start_time: Optional[float] = Field(default=None)  # Unix timestamp，用于检测机器人
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -297,6 +298,28 @@ class ValidateSuggestResponse(BaseModel):
     items: List[ValidationItemSuggestion]
     tools: List[ValidationToolSuggestion]
     analysis: str = ""
+
+
+# ========== 试水帖 (Smoke Test) ==========
+class SmokeTestVariantSuggestion(BaseModel):
+    platform: str  # xiaohongshu | jike | v2ex | twitter | reddit | indiehackers | producthunt | wechat_moments | zhihu | douban
+    style: str     # help | rant | research | share | teaser
+    title: str
+    content: str
+    tags: List[str] = Field(default_factory=list)
+
+
+class SmokeTestSuggestRequest(BaseModel):
+    project_id: Optional[UUID] = None
+    title: str
+    pain_point: str
+    original_idea: str = ""
+    platforms: List[str] = Field(default_factory=list)
+    styles: List[str] = Field(default_factory=list)
+
+
+class SmokeTestSuggestResponse(BaseModel):
+    variants: List[SmokeTestVariantSuggestion]
 
 
 # ========== 支付 ==========

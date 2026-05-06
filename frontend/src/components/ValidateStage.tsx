@@ -15,6 +15,10 @@ import {
   MoreHorizontal,
   Trash2,
   Edit3,
+  Flame,
+  BarChart3,
+  Copy,
+  CheckCircle2,
 } from 'lucide-react';
 import { useI18n } from '../i18n/hooks';
 import { aiService } from '../services/ai';
@@ -30,7 +34,7 @@ import {
   DragStartEvent,
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import type { Project, ValidationItem, ValidationTool, ValidationData } from '../types';
+import type { Project, ValidationItem, ValidationTool, ValidationData, SmokeTest, SmokeTestVariant, SmokeTestMetrics, SmokeTestPlatform, SmokeTestStyle } from '../types';
 
 interface ValidateStageProps {
   project: Project;
@@ -83,6 +87,27 @@ const TOOL_TYPES = {
   competitor: { label: '竞品', icon: Target, color: 'text-brutal-muted' },
 };
 
+const SMOKE_PLATFORMS: { key: SmokeTestPlatform; label: string }[] = [
+  { key: 'xiaohongshu', label: '小红书' },
+  { key: 'jike', label: '即刻' },
+  { key: 'v2ex', label: 'V2EX' },
+  { key: 'twitter', label: 'Twitter/X' },
+  { key: 'reddit', label: 'Reddit' },
+  { key: 'indiehackers', label: 'IndieHackers' },
+  { key: 'producthunt', label: 'ProductHunt' },
+  { key: 'wechat_moments', label: '朋友圈' },
+  { key: 'zhihu', label: '知乎' },
+  { key: 'douban', label: '豆瓣' },
+];
+
+const SMOKE_STYLES: { key: SmokeTestStyle; label: string }[] = [
+  { key: 'help', label: '求助型' },
+  { key: 'rant', label: '吐槽型' },
+  { key: 'research', label: '调研型' },
+  { key: 'share', label: '分享型' },
+  { key: 'teaser', label: '预告型' },
+];
+
 export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock, onDirtyChange }: ValidateStageProps) {
   const { t } = useI18n();
   const [data, setData] = useState<ValidationData>({ items: [], tools: [] });
@@ -99,6 +124,37 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  // 试水帖状态
+  const [activePanelTab, setActivePanelTab] = useState<'tools' | 'smoke'>('tools');
+  const [selectedSmokePlatforms, setSelectedSmokePlatforms] = useState<SmokeTestPlatform[]>([]);
+  const [selectedSmokeStyles, setSelectedSmokeStyles] = useState<SmokeTestStyle[]>([]);
+  const [isGeneratingSmoke, setIsGeneratingSmoke] = useState(false);
+  const [showSmokeMetricsModal, setShowSmokeMetricsModal] = useState<string | null>(null);
+  const [copiedVariantId, setCopiedVariantId] = useState<string | null>(null);
+  const [smokeMetricsForm, setSmokeMetricsForm] = useState<{
+    postUrl: string;
+    impressions: number;
+    likes: number;
+    comments: number;
+    shares: number;
+    dms: number;
+    keyQuotes: string[];
+    positiveSignals: string[];
+    negativeSignals: string[];
+    notes: string;
+  }>({
+    postUrl: '',
+    impressions: 0,
+    likes: 0,
+    comments: 0,
+    shares: 0,
+    dms: 0,
+    keyQuotes: [''],
+    positiveSignals: [],
+    negativeSignals: [],
+    notes: '',
+  });
 
   // 表单状态
   const [newItemTitle, setNewItemTitle] = useState('');
@@ -126,6 +182,7 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
           setData({
             items: parsed.items || [],
             tools: parsed.tools || [],
+            smokeTests: parsed.smokeTests || [],
             decision: parsed.decision,
             decisionReason: parsed.decisionReason,
           });
@@ -310,6 +367,121 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
     setData(newData);
     await saveData(newData);
     setShowDecisionModal(false);
+  };
+
+  // 试水帖：生成文案
+  const generateSmokeTests = async () => {
+    if (selectedSmokePlatforms.length === 0 || selectedSmokeStyles.length === 0) return;
+    setIsGeneratingSmoke(true);
+    try {
+      const variants = await aiService.generateSmokeTestSuggestions(
+        project.id,
+        project.title,
+        project.painPoint,
+        project.originalIdea,
+        selectedSmokePlatforms,
+        selectedSmokeStyles
+      );
+
+      const newSmokeTest: SmokeTest = {
+        id: Date.now().toString(),
+        variants: variants.map((v, i) => ({
+          id: `${Date.now()}-${i}`,
+          platform: v.platform as SmokeTestPlatform,
+          style: v.style as SmokeTestStyle,
+          title: v.title,
+          content: v.content,
+          tags: v.tags || [],
+          generatedAt: new Date().toISOString(),
+        })),
+        createdAt: new Date().toISOString(),
+      };
+
+      const newData = { ...data, smokeTests: [...(data.smokeTests || []), newSmokeTest] };
+      setData(newData);
+      await saveData(newData);
+    } catch (error) {
+      console.error('Failed to generate smoke tests:', error);
+    } finally {
+      setIsGeneratingSmoke(false);
+    }
+  };
+
+  // 删除试水帖
+  const deleteSmokeTest = async (id: string) => {
+    const newData = { ...data, smokeTests: (data.smokeTests || []).filter((st) => st.id !== id) };
+    setData(newData);
+    await saveData(newData);
+  };
+
+  // 标记已发布
+  const publishSmokeVariant = async (smokeId: string, variantId: string) => {
+    const newData = {
+      ...data,
+      smokeTests: (data.smokeTests || []).map((st) =>
+        st.id === smokeId ? { ...st, publishedVariantId: variantId } : st
+      ),
+    };
+    setData(newData);
+    await saveData(newData);
+  };
+
+  // 打开数据回填
+  const openSmokeMetricsModal = (smokeId: string) => {
+    const smoke = (data.smokeTests || []).find((s) => s.id === smokeId);
+    const metrics = smoke?.metrics;
+    setSmokeMetricsForm({
+      postUrl: metrics?.postUrl || '',
+      impressions: metrics?.impressions || 0,
+      likes: metrics?.likes || 0,
+      comments: metrics?.comments || 0,
+      shares: metrics?.shares || 0,
+      dms: metrics?.dms || 0,
+      keyQuotes: metrics?.keyQuotes?.length ? metrics.keyQuotes : [''],
+      positiveSignals: metrics?.positiveSignals || [],
+      negativeSignals: metrics?.negativeSignals || [],
+      notes: metrics?.notes || '',
+    });
+    setShowSmokeMetricsModal(smokeId);
+  };
+
+  // 保存数据回填
+  const saveSmokeMetrics = async () => {
+    if (!showSmokeMetricsModal) return;
+    const newData = {
+      ...data,
+      smokeTests: (data.smokeTests || []).map((st) =>
+        st.id === showSmokeMetricsModal
+          ? {
+              ...st,
+              metrics: {
+                postUrl: smokeMetricsForm.postUrl,
+                impressions: smokeMetricsForm.impressions,
+                likes: smokeMetricsForm.likes,
+                comments: smokeMetricsForm.comments,
+                shares: smokeMetricsForm.shares,
+                dms: smokeMetricsForm.dms,
+                keyQuotes: smokeMetricsForm.keyQuotes.filter((q) => q.trim()),
+                positiveSignals: smokeMetricsForm.positiveSignals,
+                negativeSignals: smokeMetricsForm.negativeSignals,
+                notes: smokeMetricsForm.notes,
+                recordedAt: new Date().toISOString(),
+              } as SmokeTestMetrics,
+            }
+          : st
+      ),
+    };
+    setData(newData);
+    await saveData(newData);
+    setShowSmokeMetricsModal(null);
+  };
+
+  // 复制文案
+  const copyVariantContent = async (variant: SmokeTestVariant) => {
+    const text = `${variant.title}\n\n${variant.content}\n\n${variant.tags?.map((t) => `#${t}`).join(' ') || ''}`;
+    await navigator.clipboard.writeText(text.trim());
+    setCopiedVariantId(variant.id);
+    setTimeout(() => setCopiedVariantId(null), 2000);
   };
 
   // 按状态分组
@@ -502,15 +674,16 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden min-h-0">
-        {data.items.length === 0 && !isLocked && (
-          <div className="flex-1 flex items-center justify-center">
+        {data.items.length === 0 && !isLocked ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3">
+            <p className="text-xs text-brutal-muted font-mono">暂无验证项</p>
             <button
               onClick={() => {
                 const defaultItems: ValidationItem[] = [
-                  { id: '1', title: '痛点真实性验证', description: '目标用户是否真的有这个痛点？', status: 'pending', createdAt: new Date().toISOString() },
-                  { id: '2', title: '付费意愿验证', description: '用户是否愿意为此付费？', status: 'pending', createdAt: new Date().toISOString() },
-                  { id: '3', title: '场景真实性验证', description: '描述的使用场景是否真实存在？', status: 'pending', createdAt: new Date().toISOString() },
-                  { id: '4', title: '竞品弱点分析', description: '现有竞品的不足之处是什么？', status: 'pending', createdAt: new Date().toISOString() },
+                  { id: Date.now().toString(), title: '痛点真实性验证', description: '目标用户是否真的有这个痛点？', status: 'pending', createdAt: new Date().toISOString() },
+                  { id: (Date.now() + 1).toString(), title: '付费意愿验证', description: '用户是否愿意为此付费？', status: 'pending', createdAt: new Date().toISOString() },
+                  { id: (Date.now() + 2).toString(), title: '场景真实性验证', description: '描述的使用场景是否真实存在？', status: 'pending', createdAt: new Date().toISOString() },
+                  { id: (Date.now() + 3).toString(), title: '竞品弱点分析', description: '现有竞品的不足之处是什么？', status: 'pending', createdAt: new Date().toISOString() },
                 ];
                 const newData = { ...data, items: defaultItems };
                 setData(newData);
@@ -521,12 +694,33 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
               添加默认验证项
             </button>
           </div>
-        )}
-        {data.items.length > 0 && (
+        ) : (
           <>
             {/* Kanban Board */}
             <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-              <div className="flex-1 flex gap-4 p-6 overflow-x-auto min-h-0">
+              <div className="flex-1 flex flex-col min-h-0">
+                {/* 默认模板按钮固定在顶部 */}
+                {!isLocked && (
+                  <div className="px-6 pt-4 pb-2 flex-shrink-0">
+                    <button
+                      onClick={() => {
+                        const defaultItems: ValidationItem[] = [
+                          { id: Date.now().toString(), title: '痛点真实性验证', description: '目标用户是否真的有这个痛点？', status: 'pending', createdAt: new Date().toISOString() },
+                          { id: (Date.now() + 1).toString(), title: '付费意愿验证', description: '用户是否愿意为此付费？', status: 'pending', createdAt: new Date().toISOString() },
+                          { id: (Date.now() + 2).toString(), title: '场景真实性验证', description: '描述的使用场景是否真实存在？', status: 'pending', createdAt: new Date().toISOString() },
+                          { id: (Date.now() + 3).toString(), title: '竞品弱点分析', description: '现有竞品的不足之处是什么？', status: 'pending', createdAt: new Date().toISOString() },
+                        ];
+                        const newData = { ...data, items: [...data.items, ...defaultItems] };
+                        setData(newData);
+                        saveData(newData);
+                      }}
+                      className="text-xs font-mono border border-brutal-accent text-brutal-accent px-3 py-1.5 hover:bg-brutal-accent/10 transition-colors"
+                    >
+                      + 添加默认验证项
+                    </button>
+                  </div>
+                )}
+                <div className="flex-1 flex gap-4 px-6 pb-6 overflow-x-auto min-h-0">
                 {/* Pending Column */}
             <DroppableKanbanColumn
               id="pending"
@@ -601,7 +795,8 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
                 </DraggableValidationCard>
               ))}
             </DroppableKanbanColumn>
-          </div>
+              </div>
+            </div>
 
           {/* DragOverlay：通过 portal 渲染在 DOM 最外层，避免被父容器 overflow 裁剪 */}
           <DragOverlay>
@@ -630,94 +825,342 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
 
         {/* Tools Panel */}
         <div className="w-80 border-l border-brutal-border bg-brutal-surface flex flex-col">
-          <div className="px-4 py-3 border-b border-brutal-border">
-            <span className="font-mono text-sm">验证工具箱</span>
+          {/* Tabs */}
+          <div className="flex border-b border-brutal-border">
+            <button
+              onClick={() => setActivePanelTab('tools')}
+              className={`flex-1 px-4 py-3 text-xs font-mono flex items-center justify-center gap-2 ${
+                activePanelTab === 'tools'
+                  ? 'bg-brutal-bg border-b-2 border-brutal-accent text-brutal-text'
+                  : 'text-brutal-muted hover:text-brutal-text'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              验证工具
+            </button>
+            <button
+              onClick={() => setActivePanelTab('smoke')}
+              className={`flex-1 px-4 py-3 text-xs font-mono flex items-center justify-center gap-2 ${
+                activePanelTab === 'smoke'
+                  ? 'bg-brutal-bg border-b-2 border-brutal-accent text-brutal-text'
+                  : 'text-brutal-muted hover:text-brutal-text'
+              }`}
+            >
+              <Flame className="w-3.5 h-3.5" />
+              试水帖
+            </button>
           </div>
 
-          <div className="p-4 space-y-2 border-b border-brutal-border">
-            <p className="text-xs text-brutal-muted font-mono mb-3">生成验证工具</p>
-            {(Object.keys(TOOL_TYPES) as Array<keyof typeof TOOL_TYPES>).map(
-              (type) => {
-                const config = TOOL_TYPES[type];
-                const Icon = config.icon;
-                return (
-                  <button
-                    key={type}
-                    onClick={() => generateTool(type)}
-                    disabled={generatingTool === type || isLocked}
-                    className="w-full btn-brutal h-9 flex items-center justify-between text-xs py-2"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Icon className={`w-4 h-4 ${config.color}`} />
-                      {config.label}
-                    </span>
-                    {generatingTool === type ? (
-                      <div className="w-3 h-3 border border-brutal-text border-t-transparent animate-spin" />
-                    ) : (
-                      <Plus className="w-3 h-3" />
-                    )}
-                  </button>
-                );
-              }
-            )}
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {data.tools.length === 0 ? (
-              <p className="text-xs text-brutal-muted font-mono text-center py-8">
-                点击上方按钮生成验证工具
-              </p>
-            ) : (
-              data.tools.map((tool) => {
-                const config = TOOL_TYPES[tool.type];
-                const Icon = config.icon;
-                return (
-                  <div
-                    key={tool.id}
-                    className="border border-brutal-border bg-brutal-bg p-3"
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2">
-                        <Icon className={`w-4 h-4 ${config.color}`} />
-                        <span className="text-xs font-mono font-bold">
-                          {tool.title}
+          {activePanelTab === 'tools' ? (
+            <>
+              <div className="p-4 space-y-2 border-b border-brutal-border">
+                <p className="text-xs text-brutal-muted font-mono mb-3">生成验证工具</p>
+                {(Object.keys(TOOL_TYPES) as Array<keyof typeof TOOL_TYPES>).map(
+                  (type) => {
+                    const config = TOOL_TYPES[type];
+                    const Icon = config.icon;
+                    return (
+                      <button
+                        key={type}
+                        onClick={() => generateTool(type)}
+                        disabled={generatingTool === type || isLocked}
+                        className="w-full btn-brutal h-9 flex items-center justify-between text-xs py-2"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Icon className={`w-4 h-4 ${config.color}`} />
+                          {config.label}
                         </span>
-                      </div>
-                      {!isLocked && (
-                        <button
-                          onClick={() => deleteTool(tool.id)}
-                          className="text-brutal-muted hover:text-brutal-warning"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="text-xs font-mono text-brutal-muted whitespace-pre-wrap line-clamp-4">
-                      {tool.content}
-                    </div>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(tool.content)}
-                      className="mt-2 text-xs text-brutal-accent hover:underline flex items-center gap-1"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      复制内容
-                    </button>
-                  </div>
-                );
-              })
-            )}
-          </div>
+                        {generatingTool === type ? (
+                          <div className="w-3 h-3 border border-brutal-text border-t-transparent animate-spin" />
+                        ) : (
+                          <Plus className="w-3 h-3" />
+                        )}
+                      </button>
+                    );
+                  }
+                )}
+              </div>
 
-          {/* Decision Button */}
-          {!data.decision && completedItems.length > 0 && (
-            <div className="p-4 border-t border-brutal-border">
-              <button
-                onClick={() => setShowDecisionModal(true)}
-                className="w-full btn-brutal-primary h-9 text-xs py-3"
-              >
-                做出 GO/NO-GO 决策
-              </button>
-            </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {data.tools.length === 0 ? (
+                  <p className="text-xs text-brutal-muted font-mono text-center py-8">
+                    点击上方按钮生成验证工具
+                  </p>
+                ) : (
+                  data.tools.map((tool) => {
+                    const config = TOOL_TYPES[tool.type];
+                    const Icon = config.icon;
+                    return (
+                      <div
+                        key={tool.id}
+                        className="border border-brutal-border bg-brutal-bg p-3"
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <Icon className={`w-4 h-4 ${config.color}`} />
+                            <span className="text-xs font-mono font-bold">
+                              {tool.title}
+                            </span>
+                          </div>
+                          {!isLocked && (
+                            <button
+                              onClick={() => deleteTool(tool.id)}
+                              className="text-brutal-muted hover:text-brutal-warning"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="text-xs font-mono text-brutal-muted whitespace-pre-wrap line-clamp-4">
+                          {tool.content}
+                        </div>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(tool.content)}
+                          className="mt-2 text-xs text-brutal-accent hover:underline flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          复制内容
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Decision Button */}
+              {!data.decision && completedItems.length > 0 && (
+                <div className="p-4 border-t border-brutal-border">
+                  <button
+                    onClick={() => setShowDecisionModal(true)}
+                    className="w-full btn-brutal-primary h-9 text-xs py-3"
+                  >
+                    做出 GO/NO-GO 决策
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Smoke Test Generation Panel */}
+              <div className="p-4 border-b border-brutal-border space-y-4">
+                <div>
+                  <p className="text-xs text-brutal-muted font-mono mb-2">选择平台</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {SMOKE_PLATFORMS.map((p) => (
+                      <button
+                        key={p.key}
+                        onClick={() => {
+                          setSelectedSmokePlatforms((prev) =>
+                            prev.includes(p.key)
+                              ? prev.filter((k) => k !== p.key)
+                              : [...prev, p.key]
+                          );
+                        }}
+                        className={`text-xs font-mono py-1.5 px-2 border text-left transition-colors ${
+                          selectedSmokePlatforms.includes(p.key)
+                            ? 'border-brutal-accent bg-brutal-accent/10 text-brutal-accent'
+                            : 'border-brutal-border text-brutal-muted hover:text-brutal-text'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs text-brutal-muted font-mono mb-2">选择风格</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SMOKE_STYLES.map((s) => (
+                      <button
+                        key={s.key}
+                        onClick={() => {
+                          setSelectedSmokeStyles((prev) =>
+                            prev.includes(s.key)
+                              ? prev.filter((k) => k !== s.key)
+                              : [...prev, s.key]
+                          );
+                        }}
+                        className={`text-xs font-mono py-1.5 px-3 border transition-colors ${
+                          selectedSmokeStyles.includes(s.key)
+                            ? 'border-brutal-accent bg-brutal-accent/10 text-brutal-accent'
+                            : 'border-brutal-border text-brutal-muted hover:text-brutal-text'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  onClick={generateSmokeTests}
+                  disabled={
+                    isGeneratingSmoke ||
+                    selectedSmokePlatforms.length === 0 ||
+                    selectedSmokeStyles.length === 0 ||
+                    isLocked
+                  }
+                  className="w-full btn-brutal h-9 flex items-center justify-center gap-2 text-xs"
+                >
+                  {isGeneratingSmoke ? (
+                    <div className="w-3 h-3 border border-brutal-text border-t-transparent animate-spin" />
+                  ) : (
+                    <Flame className="w-3 h-3" />
+                  )}
+                  生成文案
+                </button>
+              </div>
+
+              {/* Smoke Test List */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {(data.smokeTests || []).length === 0 ? (
+                  <p className="text-xs text-brutal-muted font-mono text-center py-8">
+                    选择平台和风格，生成试水帖文案
+                  </p>
+                ) : (
+                  (data.smokeTests || []).map((smoke) => (
+                    <div key={smoke.id} className="border border-brutal-border bg-brutal-bg">
+                      <div className="px-3 py-2 border-b border-brutal-border bg-brutal-surface flex items-center justify-between">
+                        <span className="text-xs font-mono text-brutal-muted">
+                          {new Date(smoke.createdAt).toLocaleDateString('zh-CN')}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {!isLocked && (
+                            <button
+                              onClick={() => deleteSmokeTest(smoke.id)}
+                              className="text-brutal-muted hover:text-brutal-warning p-1"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="p-3 space-y-3">
+                        {smoke.variants.map((variant) => {
+                          const isPublished = smoke.publishedVariantId === variant.id;
+                          const platformLabel = SMOKE_PLATFORMS.find((p) => p.key === variant.platform)?.label || variant.platform;
+                          const styleLabel = SMOKE_STYLES.find((s) => s.key === variant.style)?.label || variant.style;
+
+                          return (
+                            <div
+                              key={variant.id}
+                              className={`border p-2.5 ${
+                                isPublished
+                                  ? 'border-brutal-success bg-brutal-success/5'
+                                  : 'border-brutal-border'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 bg-brutal-surface border border-brutal-border text-brutal-muted">
+                                  {platformLabel}
+                                </span>
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 bg-brutal-surface border border-brutal-border text-brutal-muted">
+                                  {styleLabel}
+                                </span>
+                                {isPublished && (
+                                  <span className="text-[10px] font-mono px-1.5 py-0.5 bg-brutal-success/10 border border-brutal-success text-brutal-success flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    已发布
+                                  </span>
+                                )}
+                              </div>
+
+                              <p className="text-xs font-mono font-bold text-brutal-text mb-1 line-clamp-1">
+                                {variant.title}
+                              </p>
+                              <p className="text-xs font-mono text-brutal-muted line-clamp-3 mb-2">
+                                {variant.content}
+                              </p>
+
+                              {variant.tags && variant.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mb-2">
+                                  {variant.tags.map((tag, i) => (
+                                    <span
+                                      key={i}
+                                      className="text-[10px] font-mono text-brutal-accent"
+                                    >
+                                      #{tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => copyVariantContent(variant)}
+                                  className="flex items-center gap-1 text-[10px] font-mono text-brutal-accent hover:underline"
+                                >
+                                  {copiedVariantId === variant.id ? (
+                                    <>
+                                      <Check className="w-3 h-3" />
+                                      已复制
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3 h-3" />
+                                      复制
+                                    </>
+                                  )}
+                                </button>
+                                {!isLocked && !isPublished && (
+                                  <button
+                                    onClick={() => publishSmokeVariant(smoke.id, variant.id)}
+                                    className="flex items-center gap-1 text-[10px] font-mono text-brutal-success hover:underline"
+                                  >
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    标记已发布
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Metrics summary or button */}
+                      <div className="px-3 py-2 border-t border-brutal-border bg-brutal-surface">
+                        {smoke.metrics ? (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="text-[10px] font-mono text-brutal-muted">
+                                👍 {smoke.metrics.likes}
+                              </span>
+                              <span className="text-[10px] font-mono text-brutal-muted">
+                                💬 {smoke.metrics.comments}
+                              </span>
+                              <span className="text-[10px] font-mono text-brutal-muted">
+                                👁 {smoke.metrics.impressions}
+                              </span>
+                            </div>
+                            {!isLocked && (
+                              <button
+                                onClick={() => openSmokeMetricsModal(smoke.id)}
+                                className="text-[10px] font-mono text-brutal-accent hover:underline flex items-center gap-1"
+                              >
+                                <BarChart3 className="w-3 h-3" />
+                                修改数据
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          !isLocked && (
+                            <button
+                              onClick={() => openSmokeMetricsModal(smoke.id)}
+                              className="w-full text-[10px] font-mono text-brutal-accent hover:underline flex items-center justify-center gap-1 py-1"
+                            >
+                              <BarChart3 className="w-3 h-3" />
+                              录入互动数据
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -939,6 +1382,16 @@ export function ValidateStage({ project, onUpdateContent, isLocked, onToggleLock
           items={data.items}
         />
       )}
+
+      {/* Smoke Test Metrics Modal */}
+      {showSmokeMetricsModal && (
+        <SmokeTestMetricsModal
+          form={smokeMetricsForm}
+          onChange={setSmokeMetricsForm}
+          onClose={() => setShowSmokeMetricsModal(null)}
+          onSave={saveSmokeMetrics}
+        />
+      )}
     </div>
   );
 }
@@ -1138,6 +1591,198 @@ function Modal({
           </button>
         </div>
         <div className="p-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// 子组件：试水帖数据回填模态框
+function SmokeTestMetricsModal({
+  form,
+  onChange,
+  onClose,
+  onSave,
+}: {
+  form: {
+    postUrl: string;
+    impressions: number;
+    likes: number;
+    comments: number;
+    shares: number;
+    dms: number;
+    keyQuotes: string[];
+    positiveSignals: string[];
+    negativeSignals: string[];
+    notes: string;
+  };
+  onChange: (form: {
+    postUrl: string;
+    impressions: number;
+    likes: number;
+    comments: number;
+    shares: number;
+    dms: number;
+    keyQuotes: string[];
+    positiveSignals: string[];
+    negativeSignals: string[];
+    notes: string;
+  }) => void;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const positiveOptions = ['愿意付费', '询问时间', '推荐给朋友', '提及痛点'];
+  const negativeOptions = ['无人回应', '被质疑需求', '已有成熟方案'];
+
+  const toggleSignal = (type: 'positive' | 'negative', signal: string) => {
+    const key = type === 'positive' ? 'positiveSignals' : 'negativeSignals';
+    const current = form[key];
+    onChange({
+      ...form,
+      [key]: current.includes(signal) ? current.filter((s) => s !== signal) : [...current, signal],
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-brutal-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="border-2 border-brutal-border bg-brutal-surface w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-brutal-border bg-brutal-bg">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-brutal-muted font-mono">//</span>
+            <span className="text-sm font-mono font-bold">录入互动数据</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 border border-brutal-border flex items-center justify-center hover:bg-brutal-text hover:text-brutal-bg transition-colors"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          <div>
+            <label className="block text-xs font-mono text-brutal-muted mb-2">帖子链接</label>
+            <input
+              type="url"
+              value={form.postUrl}
+              onChange={(e) => onChange({ ...form, postUrl: e.target.value })}
+              className="w-full p-2 border border-brutal-border bg-brutal-bg font-mono text-xs"
+              placeholder="https://..."
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { key: 'impressions', label: '曝光' },
+              { key: 'likes', label: '点赞' },
+              { key: 'comments', label: '评论' },
+              { key: 'shares', label: '转发' },
+              { key: 'dms', label: '私信' },
+            ].map(({ key, label }) => (
+              <div key={key}>
+                <label className="block text-xs font-mono text-brutal-muted mb-1">{label}</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={form[key as keyof typeof form] as number}
+                  onChange={(e) =>
+                    onChange({ ...form, [key]: parseInt(e.target.value) || 0 })
+                  }
+                  className="w-full p-2 border border-brutal-border bg-brutal-bg font-mono text-xs"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <label className="block text-xs font-mono text-brutal-muted mb-2">关键引用</label>
+            {form.keyQuotes.map((quote, index) => (
+              <div key={index} className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  value={quote}
+                  onChange={(e) => {
+                    const newQuotes = [...form.keyQuotes];
+                    newQuotes[index] = e.target.value;
+                    onChange({ ...form, keyQuotes: newQuotes });
+                  }}
+                  className="flex-1 p-2 border border-brutal-border bg-brutal-bg font-mono text-xs"
+                  placeholder={`引用 ${index + 1}`}
+                />
+                <button
+                  onClick={() =>
+                    onChange({ ...form, keyQuotes: form.keyQuotes.filter((_, i) => i !== index) })
+                  }
+                  className="text-brutal-muted hover:text-brutal-warning"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={() => onChange({ ...form, keyQuotes: [...form.keyQuotes, ''] })}
+              className="text-xs text-brutal-accent hover:underline"
+            >
+              + 添加引用
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-xs font-mono text-brutal-muted mb-2">正向信号</label>
+            <div className="flex flex-wrap gap-2">
+              {positiveOptions.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => toggleSignal('positive', opt)}
+                  className={`text-xs font-mono px-2 py-1 border ${
+                    form.positiveSignals.includes(opt)
+                      ? 'border-brutal-success bg-brutal-success/10 text-brutal-success'
+                      : 'border-brutal-border text-brutal-muted'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-mono text-brutal-muted mb-2">负向信号</label>
+            <div className="flex flex-wrap gap-2">
+              {negativeOptions.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => toggleSignal('negative', opt)}
+                  className={`text-xs font-mono px-2 py-1 border ${
+                    form.negativeSignals.includes(opt)
+                      ? 'border-brutal-error bg-brutal-error/10 text-brutal-error'
+                      : 'border-brutal-border text-brutal-muted'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-mono text-brutal-muted mb-2">备注</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => onChange({ ...form, notes: e.target.value })}
+              className="w-full p-2 border border-brutal-border bg-brutal-bg font-mono text-xs h-20 resize-none"
+              placeholder="其他观察..."
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button onClick={onClose} className="flex-1 btn-brutal h-9 py-2">
+              取消
+            </button>
+            <button onClick={onSave} className="flex-1 btn-brutal-primary h-9 py-2">
+              保存数据
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
