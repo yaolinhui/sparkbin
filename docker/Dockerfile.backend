@@ -1,5 +1,6 @@
 # SparkBin Backend Dockerfile
 # FastAPI + SQLAlchemy + Alembic
+# Build context: backend/ directory
 
 FROM python:3.11-slim
 
@@ -14,12 +15,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY backend/requirements.txt .
+# Install Python dependencies (build context is backend/)
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend code
-COPY backend/ .
+COPY . .
 
 # Create startup script
 RUN printf '#!/bin/sh\nset -e\necho "[start] Running database startup..."\npython /app/startup.py\necho "[start] Starting SparkBin API server..."\nexec uvicorn app.main:app --host 0.0.0.0 --port 8000\n' > /app/start.sh && chmod +x /app/start.sh
