@@ -10,8 +10,8 @@ echo "SparkBin 生产环境部署脚本"
 echo "========================================"
 
 # ========== 配置区 ==========
-DOMAIN="api.wanchun.me"
-FRONTEND_DOMAIN="app.wanchun.me"
+DOMAIN="api-sparkbin.wanchun.me"
+FRONTEND_DOMAIN="sparkbin.wanchun.me"
 REPO_URL="https://github.com/yaolinhui/sparkbin.git"
 BRANCH="deploy/production"
 APP_DIR="/opt/sparkbin"
@@ -106,10 +106,10 @@ services:
       DEFAULT_PASSWORD: admin123456
       API_PORT: 8000
       DEBUG: "false"
-      CORS_ORIGINS: https://app.wanchun.me,https://wanchun.me
+      CORS_ORIGINS: https://sparkbin.wanchun.me,https://wanchun.me
       ENABLE_PAYMENTS: "false"
       ENABLE_SAAS_FEATURES: "false"
-      FRONTEND_URL: https://app.wanchun.me
+      FRONTEND_URL: https://sparkbin.wanchun.me
     depends_on:
       postgres:
         condition: service_healthy
@@ -144,7 +144,7 @@ echo "[7/8] 创建 Nginx 配置..."
 cat > "$APP_DIR/nginx.deploy.conf" << 'EOF'
 server {
     listen 80;
-    server_name api.wanchun.me;
+    server_name api-sparkbin.wanchun.me;
 
     location / {
         proxy_pass http://backend:8000;
@@ -184,9 +184,10 @@ echo "健康检查: http://47.239.189.14:8000/health"
 echo "API 文档: http://47.239.189.14:8000/docs"
 echo ""
 echo "下一步:"
-echo "1. 配置域名 DNS: api.wanchun.me → A记录 → 47.239.189.14"
+echo "1. 配置域名 DNS: api-sparkbin.wanchun.me → A记录 → 47.239.189.14"
 echo "2. 配置 SSL 证书（等域名生效后执行 certbot 或手动配置）"
-echo "3. Vercel 部署前端，环境变量 VITE_API_URL=https://api.wanchun.me"
+echo "3. Vercel 部署前端 App: sparkbin.wanchun.me，环境变量 VITE_API_URL=https://api-sparkbin.wanchun.me"
+echo "4. Vercel 部署宣传页: sparkbin-web.wanchun.me"
 echo ""
 echo "查看日志: docker logs -f sparkbin-backend"
 echo "查看状态: docker ps"
