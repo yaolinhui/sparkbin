@@ -582,8 +582,10 @@ def _get_http_client() -> httpx.Client:
 
 def _get_oauth_redirect_url(provider: str) -> str:
     """构建 OAuth 回调地址（供 Google/GitHub 重定向回后端）"""
+    import os
     settings = get_settings()
-    return f"http://127.0.0.1:{settings.api_port}/auth/oauth/{provider}/callback"
+    api_url = os.environ.get("API_URL", f"http://127.0.0.1:{settings.api_port}")
+    return f"{api_url}/auth/oauth/{provider}/callback"
 
 
 def _create_oauth_state() -> str:
