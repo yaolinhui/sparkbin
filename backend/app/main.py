@@ -48,8 +48,8 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         if request.method in ("POST", "PUT", "PATCH"):
-            body = await request.body()
-            if len(body) > self.max_size:
+            content_length = request.headers.get("content-length")
+            if content_length and int(content_length) > self.max_size:
                 return Response(
                     content=json.dumps({"detail": "请求体超过最大限制（10MB）"}),
                     status_code=413,
