@@ -210,7 +210,7 @@ app.add_middleware(RequestSizeLimitMiddleware)
 # 可信 Host 中间件（防止 Host Header 攻击）
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["*"] if settings.debug else ["sparkbin.dev", "*.sparkbin.dev", "localhost"],
+    allowed_hosts=["*"] if settings.debug else ["sparkbin.dev", "*.sparkbin.dev", "localhost", "api-sparkbin.wanchun.me", "wanchun.me"],
 )
 
 # 注册路由
