@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="100%">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f0f0f"/>
+      <stop offset="100%" style="stop-color:#1a1a2e"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <circle cx="20" cy="20" r="1" fill="#333" opacity="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="200" fill="url(#bg)"/>
+  <rect width="800" height="200" fill="url(#grid)"/>
+
+  <!-- SparkBin Logo -->
+  <text x="400" y="90" font-family="JetBrains Mono, monospace" font-size="52" font-weight="bold" fill="#fff" text-anchor="middle" letter-spacing="4">SPARKBIN</text>
+
+  <!-- Tagline -->
+  <text x="400" y="130" font-family="system-ui, sans-serif" font-size="18" fill="#888" text-anchor="middle">AI Project Coach for Indie Hackers</text>
+
+  <!-- Stage indicators -->
+  <g transform="translate(200, 165)">
+    <rect x="0" y="0" width="60" height="20" rx="2" fill="#e74c3c" opacity="0.8"/>
+    <text x="30" y="14" font-family="monospace" font-size="10" fill="#fff" text-anchor="middle">IDEA</text>
+  </g>
+  <g transform="translate(270, 165)">
+    <rect x="0" y="0" width="60" height="20" rx="2" fill="#e67e22" opacity="0.8"/>
+    <text x="30" y="14" font-family="monospace" font-size="10" fill="#fff" text-anchor="middle">VALIDATE</text>
+  </g>
+  <g transform="translate(340, 165)">
+    <rect x="0" y="0" width="60" height="20" rx="2" fill="#f1c40f" opacity="0.8"/>
+    <text x="30" y="14" font-family="monospace" font-size="10" fill="#000" text-anchor="middle">PROTOTYPE</text>
+  </g>
+  <g transform="translate(410, 165)">
+    <rect x="0" y="0" width="60" height="20" rx="2" fill="#2ecc71" opacity="0.8"/>
+    <text x="30" y="14" font-family="monospace" font-size="10" fill="#fff" text-anchor="middle">SHIP</text>
+  </g>
+  <g transform="translate(480, 165)">
+    <rect x="0" y="0" width="60" height="20" rx="2" fill="#3498db" opacity="0.8"/>
+    <text x="30" y="14" font-family="monospace" font-size="10" fill="#fff" text-anchor="middle">GROW</text>
+  </g>
+  <g transform="translate(550, 165)">
+    <rect x="0" y="0" width="60" height="20" rx="2" fill="#9b59b6" opacity="0.8"/>
+    <text x="30" y="14" font-family="monospace" font-size="10" fill="#fff" text-anchor="middle">MONETIZE</text>
+  </g>
+</svg>
