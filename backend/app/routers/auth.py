@@ -447,14 +447,16 @@ def register(
         db.add(tx)
         db.commit()
 
-    # 发送验证邮件（异步，失败不阻断注册）
+    # 发送验证邮件（失败不阻断注册，但记录错误）
     settings = get_settings()
     try:
         token = create_email_verification_token(str(new_user.id), new_user.email)
         verify_url = f"{settings.frontend_url}/verify-email?token={token}"
-        send_verification_email(new_user.email, new_user.username, verify_url)
-    except Exception:
-        pass
+        success, error = send_verification_email(new_user.email, new_user.username, verify_url)
+        if not success:
+            print(f"[EMAIL ERROR] 验证邮件发送失败: {error}")
+    except Exception as e:
+        print(f"[EMAIL ERROR] 验证邮件发送异常: {e}")
 
     # 自动登录
     token_data = {"sub": new_user.username, "role": new_user.role.value}
@@ -495,15 +497,21 @@ def forgot_password(
     """忘记密码：发送重置邮件"""
     user = db.query(User).filter(User.email == request.email).first()
 
-    # 无论是否找到用户，都返回成功（防止枚举攻击）
-    if user and user.password_hash:
-        settings = get_settings()
-        try:
-            token = create_password_reset_token(str(user.id), user.email)
-            reset_url = f"{settings.frontend_url}/reset-password?token={token}"
-            send_password_reset_email(user.email, user.username or user.email, reset_url)
-        except Exception:
-            pass
+    # 用户不存在时返回模糊成功消息，防止邮箱枚举攻击
+    if not user or not user.password_hash:
+        return BaseResponse(message="如果该邮箱已注册，重置邮件已发送")
+
+    # 用户存在，尝试发送邮件
+    settings = get_settings()
+    try:
+        token = create_password_reset_token(str(user.id), user.email)
+        reset_url = f"{settings.frontend_url}/reset-password?token={token}"
+        success, error = send_password_reset_email(user.email, user.username or user.email, reset_url)
+        if not success:
+            # 邮件发送失败，返回错误让前端提示用户重试
+            return BaseResponse(success=False, message=f"邮件发送失败：{error}")
+    except Exception as e:
+        return BaseResponse(success=False, message=f"邮件发送失败：{str(e)}")
 
     return BaseResponse(message="如果该邮箱已注册，重置邮件已发送")
 

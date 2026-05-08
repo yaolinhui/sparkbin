@@ -8,27 +8,26 @@ from typing import Optional
 
 from .config import get_settings
 
-_settings = get_settings()
-
 
 def _has_resend() -> bool:
-    return bool(_settings.resend_api_key and _settings.resend_api_key != "")
+    settings = get_settings()
+    return bool(settings.resend_api_key and settings.resend_api_key != "")
 
 
 def _send_email(to: str, subject: str, html_body: str, text_body: str) -> tuple[bool, Optional[str]]:
     """发送邮件，返回 (success, error_message)"""
+    settings = get_settings()
     if not _has_resend():
-        # 开发环境：打印到控制台，不实际发送
-        print(f"\n[EMAIL MOCK] To: {to}\nSubject: {subject}\n{text_body}\n")
-        return True, None
+        # 未配置 RESEND_API_KEY，明确返回失败
+        return False, "RESEND_API_KEY not configured"
 
     try:
         # 延迟导入，避免未安装 resend 时崩溃
         import resend
-        resend.api_key = _settings.resend_api_key
+        resend.api_key = settings.resend_api_key
 
         params: resend.Emails.SendParams = {
-            "from": _settings.resend_from_email,
+            "from": settings.resend_from_email,
             "to": [to],
             "subject": subject,
             "html": html_body,

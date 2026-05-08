@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Lock, User, AlertCircle, Loader2, X, Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
-import { authApi, setAuthToken, setRefreshToken, ApiError } from '../services/api';
+import { authApi, setAuthToken, setRefreshToken, ApiError, type BaseResponse } from '../services/api';
 import { DotGridBackground } from './DotGridBackground';
 import type { DotGridBackgroundRef } from './DotGridBackground';
 
@@ -258,8 +258,12 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     setIsLoading(true);
 
     try {
-      await authApi.forgotPassword({ email: forgotEmail });
-      setForgotSent(true);
+      const res: BaseResponse = await authApi.forgotPassword({ email: forgotEmail });
+      if (res.success === false) {
+        setError(res.message || '发送失败');
+      } else {
+        setForgotSent(true);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '发送失败');
     } finally {
