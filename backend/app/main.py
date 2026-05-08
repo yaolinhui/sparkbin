@@ -227,7 +227,8 @@ def root():
     return {
         "name": "SparkBin API",
         "version": "1.0.0",
-        "docs": "/docs"
+        "docs": "/docs",
+        "ci": True
     }
 
 
