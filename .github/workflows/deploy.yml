@@ -22,16 +22,18 @@ jobs:
           script: |
             set -e
             echo "=========================================="
-            echo "Step 1: Pull latest code from GitHub"
+            echo "Step 1: Sync code from GitHub"
             echo "=========================================="
             cd /opt/sparkbin
-            git pull https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/yaolinhui/sparkbin.git master
+            # Use GITHUB_TOKEN to fetch private repo, then hard reset to match exactly
+            git fetch https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/yaolinhui/sparkbin.git master
+            git reset --hard FETCH_HEAD
 
             echo ""
             echo "=========================================="
             echo "Step 2: Build backend Docker image"
             echo "=========================================="
-            docker build -f docker/Dockerfile.backend -t sparkbin-backend:latest .
+            docker build -f docker/Dockerfile.backend -t sparkbin-backend:latest backend/
 
             echo ""
             echo "=========================================="
