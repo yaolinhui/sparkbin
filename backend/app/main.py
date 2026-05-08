@@ -228,7 +228,7 @@ def root():
         "name": "SparkBin API",
         "version": "1.0.0",
         "docs": "/docs",
-        "ci": True
+        "ci_deployed": "github-actions-v2"
     }
 
 
