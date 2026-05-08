@@ -1,0 +1,58 @@
+name: Deploy Backend to Alibaba Cloud
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: ${{ secrets.SERVER_SSH_PORT || '22' }}
+          script_stop: true
+          script: |
+            set -e
+            echo "=========================================="
+            echo "Step 1: Pull latest code from GitHub"
+            echo "=========================================="
+            cd /opt/sparkbin
+            git pull https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/yaolinhui/sparkbin.git master
+
+            echo ""
+            echo "=========================================="
+            echo "Step 2: Build backend Docker image"
+            echo "=========================================="
+            docker build -f docker/Dockerfile.backend -t sparkbin-backend:latest .
+
+            echo ""
+            echo "=========================================="
+            echo "Step 3: Restart containers"
+            echo "=========================================="
+            docker compose -f docker-compose.deploy.yml up -d
+
+            echo ""
+            echo "=========================================="
+            echo "Step 4: Cleanup unused images"
+            echo "=========================================="
+            docker image prune -f
+
+            echo ""
+            echo "=========================================="
+            echo "Step 5: Health check"
+            echo "=========================================="
+            sleep 5
+            curl -sf http://localhost:8000/health && echo "" && echo "Backend is healthy!" || echo "WARNING: Health check failed"
+
+            echo ""
+            echo "=========================================="
+            echo "Deployment completed!"
+            echo "=========================================="
