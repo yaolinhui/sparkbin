@@ -385,7 +385,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                     className="w-full pl-10 pr-10 py-3 border border-brutal-border bg-brutal-bg
                                focus:border-brutal-accent focus:outline-none
                                font-mono text-sm transition-colors"
-                    placeholder="输入密码"
+                    placeholder="Password"
                     autoComplete="current-password"
                     disabled={isLoading || isLocked}
                   />
