@@ -1,13 +1,14 @@
 #!/bin/bash
 # SparkBin production smoke test script
+# Usage: bash scripts/smoke-test-production.sh
 set -e
 
-FRONTEND_URL="https://app.wanchun.me"
-LANDING_URL="https://sparkbin.wanchun.me"
+FRONTEND_URL="https://sparkbin.wanchun.me"
 API_URL="https://api-sparkbin.wanchun.me"
 HEALTH_ENDPOINT="$API_URL/health"
 AUTH_ME_ENDPOINT="$API_URL/auth/me"
 
+# Test credentials for login flow validation (create a dedicated test account)
 TEST_USERNAME="${TEST_USERNAME:-}"
 TEST_PASSWORD="${TEST_PASSWORD:-}"
 
@@ -49,43 +50,17 @@ echo "Time: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================"
 echo ""
 
-# DNS check
-echo "[0/8] DNS resolution check..."
-FRONTEND_IP=$(dig +short app.wanchun.me | tail -n1 || echo "")
-SERVER_IP=$(hostname -I | awk '{print $1}')
-if [ -n "$FRONTEND_IP" ] && [ "$FRONTEND_IP" = "$SERVER_IP" ]; then
-  log_warn "app.wanchun.me resolves to this server ($SERVER_IP), frontend should be on Vercel -- DNS config may be wrong"
-fi
-
-# 1. Frontend
-echo "[1/8] Frontend accessibility..."
+# 1. Frontend accessibility
+echo "[1/7] Frontend accessibility..."
 STATUS=$(http_status "$FRONTEND_URL")
-if [ "$STATUS" = "000" ]; then
-  # Connection failed -- check if DNS points to this server
-  DNS_IP=$(dig +short app.wanchun.me | tail -n1 || echo "")
-  SERVER_PUB_IP=$(curl -s --max-time 10 ifconfig.me || echo "")
-  if [ -n "$DNS_IP" ] && [ "$DNS_IP" = "$SERVER_PUB_IP" ]; then
-    log_warn "Frontend DNS points to this server ($SERVER_PUB_IP), skipping check (fix DNS A record to point to Vercel)"
-  else
-    log_fail "Frontend returns 000 ($FRONTEND_URL)"
-  fi
-elif [ "$STATUS" = "200" ]; then
+if [ "$STATUS" = "200" ]; then
   log_pass "Frontend returns 200 ($FRONTEND_URL)"
 else
   log_fail "Frontend returns $STATUS ($FRONTEND_URL)"
 fi
 
-# 2. Landing
-echo "[2/8] Landing page accessibility..."
-STATUS=$(http_status "$LANDING_URL")
-if [ "$STATUS" = "200" ]; then
-  log_pass "Landing returns 200 ($LANDING_URL)"
-else
-  log_fail "Landing returns $STATUS ($LANDING_URL)"
-fi
-
-# 3. Health check
-echo "[3/8] Backend health check..."
+# 2. Backend health check
+echo "[2/7] Backend health check..."
 STATUS=$(http_status "$HEALTH_ENDPOINT")
 if [ "$STATUS" = "200" ]; then
   log_pass "Backend /health returns 200"
@@ -93,8 +68,8 @@ else
   log_fail "Backend /health returns $STATUS"
 fi
 
-# 4. API base response
-echo "[4/8] Backend API base response..."
+# 3. Backend API base response
+echo "[3/7] Backend API base response..."
 BODY=$(http_body "$API_URL")
 if [ -n "$BODY" ]; then
   log_pass "Backend API returns response (FastAPI running)"
@@ -102,8 +77,8 @@ else
   log_warn "Backend API response empty"
 fi
 
-# 5. Auth endpoint
-echo "[5/8] Auth endpoint security check..."
+# 4. Auth endpoint (unauthorized should return 401/403)
+echo "[4/7] Auth endpoint security check..."
 STATUS=$(http_status "$AUTH_ME_ENDPOINT")
 if [ "$STATUS" = "401" ] || [ "$STATUS" = "403" ]; then
   log_pass "Unauthorized /auth/me correctly returns $STATUS"
@@ -111,8 +86,8 @@ else
   log_warn "/auth/me returns $STATUS (expected 401/403)"
 fi
 
-# 6. SSL certificate
-echo "[6/8] SSL certificate check..."
+# 5. SSL certificate validity
+echo "[5/7] SSL certificate check..."
 EXPIRY=$(echo | openssl s_client -servername api-sparkbin.wanchun.me -connect api-sparkbin.wanchun.me:443 2>/dev/null | openssl x509 -noout -dates 2>/dev/null | grep notAfter | cut -d= -f2)
 if [ -n "$EXPIRY" ]; then
   EXPIRY_TS=$(date -d "$EXPIRY" +%s 2>/dev/null || date -j -f "%b %d %H:%M:%S %Y %Z" "$EXPIRY" +%s 2>/dev/null)
@@ -129,8 +104,8 @@ else
   log_warn "Cannot get SSL certificate info"
 fi
 
-# 7. Response time
-echo "[7/8] Response time check..."
+# 6. Response time
+echo "[6/7] Response time check..."
 RESPONSE_TIME=$(curl -s -o /dev/null -w "%{time_total}" --max-time 10 "$HEALTH_ENDPOINT")
 if [ -n "$RESPONSE_TIME" ]; then
   RT_MS=$(echo "$RESPONSE_TIME * 1000" | bc 2>/dev/null || echo "0")
@@ -143,8 +118,8 @@ else
   log_warn "Cannot measure response time"
 fi
 
-# 8. Login test
-echo "[8/8] Login flow test..."
+# 7. Login flow test (requires test credentials)
+echo "[7/7] Login flow test..."
 if [ -n "$TEST_USERNAME" ] && [ -n "$TEST_PASSWORD" ]; then
   LOGIN_RESPONSE=$(curl -s -X POST "$API_URL/auth/login" \
     -H "Content-Type: application/json" \

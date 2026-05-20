@@ -24,7 +24,7 @@ export default defineConfig({
     ['html', { open: 'never' }],
   ],
   use: {
-    baseURL: 'https://app.wanchun.me',
+    baseURL: 'https://sparkbin.wanchun.me',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'on-first-retry',
