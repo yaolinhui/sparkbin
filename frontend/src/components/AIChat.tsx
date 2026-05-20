@@ -416,34 +416,39 @@ export function AIChat({
         }
       }, 200);
 
-      for await (const chunk of aiService.chatCompletionStream(kimiMessages, {
-        projectId,
-        stageKey: stage,
-        enableStageLoop: true,
-      }, {
-        onMeta: (meta: StageStreamMeta) => {
-          if (meta.stage_snapshot) {
-            setStageSnapshot(meta.stage_snapshot);
-          }
-          setRetryUsed(Boolean(meta.retry_used));
-          const structuredSyncText = buildSyncTextFromStructured(meta.sync_payload_structured);
-          const resolvedSyncText = structuredSyncText || meta.sync_payload || '';
-          if (resolvedSyncText) {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === aiMessage.id ? { ...msg, syncPayload: resolvedSyncText } : msg
-              )
-            );
-          }
-          if (meta.next_question) {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === aiMessage.id ? { ...msg, nextQuestion: meta.next_question } : msg
-              )
-            );
-          }
+      for await (const chunk of aiService.chatCompletionStream(
+        kimiMessages,
+        {
+          projectId,
+          stageKey: stage,
+          enableStageLoop: true,
         },
-      })) {
+        {
+          onMeta: (meta: StageStreamMeta) => {
+            if (meta.stage_snapshot) {
+              setStageSnapshot(meta.stage_snapshot);
+            }
+            setRetryUsed(Boolean(meta.retry_used));
+            const structuredSyncText = buildSyncTextFromStructured(meta.sync_payload_structured);
+            const resolvedSyncText = structuredSyncText || meta.sync_payload || '';
+            if (resolvedSyncText) {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === aiMessage.id ? { ...msg, syncPayload: resolvedSyncText } : msg
+                )
+              );
+            }
+            if (meta.next_question) {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === aiMessage.id ? { ...msg, nextQuestion: meta.next_question } : msg
+                )
+              );
+            }
+          },
+        },
+        abortControllerRef.current?.signal,
+      )) {
         streamingContentRef.current += chunk;
       }
 
@@ -469,17 +474,20 @@ export function AIChat({
 
       const generateKeywords = ['generate', 'create', 'write', 'draft', 'template', '生成', '创建', '写', '模板'];
       if (generateKeywords.some((kw) => textToSend.toLowerCase().includes(kw))) {
-        onGenerateContent?.(fullContent);
+        onGenerateContent?.(finalContent);
       }
 
       // ===== 循环的设计：AI 阶段推进循环 =====
       // 流结束后，如果有 next_question，自动聚焦输入框并预填充建议
-      const finalMsg = [...messages, userMessage].find((m) => m.id === aiMessage.id);
-      if (finalMsg?.nextQuestion) {
-        setInput(finalMsg.nextQuestion);
-        // 延迟聚焦，等待 DOM 更新
-        setTimeout(() => inputRef.current?.focus(), 100);
-      }
+      // 使用函数式更新获取最新的 messages 状态
+      setMessages((prevMessages) => {
+        const finalMsg = prevMessages.find((m) => m.id === aiMessage.id);
+        if (finalMsg?.nextQuestion) {
+          setInput(finalMsg.nextQuestion);
+          setTimeout(() => inputRef.current?.focus(), 100);
+        }
+        return prevMessages;
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       const isConfigError = errorMessage.includes('not configured') ||

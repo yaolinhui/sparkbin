@@ -68,6 +68,8 @@ export function PetHabitat({
         typingRef.current = null;
       }
     };
+    // displayedText 仅被写入，不依赖其当前值；加入依赖会导致无限重渲染
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dialogue]);
 
   const personalityOption = PERSONALITY_OPTIONS.find((p) => p.id === personality);

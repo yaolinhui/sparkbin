@@ -125,6 +125,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
       const backendUpdates: Record<string, string | number | boolean | object> = {};
       if (updates.title !== undefined) backendUpdates.title = updates.title;
       if (updates.painPoint !== undefined) backendUpdates.pain_point = updates.painPoint;
+      if (updates.originalIdea !== undefined) backendUpdates.original_idea = updates.originalIdea;
       if (updates.status !== undefined) backendUpdates.status = updates.status;
       if (updates.currentStage !== undefined) backendUpdates.current_stage = updates.currentStage;
 

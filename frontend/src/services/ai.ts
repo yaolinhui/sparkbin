@@ -91,6 +91,7 @@ class AIService {
     messages: KimiMessage[],
     context?: StageChatContext,
     handlers?: StageChatHandlers,
+    signal?: AbortSignal,
   ): AsyncGenerator<string, void, unknown> {
     const token = getAuthToken();
 
@@ -111,6 +112,7 @@ class AIService {
         stage_key: context?.stageKey || null,
         enable_stage_loop: context?.enableStageLoop ?? true,
       }),
+      signal,
     });
 
     if (!response.ok) {

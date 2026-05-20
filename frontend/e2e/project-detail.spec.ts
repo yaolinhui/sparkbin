@@ -13,7 +13,6 @@ test.describe('项目详情页', () => {
   });
 
   test('点击项目卡片应能导航到详情页', async ({ page }) => {
-    const clickableCards = page.locator('a[href*="/project/"], [class*="card"], [class*="project"]').first();
     const count = await page.locator('a[href*="/project/"]').count();
 
     if (count === 0) {

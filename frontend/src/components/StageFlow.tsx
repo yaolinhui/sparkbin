@@ -35,10 +35,10 @@ export function StageFlow({
   const progress = Math.round((completedStages.length / STAGE_ORDER.length) * 100);
 
   return (
-    <div className="bg-brutal-surface border-b border-brutal-border px-6 py-2">
-      <div className="flex items-center justify-between gap-4">
-        {/* 左侧：阶段跳转按钮 */}
-        <div className="flex items-center gap-1 flex-shrink-0">
+    <div className="bg-brutal-surface border-b border-brutal-border px-4 md:px-6 py-2">
+      <div className="flex items-center justify-between gap-2 md:gap-4">
+        {/* 左侧：阶段跳转按钮 - 移动端可横向滚动 */}
+        <div className="flex items-center gap-1 flex-shrink-0 overflow-x-auto -mx-1 px-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {STAGE_ORDER.map((stage) => {
             const isCurrent = stage === currentStage && viewingStage === currentStage;
             const isViewing = stage === viewingStage;
@@ -48,7 +48,7 @@ export function StageFlow({
               <button
                 key={stage}
                 onClick={() => onStageClick?.(stage)}
-                className={`flex flex-col items-center px-2 py-1 transition-colors min-w-[40px]
+                className={`flex flex-col items-center px-1.5 md:px-2 py-1 transition-colors min-w-[36px] md:min-w-[40px]
                   ${isCurrent || isViewing ? 'bg-cyan-500/10' :
                     'hover:bg-brutal-bg/50'}
                 `}
@@ -61,7 +61,7 @@ export function StageFlow({
                 }`}>
                   {STAGE_NUMBERS[stage]}
                 </span>
-                <span className={`text-[10px] font-mono ${
+                <span className={`hidden md:block text-[10px] font-mono ${
                   isCurrent ? 'text-cyan-400' :
                   isViewing ? 'text-cyan-400' :
                   isCompleted ? 'text-brutal-success' : 'text-brutal-muted'
@@ -73,14 +73,14 @@ export function StageFlow({
           })}
         </div>
 
-        {/* 中间：当前阶段信息和进度 */}
-        <div className="flex items-center gap-3 flex-1 justify-center">
-          <span className={`text-sm font-mono font-bold ${
+        {/* 中间：当前阶段信息和进度 - 移动端简化 */}
+        <div className="flex items-center gap-2 md:gap-3 flex-1 justify-center min-w-0">
+          <span className={`hidden sm:block text-sm font-mono font-bold ${
             completedStages.includes(currentStage) ? 'text-brutal-success' : 'text-brutal-accent'
           }`}>
             {stageLabel(currentStage)}
           </span>
-          <span className={`text-xs px-2 py-0.5 font-mono ${
+          <span className={`text-xs px-1.5 md:px-2 py-0.5 font-mono whitespace-nowrap ${
             completedStages.includes(currentStage)
               ? 'bg-brutal-success text-brutal-bg'
               : 'bg-brutal-accent text-brutal-bg'
@@ -89,14 +89,14 @@ export function StageFlow({
           </span>
 
           {/* 进度条 */}
-          <div className="flex items-center gap-2 w-24">
+          <div className="flex items-center gap-2 w-16 md:w-24 flex-shrink-0">
             <div className="flex-1 h-1.5 bg-brutal-border">
               <div
                 className="h-full bg-brutal-accent transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <span className="text-xs font-mono text-brutal-muted w-8">{progress}%</span>
+            <span className="text-xs font-mono text-brutal-muted w-6 md:w-8">{progress}%</span>
           </div>
         </div>
 
@@ -105,19 +105,19 @@ export function StageFlow({
           <button
             onClick={onCompleteStage}
             disabled={isCompleting}
-            className="btn-brutal-primary h-9 flex items-center gap-2 flex-shrink-0"
+            className="btn-brutal-primary h-8 md:h-9 flex items-center gap-1 md:gap-2 flex-shrink-0 px-2 md:px-3"
           >
             {isCompleting ? (
               <div className="w-4 h-4 border border-brutal-bg border-t-transparent animate-spin" />
             ) : (
               <Check className="w-4 h-4" />
             )}
-            <span className="text-sm">{t('action.commit_stage')}</span>
+            <span className="hidden sm:inline text-sm">{t('action.commit_stage')}</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         )}
         {completedStages.includes(currentStage) && (
-          <span className="text-xs font-mono text-brutal-success flex items-center gap-1 flex-shrink-0">
+          <span className="hidden sm:flex text-xs font-mono text-brutal-success items-center gap-1 flex-shrink-0">
             <Check className="w-4 h-4" />
             {t('status.completed')}
           </span>

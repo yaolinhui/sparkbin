@@ -39,7 +39,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
         </div>
 
         {/* Stages Grid */}
-        <div className="grid grid-cols-3 gap-px bg-brutal-border border-2 border-brutal-border mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-brutal-border border-2 border-brutal-border mb-6">
           {STAGES.map((stage) => {
             const Icon = stage.icon;
             return (

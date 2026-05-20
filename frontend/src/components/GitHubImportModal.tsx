@@ -50,11 +50,12 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
       const data = await githubApi.listRepos(1, 1);
       setRepos(data);
       setIsConnected(true);
-    } catch (err: any) {
-      if (err.message?.includes('not connected') || err.message?.includes('not configured')) {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes('not connected') || message.includes('not configured')) {
         setIsConnected(false);
       } else {
-        setError(err.message || 'Failed to fetch repositories');
+        setError(message || 'Failed to fetch repositories');
       }
     } finally {
       setIsLoading(false);
@@ -74,8 +75,8 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
       const [owner, repoName] = repo.full_name.split('/');
       const data = await githubApi.previewImport(owner, repoName);
       setPreview(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to analyze repository');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err) || 'Failed to analyze repository');
       setStep('repos');
     } finally {
       setIsLoading(false);
@@ -99,8 +100,8 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
       });
       await fetchProjects();
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Failed to create project');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err) || 'Failed to create project');
       setStep('preview');
     }
   };

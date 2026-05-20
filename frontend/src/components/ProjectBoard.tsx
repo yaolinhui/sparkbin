@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Terminal, LogOut, Server, Settings, ChevronDown, ChevronRight, User } from 'lucide-react';
+import { Plus, Terminal, LogOut, Server, Settings, ChevronDown, ChevronRight, User, Menu, X } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import { GitHubImportModal } from './GitHubImportModal';
 import { useProjectStore } from '../stores/projectStore';
@@ -47,7 +47,7 @@ function DataDisplay({
           : 'border-brutal-border bg-brutal-surface hover:bg-brutal-surface-hover'
       }`}
     >
-      <div className="text-2xl font-mono font-bold text-brutal-text">
+      <div className="text-xl md:text-2xl font-mono font-bold text-brutal-text">
         {value}<span className="text-brutal-accent">{unit}</span>
       </div>
       <div className="text-xs font-mono uppercase tracking-wider text-brutal-muted mt-1">
@@ -106,10 +106,23 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
   } | null>(null);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [oauthProvider, setOauthProvider] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const { toast, showToast, hideToast } = useToast();
 
+  // 移动端菜单点击外部关闭
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [mobileMenuOpen]);
+
   // 初始加载（仅执行一次，避免 store action 引用变化导致重复请求）
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchProjects();
     checkAIConfig(); // 检查 AI 配置状态
@@ -265,7 +278,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
     <div className="min-h-[100dvh] flex flex-col bg-brutal-bg text-brutal-text font-mono">
       {/* Header - Terminal Style */}
       <header className="border-b border-brutal-border bg-brutal-surface">
-        <div className="px-6 py-4">
+        <div className="px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
             <div className="flex items-center gap-3">
@@ -276,12 +289,12 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                 <h1 className="text-sm font-mono font-bold tracking-wider">
                   {t('app.title')}<span className="text-brutal-accent">.EXE</span>
                 </h1>
-                <p className="text-xs text-brutal-muted">{t('app.subtitle')}</p>
+                <p className="text-xs text-brutal-muted hidden sm:block">{t('app.subtitle')}</p>
               </div>
             </div>
 
-            {/* System Status */}
-            <div className="flex items-center gap-6">
+            {/* Desktop: System Status + Actions */}
+            <div className="hidden md:flex items-center gap-6">
               <div className="text-right">
                 <div className="text-xs text-brutal-muted">{t('system.status')}</div>
                 <div className={`text-xs font-mono ${status.color} flex items-center gap-2`}>
@@ -337,12 +350,77 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                 </button>
               </div>
             </div>
+
+            {/* Mobile: Hamburger Menu */}
+            <div className="flex md:hidden items-center gap-2">
+              {quota && quota.ai_credits !== undefined && (
+                <span className={`text-xs font-mono ${quota.ai_credits <= 3 ? 'text-brutal-warning' : 'text-brutal-text'}`}>
+                  AI: {quota.ai_credits}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="w-9 h-9 border border-brutal-border flex items-center justify-center hover:border-brutal-accent transition-colors"
+                aria-label="Toggle menu"
+              >
+                {mobileMenuOpen ? (
+                  <X className="w-4 h-4" />
+                ) : (
+                  <Menu className="w-4 h-4" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
+        {/* Mobile Menu Dropdown */}
+        {mobileMenuOpen && (
+          <div ref={mobileMenuRef} className="md:hidden border-t border-brutal-border bg-brutal-bg px-4 py-3 space-y-2">
+            <div className="flex items-center justify-between text-xs font-mono text-brutal-muted pb-2 border-b border-brutal-border">
+              <span>{t('system.status')}: <span className={status.color}>{status.text}</span></span>
+              <span>{t('system.last_sync')}: {formatLastSync()}</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <ThemeSwitcher />
+              <LanguageSwitcher />
+              {isAdmin() && (
+                <Link
+                  to="/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="btn-brutal h-9 flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span className="text-xs font-mono">管理</span>
+                </Link>
+              )}
+              <ModelSelector />
+              <Link
+                to="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="btn-brutal h-9 flex items-center gap-2"
+              >
+                <User className="w-4 h-4" />
+                <span className="text-xs font-mono">账户</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setShowLogoutConfirm(true);
+                }}
+                className="btn-brutal h-9 flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="text-xs font-mono">退出</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Metrics Bar */}
-        <div className="border-t border-brutal-border px-6 py-3">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="border-t border-brutal-border px-4 md:px-6 py-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             <DataDisplay
               value={projects.length}
               label={t('system.total_projects')}

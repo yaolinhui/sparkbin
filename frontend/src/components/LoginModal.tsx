@@ -18,7 +18,7 @@ function calculatePasswordStrength(password: string): { score: number; label: '�
   if (/[A-Z]/.test(password)) score++;
   if (/[a-z]/.test(password)) score++;
   if (/[0-9]/.test(password)) score++;
-  if (/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) score++;
+  if (/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(password)) score++;
 
   if (score <= 2) return { score, label: '弱', colorClass: 'bg-[var(--brutal-error)]' };
   if (score <= 4) return { score, label: '中', colorClass: 'bg-[var(--brutal-warning)]' };

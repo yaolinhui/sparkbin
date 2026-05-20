@@ -623,7 +623,7 @@ export const aiApi = {
       body: JSON.stringify(config || {}),
     }),
 
-  // 流式聊天 - 返回 EventSource
+  // 流式聊天 - 返回 fetch Promise<Response>（前端通过 body.getReader 解析 SSE）
   chatStream: (provider: AIProvider, messages: ChatMessage[]) => {
     const url = `${API_BASE_URL}/ai/chat`;
     const response = fetch(url, {
@@ -745,7 +745,11 @@ export const aiApi = {
     }>(`/ai/agent/run/${runId}`),
 
   listAgentRuns: (projectId?: string, limit = 20) => {
-    const qs = projectId ? `?project_id=${projectId}&limit=${limit}` : `?limit=${limit}`;
+    const params = new URLSearchParams();
+    if (projectId) {
+      params.set('project_id', projectId);
+    }
+    params.set('limit', String(limit));
     return request<{
       run_id: string;
       status: string;
@@ -753,7 +757,7 @@ export const aiApi = {
       summary: string;
       created_at: string;
       completed_at: string | null;
-    }[]>(`/ai/agent/runs${qs}`);
+    }[]>(`/ai/agent/runs?${params.toString()}`);
   },
 };
 

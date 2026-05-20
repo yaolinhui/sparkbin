@@ -19,9 +19,6 @@ setup('authenticate', async ({ page }) => {
     await page.waitForTimeout(500);
   }
 
-  // 如果弹窗内有登录按钮（登录表单已显示），无需再次点击
-  const loginBtn = page.locator('button').filter({ hasText: '登录' });
-
   // 等待登录表单出现
   const usernameInput = page.locator('input[type="text"]').first();
   await usernameInput.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});

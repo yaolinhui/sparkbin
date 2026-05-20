@@ -399,6 +399,18 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveStatusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 移动端默认折叠 AI 聊天面板
+  useEffect(() => {
+    const checkMobile = () => {
+      if (window.innerWidth < 768) {
+        setIsAIChatCollapsed(true);
+      }
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const hasUnsavedChanges = dirtyCount > 0 || isEditingTitle;
 
   const markDirty = useCallback((key: string, dirty: boolean) => {
@@ -550,6 +562,8 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const isDisplayStageLocked = displayStageData?.isLocked ?? false;
 
   const handleContentChange = useCallback(async (content: string) => {
+    const projectId = project?.id;
+    if (!projectId) return;
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
@@ -561,7 +575,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       try {
         // 必须保存到用户正在查看的阶段，而不是项目的 currentStage
         const targetStage = displayStage || validCurrentStage;
-        await updateStageContent(project!.id, targetStage, content);
+        await updateStageContent(projectId, targetStage, content);
         setSaveStatus('saved');
         saveStatusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
       } catch {
@@ -692,7 +706,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
           features?: Array<{ id?: string; name?: string; notes?: string }>;
           selectedPlatform?: string;
         };
-        if (!!data.selectedPlatform) return true;
+        if (data.selectedPlatform) return true;
         const features = Array.isArray(data.features) ? data.features : [];
         // 默认 features 的 ID 是 '1','2','3'，notes 是固定的几个值
         const defaultFeatureIds = ['1', '2', '3'];
@@ -955,9 +969,9 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     <div className="h-[100dvh] flex flex-col overflow-hidden bg-brutal-bg text-brutal-text font-mono">
       {/* Header - 固定显示核心项目信息 */}
       <div className="border-b border-brutal-border bg-brutal-surface">
-        <div className="px-6 py-4">
+        <div className="px-3 md:px-6 py-3 md:py-4">
           {/* Top row: Back button + Title + Actions */}
-          <div className="flex items-center justify-between gap-4 mb-2">
+          <div className="flex items-center justify-between gap-2 md:gap-4 mb-2">
             <div className="flex items-center gap-4 flex-1 min-w-0">
               <button
                 onClick={handleBackClick}
@@ -1008,7 +1022,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 <Cpu className="w-4 h-4" />
                 <span className="hidden sm:inline text-xs">Agent</span>
               </button>
-              {renderStatusButton()}
+              <div className="hidden sm:block">{renderStatusButton()}</div>
               {project.status !== 'archived' && (
                 <button
                   onClick={() => handleStatusChange('archived')}
@@ -1083,8 +1097,8 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
           </div>
 
           {/* Second row: Project ID + Status + Pain Point */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs text-brutal-muted">// {t('project.id')}</span>
+          <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+            <span className="text-xs text-brutal-muted hidden sm:inline">// {t('project.id')}</span>
             <span className="text-xs text-brutal-accent font-mono">{project.id.slice(0, 8).toUpperCase()}</span>
             <span className={`text-xs px-2 py-0.5 border ${
               project.status === 'active' ? 'border-brutal-success text-brutal-success' :
@@ -1110,9 +1124,11 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       />
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden min-h-0" >
+      <div className="flex flex-1 overflow-hidden min-h-0 flex-col md:flex-row">
         {/* Left: Editor - 根据 AI 聊天状态自适应宽度 */}
-        <div className="flex-1 flex flex-col min-w-0 border-r border-brutal-border bg-brutal-surface transition-all duration-300">
+        <div className={`flex-1 flex flex-col min-w-0 border-r border-brutal-border bg-brutal-surface transition-all duration-300 ${
+          !isAIChatCollapsed ? 'hidden md:flex' : 'flex'
+        }`}>
           <div className="flex-1 flex flex-col overflow-hidden min-h-0">
             {/* 自动保存状态指示器 */}
             <div className="px-4 py-1.5 border-b border-brutal-border flex items-center justify-between flex-shrink-0">
@@ -1180,7 +1196,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 onDirtyChange={(d) => markDirty('monetize', d)}
               />
             ) : currentStageData ? (
-              <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+              <div className="flex-1 min-h-0 p-4 md:p-6 overflow-y-auto">
                 <RichTextEditor
                   content={currentStageData.content || ''}
                   onChange={handleContentChange}
@@ -1198,9 +1214,9 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
           </div>
         </div>
 
-        {/* Right: AI Chat - 根据折叠状态动态调整宽度 */}
+        {/* Right: AI Chat - Desktop: sidebar, Mobile: overlay */}
         <div
-          className={`bg-brutal-bg transition-all duration-300 ease-in-out flex-shrink-0 self-stretch flex flex-col ${
+          className={`bg-brutal-bg transition-all duration-300 ease-in-out flex-shrink-0 self-stretch flex-col hidden md:flex ${
             isAIChatCollapsed ? 'w-12' : 'w-full sm:w-[320px] md:w-[380px] lg:w-[420px] max-w-[420px]'
           }`}
         >
@@ -1214,6 +1230,49 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
             onCollapsedChange={setIsAIChatCollapsed}
           />
         </div>
+
+        {/* Mobile AI Chat Overlay */}
+        <div className={`md:hidden fixed inset-0 z-40 bg-brutal-bg transition-transform duration-300 ${
+          !isAIChatCollapsed ? 'translate-y-0' : 'translate-y-full'
+        }`}>
+          <div className="h-full flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-brutal-border bg-brutal-surface flex-shrink-0">
+              <span className="text-sm font-mono font-bold">AI 助手</span>
+              <button
+                onClick={() => setIsAIChatCollapsed(true)}
+                className="w-8 h-8 border border-brutal-border flex items-center justify-center hover:bg-brutal-text hover:text-brutal-bg transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 min-h-0">
+              <AIChat
+                stage={validCurrentStage}
+                projectId={project.id}
+                projectTitle={project.title}
+                onGenerateContent={handleGenerateContent}
+                onSyncRequest={openSyncModal}
+                isCollapsed={false}
+                onCollapsedChange={() => setIsAIChatCollapsed(true)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile AI Chat Float Button */}
+        <button
+          onClick={() => setIsAIChatCollapsed(false)}
+          className={`md:hidden fixed bottom-6 right-6 z-30 w-12 h-12 border-2 border-brutal-accent bg-brutal-accent text-brutal-bg flex items-center justify-center shadow-lg transition-all duration-300 ${
+            isAIChatCollapsed ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'
+          }`}
+          title="打开 AI 助手"
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+          </svg>
+        </button>
       </div>
 
       {/* Confirmation Modal */}

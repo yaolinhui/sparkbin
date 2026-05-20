@@ -65,6 +65,8 @@ html, body, #root {
   background-color: var(--brutal-bg);
   color: var(--brutal-text);
   font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 /* Apply grid dots background */
