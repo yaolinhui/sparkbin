@@ -319,19 +319,22 @@ class AIProxyService:
             yield f"data: {error_data}\n\n"
             yield "data: [DONE]\n\n"
         finally:
-            log = AICallLog(
-                user_id=self.user_id,
-                provider=provider,
-                model=config.default_model,
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                status=status,
-                error_msg=_redact_error_msg(error_msg)[:500]
-            )
-            if first_chunk_at is not None:
-                logger.info(f"AICallLog TTFT: provider={provider.value}, ttft={first_chunk_at:.3f}s")
-            self.db.add(log)
-            self.db.commit()
+            try:
+                log = AICallLog(
+                    user_id=self.user_id,
+                    provider=provider,
+                    model=config.default_model,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    status=status,
+                    error_msg=_redact_error_msg(error_msg)[:500]
+                )
+                if first_chunk_at is not None:
+                    logger.info(f"AICallLog TTFT: provider={provider.value}, ttft={first_chunk_at:.3f}s")
+                self.db.add(log)
+                self.db.commit()
+            except Exception as log_exc:
+                logger.error(f"Failed to write AI call log: {log_exc}")
 
     async def chat_completion_with_fallback(
         self,
@@ -355,6 +358,7 @@ class AIProxyService:
 
         last_error = ""
         for p in providers_to_try:
+            failed = False
             try:
                 async for chunk in self.chat_completion(
                     provider=p,
@@ -363,8 +367,27 @@ class AIProxyService:
                     max_tokens=max_tokens,
                     temperature=temperature,
                 ):
+                    # 检测 chat_completion 内部 yield 的错误信息
+                    if not failed:
+                        for line in chunk.splitlines():
+                            stripped = line.strip()
+                            if stripped.startswith("data: "):
+                                data = stripped[6:]
+                                if data != "[DONE]":
+                                    try:
+                                        parsed = json.loads(data)
+                                        if parsed.get("error"):
+                                            failed = True
+                                            last_error = parsed["error"]
+                                            logger.warning(f"Provider {p.value} yielded error: {last_error}, trying fallback...")
+                                            break
+                                    except json.JSONDecodeError:
+                                        pass
+                        if failed:
+                            break
                     yield chunk
-                return
+                if not failed:
+                    return
             except HTTPException as e:
                 last_error = e.detail
                 logger.warning(f"Provider {p.value} failed in chat: {e.detail}, trying fallback...")

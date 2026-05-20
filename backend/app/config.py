@@ -39,7 +39,7 @@ class Settings(BaseSettings):
 
     # 邮件服务（Resend）
     resend_api_key: str = ""
-    resend_from_email: str = "SparkBin <noreply@sparkbin.dev>"
+    resend_from_email: str = "SparkBin <noreply@sparkbin.wanchun.me>"
 
     # OAuth 配置
     google_client_id: str = ""
@@ -48,9 +48,15 @@ class Settings(BaseSettings):
     github_client_secret: str = ""
     frontend_url: str = "http://localhost:5173"  # OAuth 回调和邮件链接基础地址
 
+    # HSTS 配置（生产环境启用）
+    hsts_max_age: int = 0  # 设为 31536000（1年）以启用 HSTS
+
     # HTTP 代理配置（用于后端访问外部 API，如 Google/GitHub）
     http_proxy: str = ""
     https_proxy: str = ""
+
+    # 可信 Host 列表（生产环境逗号分隔，如 localhost,api.example.com）
+    allowed_hosts: str = "localhost"
 
     class Config:
         # 自动加载 .env 文件中的配置

@@ -25,20 +25,20 @@ class OperationLogger:
         old_values: Optional[Dict[str, Any]] = None,
         new_values: Optional[Dict[str, Any]] = None
     ):
-        """记录操作日志（写入前对敏感字段脱敏）"""
+        """记录操作日志（写入前对敏感字段脱敏）。注意：不提交事务，由调用方统一提交。"""
         redact = _get_redact_func()
-        safe_old = redact(old_values) if old_values else old_values
-        safe_new = redact(new_values) if new_values else new_values
+        safe_old = redact(old_values) if old_values is not None else None
+        safe_new = redact(new_values) if new_values is not None else None
         log = OperationLog(
             user_id=user_id,
             action=action,
             entity_type=entity_type,
             entity_id=entity_id,
-            old_values=json.dumps(safe_old, ensure_ascii=False, default=str) if safe_old else "",
-            new_values=json.dumps(safe_new, ensure_ascii=False, default=str) if safe_new else ""
+            old_values=json.dumps(safe_old, ensure_ascii=False, default=str) if safe_old is not None else "",
+            new_values=json.dumps(safe_new, ensure_ascii=False, default=str) if safe_new is not None else ""
         )
         self.db.add(log)
-        self.db.commit()
+        # 不在这里调用 commit，让调用方在业务事务完成后统一提交
 
     def log_create(self, user_id: UUID, entity_type: str, entity_id: UUID, new_values: Dict[str, Any]):
         """记录创建操作"""

@@ -2,7 +2,7 @@ import logging
 import os
 import hashlib
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from collections import deque
 from jose import JWTError, jwt
@@ -24,10 +24,12 @@ security = HTTPBearer()
 _auth_attempts: dict[str, deque] = {}
 _MAX_LOGIN_ATTEMPTS = 5
 _LOGIN_WINDOW_SECONDS = 300  # 5分钟
+_MAX_AUTH_ATTEMPTS_ENTRIES = 10000  # 防止内存 DoS：限制总 IP 条目数
 
 # 内存中的验证码存储: {"{ip}": (answer, expire_timestamp)}
 _captcha_store: dict[str, tuple[str, float]] = {}
 _CAPTCHA_TTL_SECONDS = 300  # 5分钟
+_MAX_CAPTCHA_ENTRIES = 1000  # 防止内存 DoS：限制验证码条目数
 
 
 def generate_captcha(ip: str) -> dict:
@@ -38,9 +40,15 @@ def generate_captcha(ip: str) -> dict:
     answer = str(a * b)
     question = f"{a} x {b}"
     # 加入时间戳 salt，使同一答案的 hash 每次不同，防止预计算彩虹表
-    salt = str(int(datetime.utcnow().timestamp()))
+    salt = str(int(datetime.now(timezone.utc).timestamp()))
     answer_hash = hashlib.sha256(f"{answer}:{salt}".encode("utf-8")).hexdigest()
-    expire_at = datetime.utcnow().timestamp() + _CAPTCHA_TTL_SECONDS
+    expire_at = datetime.now(timezone.utc).timestamp() + _CAPTCHA_TTL_SECONDS
+    # 防 DoS：限制存储容量
+    if len(_captcha_store) >= _MAX_CAPTCHA_ENTRIES:
+        # 移除最早的一半条目
+        sorted_keys = sorted(_captcha_store.keys(), key=lambda k: _captcha_store[k][1])
+        for k in sorted_keys[:_MAX_CAPTCHA_ENTRIES // 2]:
+            del _captcha_store[k]
     _captcha_store[ip] = (answer, expire_at, salt)
     return {"question": question, "answer_hash": answer_hash}
 
@@ -58,8 +66,10 @@ def verify_captcha(ip: str, answer: str) -> bool:
     return answer.strip() == correct_answer
 
 
-def _get_client_ip(request: Request) -> str:
+def _get_client_ip(request: Request | None) -> str:
     """获取客户端真实 IP（支持代理环境）"""
+    if request is None:
+        return "unknown"
     forwarded_for = request.headers.get("x-forwarded-for")
     if forwarded_for:
         return forwarded_for.split(",")[0].strip()
@@ -78,7 +88,7 @@ def get_login_attempts_remaining(request: Request) -> int:
     attempts = _auth_attempts.get(key)
     if not attempts:
         return _MAX_LOGIN_ATTEMPTS
-    now = datetime.utcnow().timestamp()
+    now = datetime.now(timezone.utc).timestamp()
     while attempts and attempts[0] < now - _LOGIN_WINDOW_SECONDS:
         attempts.popleft()
     return max(0, _MAX_LOGIN_ATTEMPTS - len(attempts))
@@ -93,7 +103,7 @@ def is_captcha_required(request: Request) -> bool:
     attempts = _auth_attempts.get(key)
     if not attempts:
         return False
-    now = datetime.utcnow().timestamp()
+    now = datetime.now(timezone.utc).timestamp()
     while attempts and attempts[0] < now - _LOGIN_WINDOW_SECONDS:
         attempts.popleft()
     return len(attempts) >= 2
@@ -110,7 +120,7 @@ def check_rate_limit(request: Request, action: str) -> None:
 
     client_ip = _get_client_ip(request)
     key = f"{client_ip}:{action}"
-    now = datetime.utcnow().timestamp()
+    now = datetime.now(timezone.utc).timestamp()
 
     attempts = _auth_attempts.get(key)
     if attempts is None:
@@ -139,8 +149,18 @@ def record_rate_limit_failure(request: Request, action: str) -> None:
     client_ip = _get_client_ip(request)
     key = f"{client_ip}:{action}"
     if key not in _auth_attempts:
-        _auth_attempts[key] = deque()
-    _auth_attempts[key].append(datetime.utcnow().timestamp())
+        _auth_attempts[key] = deque(maxlen=100)
+    # 防 DoS：限制总条目数
+    if len(_auth_attempts) >= _MAX_AUTH_ATTEMPTS_ENTRIES:
+        # 清理空或过期条目
+        now = datetime.now(timezone.utc).timestamp()
+        expired_keys = [
+            k for k, attempts in _auth_attempts.items()
+            if not attempts or attempts[-1] < now - _LOGIN_WINDOW_SECONDS
+        ]
+        for k in expired_keys[:len(expired_keys) // 2]:
+            del _auth_attempts[k]
+    _auth_attempts[key].append(datetime.now(timezone.utc).timestamp())
 
 
 def check_login_rate_limit(request: Request) -> None:
@@ -194,7 +214,7 @@ def _create_token(data: dict, expires_delta: timedelta, token_type: str, token_v
     settings = get_settings()
     to_encode = data.copy()
     to_encode.update({
-        "exp": datetime.utcnow() + expires_delta,
+        "exp": datetime.now(timezone.utc) + expires_delta,
         "type": token_type,
         "ver": token_version,
     })

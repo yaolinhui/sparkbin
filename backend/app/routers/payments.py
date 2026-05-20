@@ -66,13 +66,14 @@ def purchase_credits(
     db: Session = Depends(get_db),
 ):
     """创建 Stripe Checkout Session 购买 AI 额度（一次性付款）"""
-    if not settings.enable_payments:
+    current_settings = get_settings()
+    if not current_settings.enable_payments:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="支付功能未启用",
         )
 
-    if not settings.stripe_secret_key:
+    if not current_settings.stripe_secret_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Stripe 未配置，请联系管理员配置 STRIPE_SECRET_KEY",
@@ -102,9 +103,10 @@ def purchase_credits(
         # 确保用户有 stripe_customer_id
         customer_id = current_user.stripe_customer_id
         if not customer_id:
+            safe_username = current_user.username or current_user.email or "user"
             customer = stripe.Customer.create(
-                email=f"{current_user.username}@sparkbin.test",
-                name=current_user.username,
+                email=f"{safe_username}@sparkbin.test",
+                name=safe_username,
                 metadata={"user_id": str(current_user.id)},
             )
             customer_id = customer.id
@@ -203,7 +205,8 @@ def create_checkout_session_demo(
     db: Session = Depends(get_db),
 ):
     """创建 Stripe Checkout Session（演示/测试用途，用于 MonetizeStage 预览用户自己的定价）"""
-    if not settings.stripe_secret_key:
+    current_settings = get_settings()
+    if not current_settings.stripe_secret_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Stripe 未配置",
@@ -227,9 +230,10 @@ def create_checkout_session_demo(
 
         customer_id = current_user.stripe_customer_id
         if not customer_id:
+            safe_username = current_user.username or current_user.email or "user"
             customer = stripe.Customer.create(
-                email=f"{current_user.username}@sparkbin.test",
-                name=current_user.username,
+                email=f"{safe_username}@sparkbin.test",
+                name=safe_username,
                 metadata={"user_id": str(current_user.id)},
             )
             customer_id = customer.id
@@ -273,10 +277,11 @@ def get_subscription_status(current_user: User = Depends(get_current_user)):
 @router.post("/webhook")
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     """接收 Stripe Webhook 事件"""
+    current_settings = get_settings()
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
 
-    if not settings.stripe_webhook_secret:
+    if not current_settings.stripe_webhook_secret:
         logger.error("STRIPE_WEBHOOK_SECRET not configured, webhook rejected")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -288,7 +293,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
     try:
         event = stripe.Webhook.construct_event(
-            payload, sig_header, settings.stripe_webhook_secret
+            payload, sig_header, current_settings.stripe_webhook_secret
         )
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
@@ -309,6 +314,7 @@ def _handle_checkout_session_completed(session: Dict[str, Any], db: Session):
     metadata = session.get("metadata", {})
     user_id = metadata.get("user_id")
     session_type = metadata.get("type")
+    session_id = session.get("id")
 
     if not user_id:
         logger.warning("Webhook missing user_id in metadata")
@@ -324,6 +330,15 @@ def _handle_checkout_session_completed(session: Dict[str, Any], db: Session):
     if not user:
         logger.warning(f"User not found: {user_id}")
         return
+
+    # 幂等性保护：检查该 session 是否已处理过
+    if session_id:
+        existing_tx = db.query(CreditTransaction).filter(
+            CreditTransaction.reference_id == session_id
+        ).first()
+        if existing_tx:
+            logger.info(f"Webhook session {session_id} already processed, skipping")
+            return
 
     # 只处理额度购买
     if session_type == "credit_purchase":
@@ -341,7 +356,7 @@ def _handle_checkout_session_completed(session: Dict[str, Any], db: Session):
             amount=credits_to_add,
             balance_after=user.ai_credits,
             description=f"购买 {credits_to_add} AI 额度",
-            reference_id=session.get("id"),
+            reference_id=session_id,
         )
         db.add(tx)
         db.commit()

@@ -42,7 +42,9 @@ def _check_ai_quota(user: User, db: Session) -> None:
     if user.role.value == "admin":
         return
 
-    if user.ai_credits <= 0:
+    # 使用数据库级别锁防止并发超卖（SELECT FOR UPDATE）
+    locked_user = db.query(User).filter(User.id == user.id).with_for_update().first()
+    if not locked_user or locked_user.ai_credits <= 0:
         raise HTTPException(
             status_code=402,
             detail="AI 调用额度已耗尽。请联系管理员获取更多额度。",
@@ -50,19 +52,24 @@ def _check_ai_quota(user: User, db: Session) -> None:
 
 
 def _deduct_ai_credit(user: User, db: Session, reference_id: str | None = None) -> None:
-    """扣除一次 AI 调用额度并写入流水"""
+    """扣除一次 AI 调用额度并写入流水（必须在 _check_ai_quota 之后同一事务中调用）"""
     # 管理员不扣额度
     if user.role.value == "admin":
         return
 
-    user.ai_credits -= 1
-    user.ai_credits_total_consumed += 1
+    # 重新查询锁定状态的用户（同一事务中 FOR UPDATE 锁仍然有效）
+    locked_user = db.query(User).filter(User.id == user.id).with_for_update().first()
+    if not locked_user:
+        raise HTTPException(status_code=500, detail="用户状态异常")
+
+    locked_user.ai_credits -= 1
+    locked_user.ai_credits_total_consumed += 1
 
     tx = CreditTransaction(
-        user_id=user.id,
+        user_id=locked_user.id,
         type="consume",
         amount=-1,
-        balance_after=user.ai_credits,
+        balance_after=locked_user.ai_credits,
         description="AI 对话消耗",
         reference_id=reference_id,
     )
@@ -99,16 +106,7 @@ def _extract_content_from_sse_chunks(chunks: List[str]) -> str:
     return "".join(content_parts).strip()
 
 
-async def _collect_sse_chunks(
-    ai_service: AIProxyService,
-    provider: AIProvider,
-    messages: List[Dict[str, str]]
-) -> List[str]:
-    chunks: List[str] = []
-    generator = ai_service.chat_completion(provider=provider, messages=messages, stream=True)
-    async for chunk in generator:
-        chunks.append(chunk)
-    return chunks
+# _collect_sse_chunks 已移除：chat_completion 返回 AsyncGenerator，无需先收集再处理
 
 
 @router.get("/ping")
@@ -333,19 +331,14 @@ async def chat_completion(
 
 @router.get("/stage-context/{project_id}/{stage_key}")
 def get_stage_context(
-    project_id: str,
+    project_id: UUID,
     stage_key: StageKey,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """获取指定项目阶段的上下文快照（完成度+缺口）"""
-    try:
-        project_uuid = UUID(project_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid project id") from exc
-
     project = db.query(Project).filter(
-        Project.id == project_uuid,
+        Project.id == project_id,
         Project.user_id == current_user.id,
         Project.deleted_at.is_(None)
     ).first()
@@ -386,13 +379,9 @@ async def generate_promote_suggestions(
     from ..models import PromoteSuggestion
     import uuid
 
-    suggestion = PromoteSuggestion(
-        project_id=uuid.UUID(str(request.project_id)) if hasattr(request, 'project_id') else None,
-        channels=suggestions["channels"],
-        templates=suggestions["templates"]
-    )
+    suggestion: PromoteSuggestion | None = None
 
-    if hasattr(request, 'project_id') and request.project_id:
+    if request.project_id:
         project = db.query(Project).filter(
             Project.id == request.project_id,
             Project.user_id == current_user.id,
@@ -400,15 +389,20 @@ async def generate_promote_suggestions(
         ).first()
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
-        suggestion.project_id = request.project_id
+        suggestion = PromoteSuggestion(
+            project_id=request.project_id,
+            channels=suggestions["channels"],
+            templates=suggestions["templates"]
+        )
         db.add(suggestion)
         db.commit()
+        db.refresh(suggestion)
 
     return PromoteSuggestionInfo(
-        id=suggestion.id if hasattr(suggestion, 'id') else None,
+        id=suggestion.id if suggestion else uuid.uuid4(),
         channels=suggestions["channels"],
         templates=suggestions["templates"],
-        created_at=suggestion.created_at if hasattr(suggestion, 'created_at') else __import__('datetime').datetime.utcnow()
+        created_at=suggestion.created_at if suggestion else datetime.utcnow()
     )
 
 

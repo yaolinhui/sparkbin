@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..models import AIProvider, AgentTask
 from ..services.ai_proxy import AIProxyService
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,7 @@ class BaseAgent:
 
         if task_record:
             task_record.status = "running"
-            task_record.started_at = __import__("datetime").datetime.utcnow()
+            task_record.started_at = datetime.utcnow()
             task_record.input_preview = prompt[:500]
             self.db.commit()
 
@@ -165,7 +166,7 @@ class BaseAgent:
 
         if task_record:
             task_record.status = "completed" if result.success else "failed"
-            task_record.completed_at = __import__("datetime").datetime.utcnow()
+            task_record.completed_at = datetime.utcnow()
             task_record.provider = provider
             try:
                 task_record.model = self.ai_service.get_active_config(provider).default_model

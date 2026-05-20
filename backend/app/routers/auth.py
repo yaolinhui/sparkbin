@@ -61,7 +61,7 @@ def _record_audit_log(
 @router.get("/captcha")
 def get_captcha(req: Request):
     """获取数学验证码"""
-    client_ip = req.client.host if req and req.client else "unknown"
+    client_ip = _get_client_ip(req)
     return generate_captcha(client_ip)
 
 
@@ -72,7 +72,7 @@ def login(
     req: Request = None,
 ):
     """用户登录（返回 Access Token + Refresh Token）"""
-    client_ip = req.client.host if req and req.client else "unknown"
+    client_ip = _get_client_ip(req) if req else "unknown"
     user_agent = req.headers.get("user-agent", "") if req else ""
 
     if req:
@@ -164,6 +164,10 @@ def refresh_token(
             detail="Token has been revoked",
         )
 
+    # Refresh Token Rotation：递增 token_version，使旧 refresh token 失效
+    user.token_version += 1
+    db.commit()
+
     token_data = {"sub": user.username, "role": user.role.value}
     new_access_token = create_access_token(data=token_data, token_version=user.token_version)
     new_refresh_token = create_refresh_token(data=token_data, token_version=user.token_version)
@@ -181,7 +185,7 @@ def logout(
     req: Request = None,
 ):
     """用户登出（记录审计日志）"""
-    client_ip = req.client.host if req and req.client else "unknown"
+    client_ip = _get_client_ip(req) if req else "unknown"
     user_agent = req.headers.get("user-agent", "") if req else ""
 
     current_user.token_version += 1  # 使所有旧 token 失效
@@ -203,7 +207,7 @@ def change_password(
     req: Request = None,
 ):
     """修改密码（含复杂度校验）"""
-    client_ip = req.client.host if req and req.client else "unknown"
+    client_ip = _get_client_ip(req) if req else "unknown"
     user_agent = req.headers.get("user-agent", "") if req else ""
 
     # 校验原密码
@@ -382,14 +386,14 @@ def register(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请求异常，请重试",
         )
-    # 表单提交时间校验：小于 2 秒视为机器人
+    # 表单提交时间校验：小于 2 秒视为机器人，大于 5 分钟视为篡改
     if not request.form_start_time:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请求异常，请重试",
         )
-    elapsed = datetime.utcnow().timestamp() - request.form_start_time
-    if elapsed < 2.0:
+    elapsed = datetime.now(timezone.utc).timestamp() - request.form_start_time
+    if elapsed < 2.0 or elapsed > 300.0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请求异常，请重试",
@@ -584,6 +588,14 @@ def _get_http_client() -> httpx.Client:
             timeout=10.0,
         )
     return _http_client
+
+
+def _close_http_client() -> None:
+    """关闭全局 HTTP Client，防止连接泄漏"""
+    global _http_client
+    if _http_client is not None:
+        _http_client.close()
+        _http_client = None
 
 
 # ========== OAuth 2.0（Google / GitHub）==========
@@ -917,6 +929,12 @@ def oauth_github_callback(
                     raise HTTPException(
                         status_code=status.HTTP_409_CONFLICT,
                         detail="该邮箱已注册。请先登录现有账号，再在设置中绑定 GitHub。"
+                    )
+                # 安全策略：如果现有账号邮箱未验证，禁止 OAuth 自动绑定（防止账号劫持）
+                if not existing.email_verified:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="该邮箱已注册但未验证。请先验证邮箱后再绑定 GitHub 账号。"
                     )
                 # 自动绑定到现有账号（无论是有密码还是完全空白）
                 existing.oauth_provider = "github"

@@ -9,6 +9,7 @@ from .base import BaseAgent, AgentResult
 from .router import RouterAgent
 from ..models import AgentRun, AgentTask, AIProvider, User
 from ..services.ai_proxy import AIProxyService
+from ..database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +27,16 @@ class AgentOrchestrator:
     性能特征：
     - 2-4 个 Agent 并行时，总延迟 ≈ 最慢单个 Agent 的延迟
     - 相比串行执行，节省 40-60% 时间
+    
+    注意：并行 Agent 各自使用独立的 DB Session，避免 SQLAlchemy Session 的并发竞争。
     """
 
     def __init__(self, db: Session, user_id: Optional[str] = None):
         self.db = db
         self.user_id = user_id
         self.ai_service = AIProxyService(db, user_id=user_id)
+        # 用于并行 Agent 的 DB Session 锁，保护主 Session 的写入操作
+        self._db_lock = asyncio.Lock()
 
     async def run(
         self,
@@ -258,9 +263,12 @@ class AgentOrchestrator:
         provider: Optional[AIProvider],
         task_record: AgentTask,
     ) -> None:
-        """执行单个 Agent 任务，异常隔离"""
+        """执行单个 Agent 任务，异常隔离。使用独立 DB Session 执行 AI 调用，主 Session 仅用于状态更新。"""
+        # Agent 执行使用独立 Session，避免并行竞争
+        agent_db = SessionLocal()
         try:
-            result = await agent.execute(context, provider=provider, task_record=task_record)
+            independent_agent = agent.__class__(agent_db, user_id=self.user_id)
+            result = await independent_agent.execute(context, provider=provider, task_record=task_record)
             logger.info(
                 f"Agent {agent.agent_type} completed: success={result.success}, "
                 f"tokens={result.prompt_tokens}+{result.completion_tokens}, "
@@ -268,10 +276,14 @@ class AgentOrchestrator:
             )
         except Exception as e:
             logger.exception(f"Agent {agent.agent_type} failed")
-            task_record.status = "failed"
-            task_record.error_msg = str(e)[:500]
-            task_record.completed_at = datetime.utcnow()
-            self.db.commit()
+            # 使用锁保护主 Session 的并发写入
+            async with self._db_lock:
+                task_record.status = "failed"
+                task_record.error_msg = str(e)[:500]
+                task_record.completed_at = datetime.utcnow()
+                self.db.commit()
+        finally:
+            agent_db.close()
 
     def _build_agent_context(
         self,

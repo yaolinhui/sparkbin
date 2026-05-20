@@ -335,6 +335,17 @@ def reopen_stage(
 
     stage.is_locked = False
     stage.completed_at = None
+
+    # 同步更新 project.current_stage：如果 reopened 阶段在当前阶段之前，回退 current_stage
+    stage_order = ["idea", "validate", "prototype", "ship", "grow", "monetize"]
+    try:
+        reopened_index = stage_order.index(stage_key.value)
+        current_index = stage_order.index(project.current_stage.value)
+        if reopened_index < current_index:
+            project.current_stage = stage_key
+    except ValueError:
+        pass
+
     db.commit()
     db.refresh(project)
 
@@ -404,8 +415,10 @@ def complete_stage(
     try:
         current_index = stage_order.index(current_stage_in_order)
     except ValueError:
-        # 如果阶段不在列表中，默认为第一个
-        current_index = 0
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid stage key: {stage_key.value}"
+        )
 
     if current_index < len(stage_order) - 1:
         next_stage_key = StageKey(stage_order[current_index + 1])

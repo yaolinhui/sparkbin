@@ -49,8 +49,9 @@ class EncryptionManager:
             return ""
         try:
             return self.cipher.decrypt(encrypted_data.encode()).decode()
-        except Exception:
-            return ""
+        except Exception as e:
+            # 解密失败时抛出异常，让调用者处理，避免静默返回空字符串导致数据丢失
+            raise ValueError(f"Failed to decrypt data: {e}") from e
 
 
 # 全局加密管理器实例

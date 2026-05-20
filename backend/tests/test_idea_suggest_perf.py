@@ -11,7 +11,7 @@ import os
 os.environ.pop("VITE_API_URL", None)
 os.environ["DATABASE_URL"] = "sqlite:///./sparkbin_v2.db"
 os.environ["SECRET_KEY"] = "your-secret-key-for-jwt-here-change-in-production"
-os.environ["ENCRYPTION_KEY"] = "your-32-byte-encryption-key-here-chang"
+os.environ["ENCRYPTION_KEY"] = "this-is-a-very-long-test-encryption-key-123"
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

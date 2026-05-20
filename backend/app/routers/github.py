@@ -42,6 +42,9 @@ async def list_github_repos(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # 校验分页参数范围
+    per_page = max(1, min(per_page, 100))
+    page = max(1, page)
     """获取当前用户绑定的 GitHub 仓库列表"""
     token = _get_user_github_token(current_user)
     if not token:
@@ -120,7 +123,7 @@ async def create_project_from_github(
         pain_point=request.pain_point,
         original_idea=request.original_idea,
         status=ProjectStatus.ACTIVE,
-        current_stage=StageKey(stage.upper()),
+        current_stage=StageKey(stage),
     )
     db.add(project)
     db.flush()
@@ -131,7 +134,7 @@ async def create_project_from_github(
         stage_obj = Stage(
             id=uuid.uuid4(),
             project_id=project.id,
-            stage_key=StageKey(sk.upper()),
+            stage_key=StageKey(sk),
             content="",
             completed_at=None,
             is_locked=sk != stage,  # 只有当前阶段解锁，前面阶段视为已完成

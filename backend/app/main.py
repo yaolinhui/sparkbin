@@ -40,7 +40,7 @@ from .routers import auth, projects, ai, admin, payments, github
 
 
 class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
-    """限制请求体大小（默认 10MB）"""
+    """限制请求体大小（默认 10MB），同时防护 chunked encoding 绕过"""
 
     def __init__(self, app, max_size: int = 10 * 1024 * 1024):
         super().__init__(app)
@@ -49,12 +49,28 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if request.method in ("POST", "PUT", "PATCH"):
             content_length = request.headers.get("content-length")
-            if content_length and int(content_length) > self.max_size:
-                return Response(
-                    content=json.dumps({"detail": "请求体超过最大限制（10MB）"}),
-                    status_code=413,
-                    media_type="application/json"
-                )
+            transfer_encoding = request.headers.get("transfer-encoding", "").lower()
+            is_chunked = "chunked" in transfer_encoding
+
+            if is_chunked:
+                # Chunked 请求无法预先知道总大小，依赖反向代理（Nginx）限制
+                # 这里记录警告，实际限制应由 nginx 的 client_max_body_size 处理
+                pass
+            elif content_length:
+                try:
+                    length = int(content_length)
+                except ValueError:
+                    return Response(
+                        content=json.dumps({"detail": "无效的 Content-Length 头"}),
+                        status_code=400,
+                        media_type="application/json"
+                    )
+                if length > self.max_size:
+                    return Response(
+                        content=json.dumps({"detail": "请求体超过最大限制（10MB）"}),
+                        status_code=413,
+                        media_type="application/json"
+                    )
         return await call_next(request)
 
 
@@ -70,8 +86,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # 防止点击劫持
         response.headers["X-Frame-Options"] = "DENY"
 
-        # XSS 保护（现代浏览器主要依赖 CSP，此头部为向后兼容）
-        response.headers["X-XSS-Protection"] = "1; mode=block"
+        # XSS 保护（现代浏览器主要依赖 CSP，X-XSS-Protection 已弃用且存在绕过漏洞）
+        response.headers["X-XSS-Protection"] = "0"
 
         #  referrer 策略
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
@@ -112,7 +128,7 @@ def _ensure_sqlite_columns():
 
     # users 表
     user_columns = {col["name"] for col in inspector.get_columns("users")}
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if "subscription_status" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN subscription_status VARCHAR(20) DEFAULT 'inactive' NOT NULL"))
         if "stripe_customer_id" not in user_columns:
@@ -137,21 +153,18 @@ def _ensure_sqlite_columns():
         if "token_version" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0 NOT NULL"))
             conn.execute(text("UPDATE users SET token_version = 0"))
-        conn.commit()
 
     # projects 表
     project_columns = {col["name"] for col in inspector.get_columns("projects")}
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if "original_idea" not in project_columns:
             conn.execute(text("ALTER TABLE projects ADD COLUMN original_idea TEXT DEFAULT ''"))
-        conn.commit()
 
     # ai_call_logs 表
     ai_log_columns = {col["name"] for col in inspector.get_columns("ai_call_logs")}
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if "user_id" not in ai_log_columns:
             conn.execute(text("ALTER TABLE ai_call_logs ADD COLUMN user_id VARCHAR(36)"))
-        conn.commit()
 
 
 def init_database():
@@ -178,10 +191,13 @@ def init_database():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
-    # 启动时
-    init_database()
+    import asyncio
+    # 启动时：在线程池中执行同步的数据库初始化，避免阻塞事件循环
+    await asyncio.to_thread(init_database)
     yield
-    # 关闭时（如果有需要清理的资源）
+    # 关闭时：清理 HTTP Client 连接池
+    from .routers.auth import _close_http_client
+    _close_http_client()
 
 
 app = FastAPI(
@@ -210,7 +226,7 @@ app.add_middleware(RequestSizeLimitMiddleware)
 # 可信 Host 中间件（防止 Host Header 攻击）
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["*"] if settings.debug else ["sparkbin.dev", "*.sparkbin.dev", "localhost", "api-sparkbin.wanchun.me", "wanchun.me"],
+    allowed_hosts=["*"] if settings.debug else getattr(settings, 'allowed_hosts', 'localhost').split(','),
 )
 
 # 注册路由

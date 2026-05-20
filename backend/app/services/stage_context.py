@@ -160,7 +160,12 @@ def _evaluate_ship(content: str) -> Dict[str, Any]:
 
     checklist = data.get("checklist") if isinstance(data.get("checklist"), dict) else {}
     checklist_keys = ["domain", "ssl", "payment", "analytics", "socialMedia"]
-    done_count = len([key for key in checklist_keys if bool(checklist.get(key))])
+    def _is_checked(value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        return str(value).lower() in ("true", "1", "yes", "on")
+
+    done_count = len([key for key in checklist_keys if _is_checked(checklist.get(key))])
 
     launch_url = _safe_text(data.get("launchUrl"))
     contents = data.get("contents") if isinstance(data.get("contents"), list) else []
@@ -244,16 +249,24 @@ def _evaluate_monetize(content: str) -> Dict[str, Any]:
         data = {}
 
     tiers = data.get("pricingTiers") if isinstance(data.get("pricingTiers"), list) else []
-    paid_tiers = [tier for tier in tiers if float(tier.get("price", 0) or 0) > 0]
+    def _safe_float(value: Any, default: float = 0.0) -> float:
+        if value is None:
+            return default
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return default
+
+    paid_tiers = [tier for tier in tiers if _safe_float(tier.get("price")) > 0]
     funnel = data.get("funnel") if isinstance(data.get("funnel"), dict) else {}
-    paid_users = int(data.get("paidUsers", 0) or 0)
+    paid_users = _safe_float(data.get("paidUsers"), 0)
 
     missing_items: List[str] = []
     if len(tiers) == 0:
         missing_items.append("缺少定价档位")
     if len(paid_tiers) == 0:
         missing_items.append("缺少付费档位")
-    if int(funnel.get("visitors", 0) or 0) == 0:
+    if _safe_float(funnel.get("visitors"), 0) == 0:
         missing_items.append("漏斗数据未记录访客数")
     if paid_users == 0:
         missing_items.append("尚无付费用户数据")
@@ -263,7 +276,7 @@ def _evaluate_monetize(content: str) -> Dict[str, Any]:
         score_parts += 1
     if len(paid_tiers) > 0:
         score_parts += 1
-    if int(funnel.get("visitors", 0) or 0) > 0:
+    if _safe_float(funnel.get("visitors"), 0) > 0:
         score_parts += 1
     if paid_users > 0:
         score_parts += 1
@@ -273,12 +286,12 @@ def _evaluate_monetize(content: str) -> Dict[str, Any]:
         "score": score,
         "tiers_count": len(tiers),
         "paid_tiers_count": len(paid_tiers),
-        "paid_users": paid_users,
+        "paid_users": int(paid_users),
         "missing_items": missing_items,
         "evidence": [
             {
                 "name": _safe_text(tier.get("name"))[:80],
-                "price": float(tier.get("price", 0) or 0),
+                "price": _safe_float(tier.get("price")),
                 "period": _safe_text(tier.get("period")) or "month",
             }
             for tier in tiers[:10]

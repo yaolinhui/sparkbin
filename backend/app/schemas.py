@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 
 from .models import ProjectStatus, StageKey, AIProvider
 
@@ -31,7 +31,7 @@ class ChangePasswordRequest(BaseModel):
 
 class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
-    email: str = Field(..., pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+    email: EmailStr = Field(...)
     password: str = Field(..., min_length=8)
     honeypot: Optional[str] = Field(default=None)
     form_start_time: Optional[float] = Field(default=None)  # Unix timestamp，用于检测机器人
@@ -108,13 +108,13 @@ class PetConfigUpdate(BaseModel):
     """更新 AI 宠物配置"""
     type: Optional[str] = None
     name: Optional[str] = None
-    personality: Optional[str] = None
-    verbosity: Optional[str] = None
+    personality: Optional[Literal["gentle", "rational", "zen", "sharp"]] = None
+    verbosity: Optional[Literal["quiet", "moderate", "chatty"]] = None
 
 
 class ThemePreferenceUpdate(BaseModel):
     """更新主题偏好"""
-    theme: str = "dark"  # dark | light
+    theme: Literal["dark", "light"] = "dark"
 
 
 # ========== 阶段 ==========
@@ -424,7 +424,7 @@ class GitHubImportCreateRequest(BaseModel):
 # ========== Agent 驾驶舱 ==========
 class AgentRunRequest(BaseModel):
     project_id: UUID
-    strategy: str = "router"  # router | parallel_all | sequential
+    strategy: Literal["router", "parallel_all", "sequential"] = "router"
     provider: Optional[AIProvider] = None
 
 
