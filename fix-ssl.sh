@@ -109,8 +109,9 @@ networks:
 COMPOSEEOF
 
 echo "[3/3] 重启 Nginx 容器..."
-SECRET_KEY="PLrKNYTVPKqMvSHdesSIjMZLEXo46UdO6k05iefq-3H2Ps7_zL801noTyyz2uhI7" \
-ENCRYPTION_KEY="86B-dqIThpDgrhNYHvjlXefzJ1QbXn5wL0lwP5KGsLA=" \
+# 安全密钥必须从环境变量传入，脚本中不留硬编码值
+SECRET_KEY="${SECRET_KEY:?SECRET_KEY must be set}" \
+ENCRYPTION_KEY="${ENCRYPTION_KEY:?ENCRYPTION_KEY must be set}" \
 docker compose -f docker-compose.deploy.yml up -d --force-recreate nginx
 
 echo ""
@@ -119,4 +120,4 @@ sleep 3
 
 echo ""
 echo "验证 HTTPS..."
-curl -s https://api-sparkbin.wanchun.me/health && echo "  SSL 配置成功" || echo "  仍然失败"
+curl -s "https://${DOMAIN:-api-sparkbin.wanchun.me}/health" && echo "  SSL 配置成功" || echo "  仍然失败"

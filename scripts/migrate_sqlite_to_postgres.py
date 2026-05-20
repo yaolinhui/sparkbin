@@ -14,7 +14,10 @@ from sqlalchemy.orm import sessionmaker
 sqlite_url = "sqlite:////tmp/sparkbin_v2.db"
 
 # PostgreSQL (production target)
-pg_url = os.environ.get("DATABASE_URL", "postgresql://sparkbin:sparkbin_pass_2024@postgres:5432/sparkbin")
+pg_url = os.environ.get("DATABASE_URL")
+if not pg_url:
+    print("ERROR: DATABASE_URL environment variable is required")
+    sys.exit(1)
 
 sqlite_engine = create_engine(sqlite_url)
 pg_engine = create_engine(pg_url)
@@ -40,8 +43,12 @@ def get_production_admin_user():
     return dict(row) if row else None
 
 
+_TABLE_NAMES = {"projects", "stages", "ai_call_logs", "users", "promote_tasks", "promote_suggestions", "credit_transactions"}
+
 def uuid_exists_in_pg(table: str, uid: str) -> bool:
     """Check if a UUID already exists in PostgreSQL table"""
+    if table not in _TABLE_NAMES:
+        raise ValueError(f"Invalid table name: {table}")
     result = pg_db.execute(text(f"SELECT 1 FROM {table} WHERE id = :uid"), {"uid": uid})
     return result.scalar() is not None
 
@@ -115,9 +122,10 @@ def migrate_stages(uuid_map: dict):
         print("\nNo stages to migrate.")
         return
 
-    # SQLite IN clause
-    placeholders = ", ".join([f"'{oid}'" for oid in old_ids])
-    result = sqlite_db.execute(text(f"SELECT * FROM stages WHERE project_id IN ({placeholders})"))
+    # SQLite IN clause — 使用参数化查询防止 SQL 注入
+    placeholders = ", ".join([f":oid_{i}" for i in range(len(old_ids))])
+    params = {f"oid_{i}": oid for i, oid in enumerate(old_ids)}
+    result = sqlite_db.execute(text(f"SELECT * FROM stages WHERE project_id IN ({placeholders})"), params)
     stages = result.mappings().all()
 
     migrated = 0

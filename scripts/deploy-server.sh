@@ -10,15 +10,16 @@ echo "SparkBin 生产环境部署脚本"
 echo "========================================"
 
 # ========== 配置区 ==========
-DOMAIN="api-sparkbin.wanchun.me"
-FRONTEND_DOMAIN="sparkbin.wanchun.me"
-REPO_URL="https://github.com/yaolinhui/sparkbin.git"
-BRANCH="deploy/production"
-APP_DIR="/opt/sparkbin"
+# ⚠️ 安全警告：请勿在脚本中硬编码敏感信息！请通过环境变量传入。
+DOMAIN="${DOMAIN:-api-sparkbin.wanchun.me}"
+FRONTEND_DOMAIN="${FRONTEND_DOMAIN:-sparkbin.wanchun.me}"
+REPO_URL="${REPO_URL:-https://github.com/yaolinhui/sparkbin.git}"
+BRANCH="${BRANCH:-deploy/production}"
+APP_DIR="${APP_DIR:-/opt/sparkbin}"
 
-# 安全密钥（部署后建议修改）
-SECRET_KEY="PLrKNYTVPKqMvSHdesSIjMZLEXo46UdO6k05iefq-3H2Ps7_zL801noTyyz2uhI7"
-ENCRYPTION_KEY="86B-dqIThpDgrhNYHvjlXefzJ1QbXn5wL0lwP5KGsLA="
+# 安全密钥必须从环境变量传入，脚本中不留默认值
+SECRET_KEY="${SECRET_KEY:?SECRET_KEY must be set}"
+ENCRYPTION_KEY="${ENCRYPTION_KEY:?ENCRYPTION_KEY must be set}"
 
 # ========== Step 1: 系统更新 ==========
 echo "[1/8] 更新系统..."
@@ -82,7 +83,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: sparkbin
-      POSTGRES_PASSWORD: sparkbin_pass_2024
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: sparkbin
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -99,17 +100,17 @@ services:
     container_name: sparkbin-backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://sparkbin:sparkbin_pass_2024@postgres:5432/sparkbin
+      DATABASE_URL: postgresql://sparkbin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/sparkbin
       SECRET_KEY: ${SECRET_KEY}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      DEFAULT_USERNAME: admin
-      DEFAULT_PASSWORD: admin123456
+      DEFAULT_USERNAME: ${DEFAULT_USERNAME:-admin}
+      DEFAULT_PASSWORD: ${DEFAULT_PASSWORD:?DEFAULT_PASSWORD must be set}
       API_PORT: 8000
       DEBUG: "false"
-      CORS_ORIGINS: https://sparkbin.wanchun.me,https://wanchun.me
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://${FRONTEND_DOMAIN}}
       ENABLE_PAYMENTS: "false"
       ENABLE_SAAS_FEATURES: "false"
-      FRONTEND_URL: https://sparkbin.wanchun.me
+      FRONTEND_URL: https://${FRONTEND_DOMAIN}
     depends_on:
       postgres:
         condition: service_healthy
@@ -144,7 +145,7 @@ echo "[7/8] 创建 Nginx 配置..."
 cat > "$APP_DIR/nginx.deploy.conf" << 'EOF'
 server {
     listen 80;
-    server_name api-sparkbin.wanchun.me;
+    server_name ${DOMAIN};
 
     location / {
         proxy_pass http://backend:8000;
@@ -179,15 +180,14 @@ echo "========================================"
 echo "部署完成！"
 echo "========================================"
 echo ""
-echo "后端 API: http://47.239.189.14:8000"
-echo "健康检查: http://47.239.189.14:8000/health"
-echo "API 文档: http://47.239.189.14:8000/docs"
+echo "后端 API: https://${DOMAIN}"
+echo "健康检查: https://${DOMAIN}/health"
+echo "API 文档: https://${DOMAIN}/docs"
 echo ""
 echo "下一步:"
-echo "1. 配置域名 DNS: api-sparkbin.wanchun.me → A记录 → 47.239.189.14"
+echo "1. 配置域名 DNS: ${DOMAIN} → A记录 → 你的服务器IP"
 echo "2. 配置 SSL 证书（等域名生效后执行 certbot 或手动配置）"
-echo "3. Vercel 部署前端 App: sparkbin.wanchun.me，环境变量 VITE_API_URL=https://api-sparkbin.wanchun.me"
-echo "4. Vercel 部署宣传页: sparkbin-web.wanchun.me"
+echo "3. Vercel 部署前端 App: ${FRONTEND_DOMAIN}，环境变量 VITE_API_URL=https://${DOMAIN}"
 echo ""
 echo "查看日志: docker logs -f sparkbin-backend"
 echo "查看状态: docker ps"
