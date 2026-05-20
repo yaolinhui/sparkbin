@@ -23,7 +23,7 @@ export function FooterSection(props: FooterSectionProps) {
   const productLinks = [
     { label: props.features, href: '#features' },
     { label: props.pricing, href: '#pricing' },
-    { label: props.enter, href: 'https://app.sparkbin.dev' },
+    { label: props.enter, href: 'https://app.sparkbin.wanchun.me' },
   ];
 
   const resourceLinks = [

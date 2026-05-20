@@ -82,7 +82,7 @@ export function HeroSection({
             {/* CTA Buttons */}
             <div className="flex flex-wrap gap-3 mb-8">
               <a
-                href="https://app.sparkbin.dev"
+                href="https://app.sparkbin.wanchun.me"
                 className="inline-flex items-center px-6 py-3 text-sm font-mono font-bold border-2 transition-colors"
                 style={{
                   backgroundColor: 'var(--brutal-accent)',

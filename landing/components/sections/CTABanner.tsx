@@ -34,7 +34,7 @@ export function CTABanner({ title, subtitle, primary, secondary }: CTABannerProp
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <a
-                href="https://app.sparkbin.dev"
+                href="https://app.sparkbin.wanchun.me"
                 className="inline-flex items-center px-6 py-3 text-sm font-mono font-bold border-2 transition-colors"
                 style={{
                   backgroundColor: 'var(--brutal-accent)',

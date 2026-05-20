@@ -64,7 +64,7 @@ export function PricingSection({ label, title, subtitle, tiers, ctaPayg, ctaFree
                   </ul>
 
                   <a
-                    href="https://app.sparkbin.dev"
+                    href="https://app.sparkbin.wanchun.me"
                     className="block text-center px-5 py-2.5 text-xs font-mono font-bold border-2 transition-colors"
                     style={{
                       backgroundColor: isPayg ? 'var(--brutal-accent)' : 'transparent',
