@@ -25,22 +25,23 @@ export function HeroSection({
   trust,
 }: HeroSectionProps) {
   const terminalLines = [
-    '$ sparkbin init my-idea',
+    '$ sparkbin init "AI简历助手"',
     '> Creating project workspace...',
-    '[OK] Project "my-idea" initialized',
-    '[OK] AI coach assigned: "Spark"',
+    '[OK] Project "AI简历助手" initialized',
+    '[OK] AI coach "Pixel" assigned',
     '',
-    '$ sparkbin stage --list',
-    '> 01 IDEA        - Capture and assess',
-    '> 02 VALIDATE    - GO/NO-GO decision',
-    '> 03 PROTOTYPE   - Build MVP plan',
-    '> 04 SHIP        - Launch checklist',
-    '> 05 GROW        - Growth experiments',
-    '> 06 MONETIZE    - Pricing simulator',
+    '$ sparkbin stage --current',
+    '> Stage 02: VALIDATE',
+    '> Status: BLOCKED — insufficient data',
     '',
     '$ sparkbin validate --run',
-    '> Analyzing market fit...',
-    '[GO] Demand validated. Proceed to prototype.',
+    '> Survey sent to 3 groups...',
+    '> 108 responses collected',
+    '> Willingness to pay: 71% @ ¥29/mo',
+    '[GO] Validation passed. Unlocking PROTOTYPE.',
+    '',
+    '$ sparkbin stage --current',
+    '> Stage 03: PROTOTYPE — UNLOCKED',
   ];
 
   const trustItems = [
@@ -82,7 +83,7 @@ export function HeroSection({
             {/* CTA Buttons */}
             <div className="flex flex-wrap gap-3 mb-8">
               <a
-                href="https://app.sparkbin.wanchun.me"
+                href="https://sparkbin.wanchun.me"
                 className="inline-flex items-center px-6 py-3 text-sm font-mono font-bold border-2 transition-colors"
                 style={{
                   backgroundColor: 'var(--brutal-accent)',

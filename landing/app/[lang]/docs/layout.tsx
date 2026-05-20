@@ -65,7 +65,7 @@ export default function DocsLayout({ children, params }: DocsLayoutProps) {
                 <ThemeSwitcher />
               </div>
               <a
-                href="https://app.sparkbin.wanchun.me"
+                href="https://sparkbin.wanchun.me"
                 className="hidden sm:inline-flex items-center px-3 py-1.5 text-xs font-mono font-bold border-2 transition-colors"
                 style={{
                   backgroundColor: 'var(--brutal-accent)',

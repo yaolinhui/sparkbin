@@ -29,7 +29,7 @@ export default function DocsPage() {
           Cloud (Recommended)
         </h2>
         <ol className="space-y-2 text-xs font-mono" style={{ color: 'var(--brutal-text-secondary)' }}>
-          <li>1. Go to <a href="https://app.sparkbin.wanchun.me" className="underline" style={{ color: 'var(--brutal-accent)' }}>app.sparkbin.wanchun.me</a></li>
+          <li>1. Go to <a href="https://sparkbin.wanchun.me" className="underline" style={{ color: 'var(--brutal-accent)' }}>sparkbin.wanchun.me</a></li>
           <li>2. Sign up with email or GitHub</li>
           <li>3. Create your first project and start the workflow</li>
         </ol>

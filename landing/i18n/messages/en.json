@@ -12,86 +12,86 @@
     "badge": "AI-NATIVE PROJECT COACH",
     "title1": "VALIDATE",
     "title2": "BEFORE YOU BUILD",
-    "subtitle": "A 6-stage workflow tool for indie hackers. From idea to monetization, AI assists every decision.",
-    "ctaPrimary": "Get Started",
-    "ctaSecondary": "Star on GitHub",
+    "subtitle": "Most projects die because nobody wants them. SparkBin forces you through a 6-stage workflow with AI coaching, so you know if your idea is worth building before you write a single line of code.",
+    "ctaPrimary": "Get Started Free",
+    "ctaSecondary": "View Source",
     "trust": {
       "opensource": "Open Source ELv2",
       "selfhost": "Free Self-Hosting",
-      "aiproxy": "AI Backend Proxy"
+      "aiproxy": "Local AI Support"
     }
   },
   "stages": {
     "label": "WORKFLOW",
-    "title": "6 Stages: From Idea to Monetization",
-    "subtitle": "Not a todo list. A proven indie hacker workflow with clear entry and exit criteria for each stage.",
+    "title": "6 Stages: Idea to Monetization",
+    "subtitle": "Not a todo list. Each stage has strict entry and exit criteria. The AI coach won't let you proceed until you've done the work.",
     "items": [
-      { "num": "01", "label": "IDEA", "labelZh": "Idea", "desc": "Capture inspiration, assess feasibility, use AI to quickly generate competitive analysis." },
-      { "num": "02", "label": "VALIDATE", "labelZh": "Validate", "desc": "GO/NO-GO decision framework. Validate demand with data before building something nobody wants." },
-      { "num": "03", "label": "PROTOTYPE", "labelZh": "Prototype", "desc": "AI-assisted MVP planning, tech stack recommendations, and multi-platform launch copy." },
-      { "num": "04", "label": "SHIP", "labelZh": "Ship", "desc": "Project management board with launch checklist to ensure nothing critical is missed." },
-      { "num": "05", "label": "GROW", "labelZh": "Grow", "desc": "Multi-platform content matrix, growth experiment tracking, AI-optimized copy." },
-      { "num": "06", "label": "MONETIZE", "labelZh": "Monetize", "desc": "Pricing strategy simulator, revenue forecasting, find the right business model." }
+      { "num": "01", "label": "IDEA", "labelZh": "Idea", "desc": "Capture inspiration. AI generates a competitive analysis and feasibility report in under 5 minutes." },
+      { "num": "02", "label": "VALIDATE", "labelZh": "Validate", "desc": "GO/NO-GO gate. No validation data? The gate stays closed. Build nothing until demand is proven." },
+      { "num": "03", "label": "PROTOTYPE", "labelZh": "Prototype", "desc": "AI drafts your MVP plan, compares tech stacks, and writes launch copy for Twitter, Reddit, and ProductHunt." },
+      { "num": "04", "label": "SHIP", "labelZh": "Ship", "desc": "Launch checklist management. Every critical step must be checked before your product goes live." },
+      { "num": "05", "label": "GROW", "labelZh": "Grow", "desc": "Multi-platform content tracking, A/B test copy, and find out which channel actually brings users." },
+      { "num": "06", "label": "MONETIZE", "labelZh": "Monetize", "desc": "Pricing simulator + revenue forecast. Input your price and expected users. AI tells you the payback period." }
     ]
   },
   "features": {
     "label": "FEATURES",
-    "title": "More Than a Kanban Board",
-    "subtitle": "AI is not an add-on. It is infrastructure woven into every stage.",
-    "screenshotLabel": "Product screenshots coming soon",
+    "title": "AI Is Not a Chat Box. It's Infrastructure.",
+    "subtitle": "Not \"we added an AI button.\" AI is deeply embedded in every stage. It knows what you should do, where you're stuck, and what to validate next.",
+    "screenshotLabel": "",
     "items": [
-      { "title": "AI Pet Coach", "desc": "Each project gets a dedicated AI coach providing stage-specific guidance." },
-      { "title": "GO/NO-GO Decisions", "desc": "Structured validation framework. Data-driven decisions, not emotional ones." },
-      { "title": "Multi-Platform Copy", "desc": "One-click generation for Twitter, Reddit, ProductHunt, and more." },
-      { "title": "Monetization Simulator", "desc": "Input expected users and pricing. AI predicts revenue curves and payback periods." },
-      { "title": "Project Blueprint", "desc": "Auto-generated project structure docs, tech stack recommendations, and milestones." },
-      { "title": "GitHub Backup", "desc": "Project data syncs to GitHub Discussions. Your data, your control." }
+      { "title": "Pixel Pet Coach", "desc": "Every project gets a pixel-art AI pet. It knows what stage you're in. It nags you, encourages you, and roasts you when you procrastinate." },
+      { "title": "GO/NO-GO Gates", "desc": "Try to skip validation? Not happening. The AI checks your stage output. If it doesn't meet the criteria, you go back and do the work." },
+      { "title": "One-Click Multi-Platform Launch", "desc": "ProductHunt, V2EX, Twitter, Reddit, Xiaohongshu — pick a platform, and the AI generates platform-native launch copy instantly." },
+      { "title": "Monetization Simulator", "desc": "Enter your pricing, expected users, and acquisition cost. The AI calculates revenue curves and tells you exactly when you'll break even." },
+      { "title": "GitHub One-Click Import", "desc": "Paste a GitHub repo URL. The AI analyzes the README, suggests the right stage, and pre-fills your project fields." },
+      { "title": "Local AI (Offline)", "desc": "Connect via Ollama. Zero API costs, zero network dependency, zero data leaving your machine." }
     ]
   },
   "deployment": {
     "label": "DEPLOYMENT",
-    "title": "Two Ways to Use, Same Full Experience",
-    "subtitle": "We believe open source is not a compromise on business, but the foundation of trust.",
+    "title": "Two Ways to Use. Same Full Experience.",
+    "subtitle": "Open source is not a business compromise. It's the foundation of trust.",
     "selfHosted": {
       "title": "SELF-HOSTED",
       "badge": "ELv2",
-      "desc": "Fully open source. Data under your control. Ideal for technical teams and individuals.",
-      "features": ["Unlimited AI calls (bring your own API key)", "Full features, no limitations", "Local data storage", "Community support"]
+      "desc": "Fully open source. Your data, your server. Ideal for developers who want full control.",
+      "features": ["Unlimited AI calls (bring your own API key)", "All features unlocked", "Local data storage", "Community support"]
     },
     "cloud": {
       "title": "SPARKBIN CLOUD",
       "badge": "SAAS",
-      "desc": "Zero-config, ready to use. Auto updates, managed AI backend. Focus on building products.",
-      "features": ["Zero-config deployment", "Auto updates", "Managed AI backend", "Email support"]
+      "desc": "Zero config, ready to use. Managed AI backend, automatic updates. Focus on building.",
+      "features": ["Zero-config deployment", "Automatic updates", "Managed AI backend", "Email support"]
     }
   },
   "pricing": {
     "label": "PRICING",
-    "title": "Simple, Transparent Pricing",
-    "subtitle": "Self-hosted is completely free. Cloud is pay-as-you-go. Credits never expire.",
+    "title": "Self-Hosted Is Free. Cloud Is Pay-As-You-Go.",
+    "subtitle": "Have a server? One-command Docker deploy, all features unlocked, zero cost. Don't want to self-host? Cloud version charges by AI usage. Credits never expire.",
     "ctaPayg": "Buy Credits",
     "ctaFree": "Get Started",
     "tiers": [
       {
         "name": "Free",
         "price": "$0",
-        "period": "/forever",
-        "desc": "For individual developers and small projects",
-        "features": ["Unlimited projects", "20 AI conversations (registration gift)", "Full 6-stage workflow", "GO/NO-GO decisions", "Community support"]
+        "period": "forever",
+        "desc": "Individual developers, students, small teams",
+        "features": ["Unlimited projects", "20 AI conversations on signup", "Full 6-stage workflow", "GO/NO-GO gates", "Community support"]
       },
       {
         "name": "Pay-as-you-go",
         "price": "From $5",
-        "period": "/one-time",
-        "desc": "Buy AI credits when you need them. Never expire.",
-        "features": ["Unlimited projects", "$5 / 100 AI conversations", "$10 / 250 AI conversations", "$20 / 600 AI conversations", "Credits never expire", "Email support"]
+        "period": "one-time",
+        "desc": "Buy what you need. Credits never expire.",
+        "features": ["Unlimited projects", "$5 = 100 AI conversations", "$10 = 250 AI conversations", "$20 = 600 AI conversations", "Credits never expire", "Email support"]
       }
     ]
   },
   "cta": {
-    "title": "Your Next Side Project Deserves to Be Taken Seriously",
-    "subtitle": "Most projects die because \"nobody needs it.\" SparkBin uses a structured 6-stage workflow and AI coach to validate ideas and reduce trial costs.",
-    "primary": "Get Started",
+    "title": "Stop Building Things Nobody Wants",
+    "subtitle": "You spent 3 months building something. Launched it. Zero users. SparkBin prevents that. Use the 6-stage workflow and AI coach to know if your idea is worth building before you write a single line of code.",
+    "primary": "Get Started Free",
     "secondary": "View on GitHub"
   },
   "footer": {
@@ -110,7 +110,7 @@
     "security": "Security Policy",
     "privacy": "Privacy Policy",
     "copyright": "SPARKBIN © 2026 — Elastic License 2.0",
-    "builtWith": "Built with React + FastAPI + Brutalist design"
+    "builtWith": "React + FastAPI + Brutalist Design"
   },
   "notFound": {
     "title": "404 NOT FOUND",

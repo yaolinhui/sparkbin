@@ -49,30 +49,60 @@ export function FeaturesSection({
           })}
         </div>
 
-        {/* Screenshot placeholders */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <ScrollReveal key={i} delay={i * 100}>
+        {/* Live AI Coach Demo */}
+        <div className="mt-12">
+          <ScrollReveal>
+            <div
+              className="border-2 w-full"
+              style={{ borderColor: 'var(--brutal-border)', backgroundColor: 'var(--brutal-bg)' }}
+            >
               <div
-                className="border-2 flex flex-col items-center justify-center py-16 md:py-20"
-                style={{
-                  borderColor: 'var(--brutal-border)',
-                  backgroundColor: 'var(--brutal-border)',
-                }}
+                className="flex items-center gap-2 px-4 py-3 border-b-2"
+                style={{ borderColor: 'var(--brutal-border)' }}
               >
-                <span className="text-xs font-mono font-bold" style={{ color: 'var(--brutal-muted)' }}>
-                  SCREENSHOT_PLACEHOLDER
+                <div className="w-3 h-3" style={{ backgroundColor: '#ff5f56' }} />
+                <div className="w-3 h-3" style={{ backgroundColor: '#ffbd2e' }} />
+                <div className="w-3 h-3" style={{ backgroundColor: '#27c93f' }} />
+                <span className="ml-2 text-[10px] font-mono" style={{ color: 'var(--brutal-muted)' }}>
+                  sparkbin-coach
                 </span>
               </div>
-            </ScrollReveal>
-          ))}
+              <div className="p-4 md:p-6 font-mono text-xs leading-relaxed overflow-x-auto">
+                <div className="mb-3">
+                  <span style={{ color: 'var(--brutal-muted)' }}>[System] Project "AI简历助手" entered stage 02 VALIDATE</span>
+                </div>
+                <div className="mb-3">
+                  <span style={{ color: 'var(--brutal-accent)' }}>Coach Pixel:</span>
+                  <span style={{ color: 'var(--brutal-text)' }}> 你验证了什么？别跟我说"我觉得有人需要"。</span>
+                </div>
+                <div className="mb-3">
+                  <span style={{ color: 'var(--brutal-text-secondary)' }}>User: 我发了问卷，收了 47 份，63% 说愿意付费。</span>
+                </div>
+                <div className="mb-3">
+                  <span style={{ color: 'var(--brutal-accent)' }}>Coach Pixel:</span>
+                  <span style={{ color: 'var(--brutal-text)' }}> 样本量太小，置信区间不够。再去 3 个微信群问，凑够 100 份。</span>
+                </div>
+                <div className="mb-3">
+                  <span style={{ color: 'var(--brutal-text-secondary)' }}>User: ...好吧。</span>
+                </div>
+                <div className="mb-3">
+                  <span style={{ color: 'var(--brutal-muted)' }}>[2 hours later]</span>
+                </div>
+                <div className="mb-3">
+                  <span style={{ color: 'var(--brutal-text-secondary)' }}>User: 108 份了，71% 愿意付 ￥29/月。</span>
+                </div>
+                <div className="mb-3">
+                  <span style={{ color: 'var(--brutal-success)' }}>[GO]</span>
+                  <span style={{ color: 'var(--brutal-text)' }}> Validation passed. Proceed to PROTOTYPE.</span>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--brutal-accent)' }}>$</span>
+                  <span className="inline-block w-2 h-4 ml-1 align-middle" style={{ backgroundColor: 'var(--brutal-accent)' }} />
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
         </div>
-        <p
-          className="text-center text-[10px] font-mono mt-4"
-          style={{ color: 'var(--brutal-muted)' }}
-        >
-          {screenshotLabel}
-        </p>
       </div>
     </section>
   );

@@ -109,7 +109,7 @@ export function NavBar() {
               <ThemeSwitcher />
             </div>
             <a
-              href="https://app.sparkbin.wanchun.me"
+              href="https://sparkbin.wanchun.me"
               className="hidden sm:inline-block px-4 py-1.5 text-xs font-mono font-bold border-2 transition-colors"
               style={{
                 backgroundColor: 'var(--brutal-accent)',
@@ -186,7 +186,7 @@ export function NavBar() {
               <ThemeSwitcher />
             </div>
             <a
-              href="https://app.sparkbin.wanchun.me"
+              href="https://sparkbin.wanchun.me"
               className="inline-block text-center px-4 py-2 text-sm font-mono font-bold border-2 mt-2"
               style={{
                 backgroundColor: 'var(--brutal-accent)',
