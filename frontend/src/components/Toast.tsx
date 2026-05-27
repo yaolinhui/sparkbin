@@ -49,7 +49,7 @@ export function Toast({ message, type = 'info', duration = 3000, onClose }: Toas
   return (
     <div
       className={`fixed bottom-24 left-1/2 transform -translate-x-1/2 z-50
-                  transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+                  transition-opacity transition-transform duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
     >
       <div
         className={`px-4 py-3 border-2 text-brutal-bg font-mono text-sm flex items-center gap-2 shadow-lg ${colors[type]}`}

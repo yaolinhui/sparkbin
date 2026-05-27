@@ -557,7 +557,7 @@ export function AIChat({
         <button
           onClick={handleToggleCollapse}
           className="flex flex-col items-center gap-2 px-2 py-4 bg-brutal-surface border border-brutal-border
-                     hover:border-brutal-accent transition-all duration-300 h-full max-h-40"
+                     hover:border-brutal-accent transition-colors duration-300 h-full max-h-40"
           title={`展开${petName}`}
         >
           <ChevronLeft className="w-4 h-4" />

@@ -99,6 +99,8 @@ services:
     image: sparkbin-backend:latest
     container_name: sparkbin-backend
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgresql://sparkbin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/sparkbin
       SECRET_KEY: ${SECRET_KEY}
@@ -142,7 +144,7 @@ EOF
 
 # ========== Step 7: 创建 Nginx 配置 ==========
 echo "[7/8] 创建 Nginx 配置..."
-cat > "$APP_DIR/nginx.deploy.conf" << 'EOF'
+cat > "$APP_DIR/nginx.deploy.conf" << EOF
 server {
     listen 80;
     server_name ${DOMAIN};
@@ -172,7 +174,7 @@ EOF
 # ========== Step 8: 启动服务 ==========
 echo "[8/8] 启动服务..."
 cd "$APP_DIR"
-SECRET_KEY="$SECRET_KEY" ENCRYPTION_KEY="$ENCRYPTION_KEY" $COMPOSE -f docker-compose.deploy.yml up -d
+SECRET_KEY="$SECRET_KEY" ENCRYPTION_KEY="$ENCRYPTION_KEY" POSTGRES_PASSWORD="$POSTGRES_PASSWORD" DEFAULT_PASSWORD="$DEFAULT_PASSWORD" $COMPOSE -f docker-compose.deploy.yml up -d
 
 # ========== 验证 ==========
 echo ""

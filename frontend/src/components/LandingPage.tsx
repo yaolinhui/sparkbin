@@ -20,7 +20,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
       <DotGridBackground />
       <div className="w-full max-w-2xl">
         {/* Brand */}
-        <div className="border-2 border-brutal-border bg-brutal-surface p-8 text-center mb-6">
+        <div className="border-2 border-brutal-border bg-brutal-surface px-4 py-6 md:p-8 text-center mb-6">
           <div className="flex items-center justify-center gap-3 mb-4">
             <div className="w-12 h-12 bg-brutal-text flex items-center justify-center">
               <Lock className="w-6 h-6 text-brutal-bg" />

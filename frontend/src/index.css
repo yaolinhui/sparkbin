@@ -74,7 +74,15 @@ body {
   background-color: var(--brutal-bg);
   background-image: radial-gradient(circle at center, var(--bg-grid-color) 1.5px, transparent 1.5px);
   background-size: 24px 24px;
-  background-attachment: fixed;
+  /* 移动端避免使用 fixed，防止 GPU 重绘闪烁 */
+  background-attachment: scroll;
+}
+
+/* 桌面端可以恢复 fixed 获得更好效果 */
+@media (min-width: 768px) {
+  body {
+    background-attachment: fixed;
+  }
 }
 
 /* Light mode: add paper texture on top */

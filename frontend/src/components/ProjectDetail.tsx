@@ -399,16 +399,11 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveStatusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 移动端默认折叠 AI 聊天面板
+  // 移动端默认折叠 AI 聊天面板（仅在首次挂载时执行，避免 resize 导致重渲染）
   useEffect(() => {
-    const checkMobile = () => {
-      if (window.innerWidth < 768) {
-        setIsAIChatCollapsed(true);
-      }
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    if (window.innerWidth < 768) {
+      setIsAIChatCollapsed(true);
+    }
   }, []);
 
   const hasUnsavedChanges = dirtyCount > 0 || isEditingTitle;
@@ -1003,12 +998,12 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <ThemeSwitcher />
+            <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
+              <div className="hidden sm:block"><ThemeSwitcher /></div>
               <LanguageSwitcher />
               <button
                 onClick={() => setShowBlueprint(true)}
-                className="btn-brutal h-9 flex items-center gap-2 text-brutal-accent border-brutal-accent"
+                className="btn-brutal h-8 md:h-9 flex items-center gap-1 md:gap-2 text-brutal-accent border-brutal-accent px-2 md:px-3"
                 title="项目蓝图"
               >
                 <GitGraph className="w-4 h-4" />
@@ -1016,7 +1011,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
               </button>
               <button
                 onClick={() => setShowAgentCockpit(true)}
-                className="btn-brutal h-9 flex items-center gap-2 text-brutal-success border-brutal-success"
+                className="btn-brutal h-8 md:h-9 flex items-center gap-1 md:gap-2 text-brutal-success border-brutal-success px-2 md:px-3"
                 title="AI Agent 驾驶舱"
               >
                 <Cpu className="w-4 h-4" />
@@ -1026,7 +1021,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
               {project.status !== 'archived' && (
                 <button
                   onClick={() => handleStatusChange('archived')}
-                  className="btn-brutal h-9 focus-visible:ring-2 focus-visible:ring-brutal-accent focus-visible:outline-none"
+                  className="hidden sm:flex btn-brutal h-8 md:h-9 focus-visible:ring-2 focus-visible:ring-brutal-accent focus-visible:outline-none px-2 md:px-3"
                   title="归档项目"
                 >
                   <Archive className="w-4 h-4" />
@@ -1078,6 +1073,19 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                       <LogOut className="w-4 h-4" />
                       <span>退出登录</span>
                     </button>
+                    {project.status !== 'archived' && (
+                      <button
+                        onClick={() => {
+                          handleStatusChange('archived');
+                          setShowMoreMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm font-mono text-brutal-muted hover:bg-brutal-surface-hover transition-colors"
+                        role="menuitem"
+                      >
+                        <Archive className="w-4 h-4" />
+                        <span>归档项目</span>
+                      </button>
+                    )}
                     <div className="border-t border-brutal-border my-1" />
                     <button
                       onClick={() => {
@@ -1126,7 +1134,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden min-h-0 flex-col md:flex-row">
         {/* Left: Editor - 根据 AI 聊天状态自适应宽度 */}
-        <div className={`flex-1 flex flex-col min-w-0 border-r border-brutal-border bg-brutal-surface transition-all duration-300 ${
+        <div className={`flex-1 flex flex-col min-w-0 border-r border-brutal-border bg-brutal-surface md:transition-transform md:duration-300 ${
           !isAIChatCollapsed ? 'hidden md:flex' : 'flex'
         }`}>
           <div className="flex-1 flex flex-col overflow-hidden min-h-0">
@@ -1216,7 +1224,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
         {/* Right: AI Chat - Desktop: sidebar, Mobile: overlay */}
         <div
-          className={`bg-brutal-bg transition-all duration-300 ease-in-out flex-shrink-0 self-stretch flex-col hidden md:flex ${
+          className={`bg-brutal-bg transition-[width] duration-300 ease-in-out flex-shrink-0 self-stretch flex-col hidden md:flex ${
             isAIChatCollapsed ? 'w-12' : 'w-full sm:w-[320px] md:w-[380px] lg:w-[420px] max-w-[420px]'
           }`}
         >
@@ -1262,7 +1270,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
         {/* Mobile AI Chat Float Button */}
         <button
           onClick={() => setIsAIChatCollapsed(false)}
-          className={`md:hidden fixed bottom-6 right-6 z-30 w-12 h-12 border-2 border-brutal-accent bg-brutal-accent text-brutal-bg flex items-center justify-center shadow-lg transition-all duration-300 ${
+          className={`md:hidden fixed bottom-6 right-6 z-30 w-12 h-12 border-2 border-brutal-accent bg-brutal-accent text-brutal-bg flex items-center justify-center shadow-lg transition-transform duration-300 ${
             isAIChatCollapsed ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'
           }`}
           title="打开 AI 助手"
