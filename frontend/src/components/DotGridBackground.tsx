@@ -54,12 +54,22 @@ export const DotGridBackground = forwardRef<DotGridBackgroundRef, DotGridBackgro
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
+      // 离屏 Canvas（双缓冲）：所有绘制在离屏进行，主 Canvas 只做最终呈现
+      const offscreen = document.createElement('canvas');
+      const offCtx = offscreen.getContext('2d');
+      if (!offCtx) return;
+
       const SPACING = 28;
       const DOT_RADIUS = 1.2;
       const MOUSE_RADIUS = 140;
       const REPEL_STRENGTH = 2.2;
       const SPRING_K = 0.08;
       const DAMPING = 0.88;
+
+      // 帧率限制：30fps，匹配远程控制软件的典型捕获率，避免"黑屏中间态"被捕获
+      const TARGET_FPS = 30;
+      const FRAME_INTERVAL = 1000 / TARGET_FPS;
+      let lastFrameTime = 0;
 
       const getTheme = () => {
         const attr = document.documentElement.getAttribute('data-theme');
@@ -81,11 +91,19 @@ export const DotGridBackground = forwardRef<DotGridBackgroundRef, DotGridBackgro
           const w = rect ? rect.width : window.innerWidth;
           const h = rect ? rect.height : window.innerHeight;
           const dpr = window.devicePixelRatio || 1;
-          canvas.width = Math.max(1, w * dpr);
-          canvas.height = Math.max(1, h * dpr);
+          const pixelW = Math.max(1, w * dpr);
+          const pixelH = Math.max(1, h * dpr);
+
+          canvas.width = pixelW;
+          canvas.height = pixelH;
           canvas.style.width = `${w}px`;
           canvas.style.height = `${h}px`;
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+          // 同步离屏 Canvas 尺寸
+          offscreen.width = pixelW;
+          offscreen.height = pixelH;
+          offCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
           const cols = Math.ceil(w / SPACING) + 1;
           const rows = Math.ceil(h / SPACING) + 1;
@@ -112,13 +130,18 @@ export const DotGridBackground = forwardRef<DotGridBackgroundRef, DotGridBackgro
         mouseRef.current.y = -1000;
       };
 
-      const animate = () => {
+      const animate = (timestamp: number) => {
+        rafRef.current = requestAnimationFrame(animate);
+
+        // 帧率限制：跳过不足 FRAME_INTERVAL 的帧
+        if (timestamp - lastFrameTime < FRAME_INTERVAL) return;
+        lastFrameTime = timestamp;
+
         const cssW = parseFloat(canvas.style.width) || canvas.width;
         const cssH = parseFloat(canvas.style.height) || canvas.height;
-        ctx.clearRect(0, 0, cssW, cssH);
 
         themeRef.current = getTheme();
-        ctx.fillStyle = getDotColor();
+        offCtx.fillStyle = getDotColor();
 
         const mx = mouseRef.current.x;
         const my = mouseRef.current.y;
@@ -135,6 +158,9 @@ export const DotGridBackground = forwardRef<DotGridBackgroundRef, DotGridBackgro
         pulsesRef.current = pulsesRef.current.filter(
           (p) => now - p.createdAt < p.duration
         );
+
+        // 在离屏 Canvas 上清空并绘制（主 Canvas 永远看不到这个中间状态）
+        offCtx.clearRect(0, 0, cssW, cssH);
 
         for (const dot of dotsRef.current) {
           const ax = (dot.baseX - dot.x) * SPRING_K;
@@ -176,12 +202,15 @@ export const DotGridBackground = forwardRef<DotGridBackgroundRef, DotGridBackgro
           dot.x += dot.vx;
           dot.y += dot.vy;
 
-          ctx.beginPath();
-          ctx.arc(dot.x, dot.y, DOT_RADIUS, 0, Math.PI * 2);
-          ctx.fill();
+          offCtx.beginPath();
+          offCtx.arc(dot.x, dot.y, DOT_RADIUS, 0, Math.PI * 2);
+          offCtx.fill();
         }
 
-        rafRef.current = requestAnimationFrame(animate);
+        // 一次性将离屏 Canvas 内容复制到主 Canvas
+        // 主 Canvas 永远不会出现"清空但没画"的黑屏中间态
+        ctx.clearRect(0, 0, cssW, cssH);
+        ctx.drawImage(offscreen, 0, 0);
       };
 
       resize();
@@ -216,7 +245,7 @@ export const DotGridBackground = forwardRef<DotGridBackgroundRef, DotGridBackgro
       <canvas
         ref={canvasRef}
         className={`absolute inset-0 pointer-events-none ${className || ''}`}
-        style={style}
+        style={{ willChange: 'transform', ...style }}
       />
     );
   }
