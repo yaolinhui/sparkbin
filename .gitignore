@@ -64,3 +64,6 @@ venv/
 *.db
 *.sqlite
 *.sqlite3
+
+# Audit/run logs (may contain environment details)
+docs/runs/

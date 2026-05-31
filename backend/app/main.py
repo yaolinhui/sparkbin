@@ -96,14 +96,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
 
         # 内容安全策略（CSP）— 根据实际前端资源调整
-        # 当前为 SPA + 本地开发环境设置；生产环境部署 HTTPS 时需进一步收紧
+        api_url = getattr(settings, 'api_url', 'http://localhost:8000')
         csp = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: https:; "
             "font-src 'self'; "
-            "connect-src 'self' http://localhost:8000 https://api.stripe.com; "
+            f"connect-src 'self' {api_url} https://api.stripe.com; "
             "frame-src https://js.stripe.com https://hooks.stripe.com; "
             "object-src 'none'; "
             "base-uri 'self';"

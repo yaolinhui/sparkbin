@@ -15,6 +15,19 @@ class ProjectStatus(str, enum.Enum):
     RESEARCH = "research"  # 兼容旧数据
 
 
+class ProjectType(str, enum.Enum):
+    WEB = "web"
+    APP = "app"
+    PLUGIN = "plugin"
+    API = "api"
+    MINIPROGRAM = "miniprogram"
+    DESKTOP = "desktop"
+    AI_AGENT = "ai_agent"
+    GAME = "game"
+    SCRIPT = "script"
+    OTHER = "other"
+
+
 class StageKey(str, enum.Enum):
     # Vibe/独立开发专用阶段流程
     IDEA = "idea"           # 想法
@@ -107,6 +120,7 @@ class Project(Base):
     original_idea = Column(Text, default="", nullable=False)
     status = Column(Enum(ProjectStatus), default=ProjectStatus.ACTIVE, nullable=False)
     current_stage = Column(Enum(StageKey), default=StageKey.IDEA, nullable=False)
+    project_type = Column(String(20), default="other", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     deleted_at = Column(DateTime, nullable=True)  # 软删除

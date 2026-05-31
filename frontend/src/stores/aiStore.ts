@@ -18,7 +18,7 @@ interface AIActions {
 // 从 localStorage 读取保存的 provider
 const getSavedProvider = (): AIProvider => {
   const saved = localStorage.getItem('sparkbin_ai_provider_v2') as AIProvider | null;
-  if (saved && ['deepseek', 'kimi', 'doubao'].includes(saved)) {
+  if (saved && ['deepseek', 'kimi', 'doubao', 'openai', 'ollama'].includes(saved)) {
     return saved;
   }
   return 'deepseek';

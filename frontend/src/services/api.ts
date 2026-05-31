@@ -475,6 +475,7 @@ export interface Project {
   original_idea: string;
   status: 'active' | 'paused' | 'archived';
   current_stage: Stage['stage_key'];
+  project_type?: string;
   created_at: string;
   updated_at: string;
 }
@@ -498,7 +499,7 @@ export const projectsApi = {
   get: (id: string) =>
     request<ProjectDetail>(`/projects/${id}`),
 
-  create: (data: { title: string; pain_point: string; original_idea?: string }) =>
+  create: (data: { title: string; pain_point: string; original_idea?: string; project_type?: string }) =>
     request<ProjectDetail>('/projects', {
       method: 'POST',
       body: JSON.stringify(data),

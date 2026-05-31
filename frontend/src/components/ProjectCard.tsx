@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Pause, Archive, ArrowRight, Calendar } from 'lucide-react';
 import { useI18n, useStageLabel, useStatusLabel } from '../i18n/hooks';
 import type { Project } from '../types';
-import { type StageKey } from '../types';
+import { type StageKey, PROJECT_TYPE_LABELS, PROJECT_TYPE_ICONS } from '../types';
 
 // 格式化日期
 function formatDate(dateString: string): string {
@@ -119,10 +119,18 @@ export const ProjectCard = memo(function ProjectCard({ project, index, compact }
         {getStatusIndicator()}
       </div>
 
-      {/* Title */}
-      <h3 className="font-mono font-bold text-sm mb-2 line-clamp-1" title={project.title}>
-        {project.title}
-      </h3>
+      {/* Title + Type Badge */}
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <h3 className="font-mono font-bold text-sm line-clamp-1 flex-1" title={project.title}>
+          {project.title}
+        </h3>
+        {project.projectType && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-brutal-accent/40 bg-brutal-accent/10 text-[10px] font-mono text-brutal-accent shrink-0">
+            <span>{PROJECT_TYPE_ICONS[project.projectType] || '📋'}</span>
+            <span>{PROJECT_TYPE_LABELS[project.projectType] || '其他'}</span>
+          </span>
+        )}
+      </div>
 
       {/* Pain Point */}
       <p className="text-xs text-brutal-muted mb-4 line-clamp-2 min-h-[2rem]">

@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Any, Literal
 from uuid import UUID
 from pydantic import BaseModel, Field, EmailStr
 
-from .models import ProjectStatus, StageKey, AIProvider
+from .models import ProjectStatus, StageKey, AIProvider, ProjectType
 
 
 # ========== 通用 ==========
@@ -177,6 +177,7 @@ class ProjectBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     pain_point: str = ""
     original_idea: str = ""
+    project_type: ProjectType = ProjectType.OTHER
 
 
 class ProjectCreate(ProjectBase):
@@ -189,6 +190,7 @@ class ProjectUpdate(BaseModel):
     original_idea: Optional[str] = None
     status: Optional[ProjectStatus] = None
     current_stage: Optional[StageKey] = None
+    project_type: Optional[ProjectType] = None
 
 
 class ProjectInfo(ProjectBase):

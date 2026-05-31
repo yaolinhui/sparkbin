@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..auth import get_current_user
-from ..models import User, Project, Stage, StageKey, ProjectStatus, PromoteTask
+from ..models import User, Project, Stage, StageKey, ProjectStatus, ProjectType, PromoteTask
 from ..schemas import (
     ProjectCreate, ProjectUpdate, ProjectInfo, ProjectDetail,
     PromoteTaskCreate, PromoteTaskUpdate, PromoteTaskInfo,
@@ -33,6 +33,7 @@ def _project_to_detail(project: Project) -> ProjectDetail:
         original_idea=project.original_idea,
         status=project.status,
         current_stage=project.current_stage,
+        project_type=project.project_type,
         created_at=project.created_at,
         updated_at=project.updated_at,
         stages=[
@@ -106,7 +107,8 @@ def create_project(
         user_id=current_user.id,
         title=request.title,
         pain_point=request.pain_point,
-        original_idea=request.original_idea
+        original_idea=request.original_idea,
+        project_type=request.project_type
     )
     db.add(project)
     db.flush()  # 获取 project.id
@@ -193,6 +195,8 @@ def update_project(
         project.status = request.status
     if request.current_stage is not None:
         project.current_stage = request.current_stage
+    if request.project_type is not None:
+        project.project_type = request.project_type
 
     db.commit()
     db.refresh(project)

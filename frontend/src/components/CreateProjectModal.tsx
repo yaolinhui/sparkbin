@@ -3,6 +3,7 @@ import { X, ArrowRight, Check, Edit2, ChevronDown, ChevronUp, Github } from 'luc
 import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
 import { useI18n } from '../i18n/hooks';
+import { PROJECT_TYPE_LABELS, type ProjectType } from '../types';
 import { aiService } from '../services/ai';
 import { SnakeLoader } from './SnakeLoader';
 
@@ -33,6 +34,7 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
   const [painPoint, setPainPoint] = useState('');
   const [originalIdea, setOriginalIdea] = useState('');
   const [title, setTitle] = useState('');
+  const [projectType, setProjectType] = useState<ProjectType>('other');
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [error, setError] = useState<string | null>(null);
@@ -159,11 +161,12 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
   const handleCreate = async () => {
     if (!title.trim()) return;
 
-    const project = await createProject(title, painPoint, originalIdea);
+    const project = await createProject(title, painPoint, originalIdea, projectType);
     if (project) {
       setPainPoint('');
       setOriginalIdea('');
       setTitle('');
+      setProjectType('other');
       setDimensions([]);
       setStep(1);
       setError(null);
@@ -177,6 +180,7 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
     setPainPoint('');
     setOriginalIdea('');
     setTitle('');
+    setProjectType('other');
     setDimensions([]);
     setStep(1);
     setError(null);
@@ -464,6 +468,25 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
                   className="w-full p-3 border border-brutal-border bg-brutal-bg
                              focus:border-brutal-accent transition-colors font-mono text-sm"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
+                  项目类型
+                </label>
+                <select
+                  value={projectType}
+                  onChange={(e) => setProjectType(e.target.value as ProjectType)}
+                  className="w-full p-3 border border-brutal-border bg-brutal-bg
+                             focus:border-brutal-accent transition-colors font-mono text-sm
+                             appearance-none cursor-pointer"
+                >
+                  {Object.entries(PROJECT_TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

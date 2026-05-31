@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     http_proxy: str = ""
     https_proxy: str = ""
 
+    # 后端 API 公开地址（用于 CSP connect-src 等）
+    api_url: str = "http://localhost:8000"
+
     # 可信 Host 列表（生产环境逗号分隔，如 localhost,api.example.com）
     allowed_hosts: str = "localhost"
 
