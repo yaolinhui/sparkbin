@@ -609,6 +609,14 @@ def _get_oauth_redirect_url(provider: str) -> str:
     return f"{api_url}/auth/oauth/{provider}/callback"
 
 
+def _get_oauth_connect_redirect_url() -> str:
+    """构建 GitHub 增量授权（仓库导入）回调地址"""
+    import os
+    settings = get_settings()
+    api_url = os.environ.get("API_URL", f"http://127.0.0.1:{settings.api_port}")
+    return f"{api_url}/auth/oauth/github/connect/callback"
+
+
 def _create_oauth_state() -> str:
     """生成 OAuth state 参数（JWT，10分钟有效）"""
     return create_access_token(
@@ -1004,7 +1012,7 @@ def oauth_github_connect_redirect(
         )
 
     state = _create_connect_state(str(current_user.id))
-    redirect_uri = _get_oauth_redirect_url("github")  # 使用 API 域名回调
+    redirect_uri = _get_oauth_connect_redirect_url()  # 使用 API 域名 + connect 专用回调路径
     params = urlencode({
         "client_id": settings.github_client_id,
         "redirect_uri": redirect_uri,
@@ -1061,7 +1069,7 @@ def oauth_github_connect_callback(
             "client_id": settings.github_client_id,
             "client_secret": settings.github_client_secret,
             "code": code,
-            "redirect_uri": _get_oauth_redirect_url("github"),
+            "redirect_uri": _get_oauth_connect_redirect_url(),
         },
         headers={"Accept": "application/json"},
         timeout=10.0,
