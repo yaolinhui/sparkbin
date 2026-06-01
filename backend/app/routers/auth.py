@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..auth import (
     verify_password, create_access_token, create_refresh_token, decode_token,
-    get_current_user, hash_password,
+    get_current_user, get_current_user_from_query_or_header, hash_password,
     check_login_rate_limit, record_login_failure, validate_password_complexity,
     check_rate_limit, record_rate_limit_failure,
     create_email_verification_token, create_password_reset_token, decode_email_token,
@@ -992,7 +992,7 @@ def oauth_github_callback(
 @router.get("/oauth/github/connect")
 def oauth_github_connect_redirect(
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_from_query_or_header),
 ):
     """跳转 GitHub OAuth 增量授权页（申请 public_repo 权限）"""
     settings = get_settings()

@@ -408,8 +408,10 @@ export const authApi = {
   getCaptcha: () =>
     request<{ question: string; answer_hash: string }>('/auth/captcha'),
 
-  getGitHubConnectUrl: () =>
-    `${API_BASE_URL}/auth/oauth/github/connect`,
+  getGitHubConnectUrl: () => {
+    const token = getAuthToken();
+    return `${API_BASE_URL}/auth/oauth/github/connect${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+  },
 
   // 获取首选 AI 模型
   getPreferredModel: () =>
