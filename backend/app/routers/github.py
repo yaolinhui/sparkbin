@@ -124,6 +124,7 @@ async def create_project_from_github(
         original_idea=request.original_idea,
         status=ProjectStatus.ACTIVE,
         current_stage=StageKey(stage),
+        project_type='other',
     )
     db.add(project)
     db.flush()

@@ -124,12 +124,10 @@ export const ProjectCard = memo(function ProjectCard({ project, index, compact }
         <h3 className="font-mono font-bold text-sm line-clamp-1 flex-1" title={project.title}>
           {project.title}
         </h3>
-        {project.projectType && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-brutal-accent/40 bg-brutal-accent/10 text-[10px] font-mono text-brutal-accent shrink-0">
-            <span>{PROJECT_TYPE_ICONS[project.projectType] || '📋'}</span>
-            <span>{PROJECT_TYPE_LABELS[project.projectType] || '其他'}</span>
-          </span>
-        )}
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-brutal-accent/40 bg-brutal-accent/10 text-[10px] font-mono text-brutal-accent shrink-0">
+          <span>{PROJECT_TYPE_ICONS[project.projectType] || '📋'}</span>
+          <span>{PROJECT_TYPE_LABELS[project.projectType] || '其他'}</span>
+        </span>
       </div>
 
       {/* Pain Point */}
