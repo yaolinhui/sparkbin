@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 
 # HTTP Bearer 认证
 security = HTTPBearer()
+# 用于支持从 Query Param 读取 Token 的场景（如浏览器 OAuth 跳转）
+security_optional = HTTPBearer(auto_error=False)
 
 # 内存中的认证失败记录: {"{ip}:{action}": deque([timestamp, ...])}
 _auth_attempts: dict[str, deque] = {}
@@ -339,7 +341,7 @@ async def get_current_user(
 
 async def get_current_user_from_query_or_header(
     request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_optional),
     db: Session = Depends(get_db)
 ) -> User:
     """获取当前登录用户，支持从 Header Bearer Token 或 URL Query Param ?token=xxx 读取"""
