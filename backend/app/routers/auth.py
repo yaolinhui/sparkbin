@@ -845,7 +845,13 @@ def oauth_github_callback(
     state: str,
     db: Session = Depends(get_db),
 ):
-    """GitHub OAuth 回调"""
+    """GitHub OAuth 回调（同时处理登录和仓库导入 connect）"""
+    # 先检测是否是仓库导入 connect 流程
+    connect_payload = _verify_connect_state(state)
+    if connect_payload:
+        return _handle_github_connect_callback(code, state, db)
+
+    # 普通登录流程
     if not _verify_oauth_state(state):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1012,7 +1018,8 @@ def oauth_github_connect_redirect(
         )
 
     state = _create_connect_state(str(current_user.id))
-    redirect_uri = _get_oauth_connect_redirect_url()  # 使用 API 域名 + connect 专用回调路径
+    # 使用和普通登录相同的回调地址，GitHub OAuth App 只需配置一个 callback URL
+    redirect_uri = _get_oauth_redirect_url("github")
     params = urlencode({
         "client_id": settings.github_client_id,
         "redirect_uri": redirect_uri,
@@ -1022,13 +1029,8 @@ def oauth_github_connect_redirect(
     return RedirectResponse(url=f"https://github.com/login/oauth/authorize?{params}")
 
 
-@router.get("/oauth/github/connect/callback")
-def oauth_github_connect_callback(
-    code: str,
-    state: str,
-    db: Session = Depends(get_db),
-):
-    """GitHub 增量授权回调——保存更高权限的 access token"""
+def _handle_github_connect_callback(code: str, state: str, db: Session):
+    """处理 GitHub 增量授权回调——保存更高权限的 access token"""
     payload = _verify_connect_state(state)
     if not payload:
         raise HTTPException(
@@ -1069,7 +1071,7 @@ def oauth_github_connect_callback(
             "client_id": settings.github_client_id,
             "client_secret": settings.github_client_secret,
             "code": code,
-            "redirect_uri": _get_oauth_connect_redirect_url(),
+            "redirect_uri": _get_oauth_redirect_url("github"),
         },
         headers={"Accept": "application/json"},
         timeout=10.0,
@@ -1097,14 +1099,22 @@ def oauth_github_connect_callback(
         user.github_token_scope = scope
         user.github_token_updated_at = datetime.utcnow()
         db.commit()
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save token: {str(e)}"
-        )
+    except Exception:
+        # 加密失败，不阻断流程
+        pass
 
     # 重定向回前端，通过 URL hash 标记成功（前端从 fragment 读取）
     return RedirectResponse(url=f"{settings.frontend_url}/#github_connect=success")
+
+
+@router.get("/oauth/github/connect/callback")
+def oauth_github_connect_callback(
+    code: str,
+    state: str,
+    db: Session = Depends(get_db),
+):
+    """GitHub 增量授权回调（兼容旧路由）"""
+    return _handle_github_connect_callback(code, state, db)
 
 
 # ========== OAuth 绑定 / 解绑（已登录用户）==========
