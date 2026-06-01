@@ -12,6 +12,7 @@ from ..database import get_db
 from ..auth import (
     verify_password, create_access_token, create_refresh_token, decode_token,
     get_current_user, get_current_user_from_query_or_header, hash_password,
+    _get_client_ip,
     check_login_rate_limit, record_login_failure, validate_password_complexity,
     check_rate_limit, record_rate_limit_failure,
     create_email_verification_token, create_password_reset_token, decode_email_token,
