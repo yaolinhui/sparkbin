@@ -1004,9 +1004,10 @@ def oauth_github_connect_redirect(
         )
 
     state = _create_connect_state(str(current_user.id))
+    redirect_uri = _get_oauth_redirect_url("github")  # 使用 API 域名回调
     params = urlencode({
         "client_id": settings.github_client_id,
-        "redirect_uri": f"{settings.frontend_url}/auth/oauth/github/connect/callback",
+        "redirect_uri": redirect_uri,
         "scope": "user:email public_repo",
         "state": state,
     })
@@ -1053,14 +1054,14 @@ def oauth_github_connect_callback(
 
     settings = get_settings()
 
-    # 交换 code 获取 access_token
+    # 交换 code 获取 access_token（redirect_uri 必须与授权请求时完全一致）
     token_resp = _get_http_client().post(
         "https://github.com/login/oauth/access_token",
         data={
             "client_id": settings.github_client_id,
             "client_secret": settings.github_client_secret,
             "code": code,
-            "redirect_uri": f"{settings.frontend_url}/auth/oauth/github/connect/callback",
+            "redirect_uri": _get_oauth_redirect_url("github"),
         },
         headers={"Accept": "application/json"},
         timeout=10.0,
@@ -1094,8 +1095,8 @@ def oauth_github_connect_callback(
             detail=f"Failed to save token: {str(e)}"
         )
 
-    # 重定向回前端，标记成功
-    return RedirectResponse(url=f"{settings.frontend_url}/?github_connect=success")
+    # 重定向回前端，通过 URL hash 标记成功（前端从 fragment 读取）
+    return RedirectResponse(url=f"{settings.frontend_url}/#github_connect=success")
 
 
 # ========== OAuth 绑定 / 解绑（已登录用户）==========
@@ -1348,7 +1349,7 @@ def oauth_bind_callback(
             detail="不支持的 OAuth 提供商"
         )
 
-    return RedirectResponse(url=f"{settings.frontend_url}/?oauth_bind_success=1")
+    return RedirectResponse(url=f"{settings.frontend_url}/#oauth_bind_success=1")
 
 
 @router.post("/oauth/unbind", response_model=BaseResponse)
