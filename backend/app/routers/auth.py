@@ -129,6 +129,107 @@ def login(
     )
 
 
+@router.post("/wechat", response_model=TokenPairResponse)
+def wechat_login(
+    request: WechatLoginRequest,
+    db: Session = Depends(get_db),
+):
+    """微信小程序登录（code -> openid -> JWT）"""
+    import uuid as uuid_lib
+    import httpx
+    from ..config import get_settings
+
+    settings = get_settings()
+    if not settings.wechat_appid or not settings.wechat_secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="微信小程序配置未设置"
+        )
+
+    # 调用微信 jscode2session
+    try:
+        resp = httpx.get(
+            "https://api.weixin.qq.com/sns/jscode2session",
+            params={
+                "appid": settings.wechat_appid,
+                "secret": settings.wechat_secret,
+                "js_code": request.code,
+                "grant_type": "authorization_code",
+            },
+            timeout=10.0,
+        )
+        wx_data = resp.json()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="微信服务器请求失败"
+        )
+
+    if wx_data.get("errcode"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"微信登录失败: {wx_data.get('errmsg', 'Unknown error')}"
+        )
+
+    openid = wx_data.get("openid")
+    session_key = wx_data.get("session_key")
+    unionid = wx_data.get("unionid")
+
+    if not openid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="无法获取微信 openid"
+        )
+
+    # 查找或创建用户
+    user = db.query(User).filter(User.wechat_openid == openid).first()
+    is_new_user = False
+
+    if not user:
+        # 创建新用户
+        is_new_user = True
+        random_suffix = uuid_lib.uuid4().hex[:8]
+        username = f"wx_{random_suffix}"
+
+        # 确保用户名唯一
+        while db.query(User).filter(User.username == username).first():
+            random_suffix = uuid_lib.uuid4().hex[:8]
+            username = f"wx_{random_suffix}"
+
+        user = User(
+            username=username,
+            wechat_openid=openid,
+            wechat_unionid=unionid,
+            wechat_session_key=session_key,
+            role=UserRole.USER,
+            ai_credits=settings.credits_grant_on_register,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    else:
+        # 更新 session_key
+        user.wechat_session_key = session_key
+        if unionid and not user.wechat_unionid:
+            user.wechat_unionid = unionid
+        db.commit()
+
+    token_data = {"sub": user.username, "role": user.role.value}
+    access_token = create_access_token(data=token_data, token_version=user.token_version)
+    refresh_token = create_refresh_token(data=token_data, token_version=user.token_version)
+
+    response_data = {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
+
+    if is_new_user:
+        response_data["is_new_user"] = True
+
+    return TokenPairResponse(**response_data)
+
+
 @router.post("/refresh", response_model=TokenPairResponse)
 def refresh_token(
     request: RefreshTokenRequest,

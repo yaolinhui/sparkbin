@@ -61,6 +61,17 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
+class WechatLoginRequest(BaseModel):
+    code: str = Field(..., min_length=1, description="微信小程序 wx.login 获取的 code")
+
+
+class WechatLoginResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    is_new_user: bool = False
+
+
 class OAuthUnbindRequest(BaseModel):
     provider: str = Field(..., pattern="^(google|github)$")
 
@@ -248,6 +259,24 @@ class AIChatRequest(BaseModel):
     project_id: Optional[UUID] = None
     stage_key: Optional[StageKey] = None
     enable_stage_loop: bool = True
+
+
+class ChatSyncRequest(BaseModel):
+    provider: AIProvider
+    messages: List[dict]
+    project_id: Optional[UUID] = None
+    stage_key: Optional[StageKey] = None
+
+
+class ChatJobResponse(BaseModel):
+    job_id: str
+
+
+class ChatJobStatusResponse(BaseModel):
+    status: str  # pending | running | completed | failed
+    partial_content: str = ""
+    content: Optional[str] = None
+    error: Optional[str] = None
 
 
 class AIPromoteSuggestRequest(BaseModel):

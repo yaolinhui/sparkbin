@@ -1,0 +1,63 @@
+// SparkBin Brutalist Design Tokens
+// 按移动端触控规范优化：最小触控 88rpx（44px），间距宽松
+
+page {
+  // === 颜色系统 ===
+  --brutal-bg: #0a0a0a;
+  --brutal-fg: #ffffff;
+  --brutal-accent: #ff2d55;
+  --brutal-muted: #888888;
+  --brutal-border: rgba(255, 255, 255, 0.25);
+  --brutal-card-bg: #141414;
+  --brutal-hover: #1f1f1f;
+  --brutal-success: #00c853;
+  --brutal-warning: #ffab00;
+  --brutal-error: #ff2d55;
+
+  // === 字体 ===
+  --brutal-font: 'JetBrainsMono', 'SF Mono', 'PingFang SC', 'Microsoft YaHei', monospace;
+  --brutal-font-size-xs: 22rpx;   // 11px - 最小可读
+  --brutal-font-size-sm: 24rpx;   // 12px
+  --brutal-font-size-base: 28rpx; // 14px - 正文
+  --brutal-font-size-md: 32rpx;   // 16px - 小标题
+  --brutal-font-size-lg: 36rpx;   // 18px - 标题
+  --brutal-font-size-xl: 44rpx;   // 22px - 大标题
+  --brutal-font-size-2xl: 52rpx;  // 26px
+  --brutal-font-size-3xl: 64rpx;  // 32px
+
+  // === 间距（移动端宽松） ===
+  --space-1: 4rpx;
+  --space-2: 8rpx;
+  --space-3: 12rpx;
+  --space-4: 16rpx;
+  --space-5: 20rpx;
+  --space-6: 24rpx;
+  --space-8: 32rpx;
+  --space-10: 40rpx;
+  --space-12: 48rpx;
+  --space-16: 64rpx;
+  --space-20: 80rpx;
+
+  // === 边框 ===
+  --brutal-border-width: 2rpx;
+  --brutal-border-radius: 0rpx;
+
+  // === 阴影 ===
+  --brutal-shadow: 4rpx 4rpx 0rpx var(--brutal-fg);
+
+  // === 导航栏 ===
+  --status-bar-height: 0rpx;
+  --nav-height: 96rpx;
+}
+
+// === 浅色模式 ===
+page[data-theme='light'] {
+  --brutal-bg: #ffffff;
+  --brutal-fg: #1a1a1a;
+  --brutal-accent: #ff2d55;
+  --brutal-muted: #999999;
+  --brutal-border: rgba(0, 0, 0, 0.15);
+  --brutal-card-bg: #f7f7f7;
+  --brutal-hover: #eeeeee;
+  --brutal-shadow: 4rpx 4rpx 0rpx var(--brutal-fg);
+}

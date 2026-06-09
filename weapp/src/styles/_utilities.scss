@@ -1,0 +1,127 @@
+// SparkBin Brutalist Utility Classes
+// 模拟 Tailwind 工具类，专为小程序优化
+
+// === Layout ===
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.flex-row { flex-direction: row; }
+.flex-1 { flex: 1; }
+.flex-wrap { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.items-end { align-items: flex-end; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
+
+// === Display ===
+.block { display: block; }
+.hidden { display: none; }
+
+// === Text ===
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+.text-xs { font-size: var(--brutal-font-size-xs); }
+.text-sm { font-size: var(--brutal-font-size-sm); }
+.text-base { font-size: var(--brutal-font-size-base); }
+.text-md { font-size: var(--brutal-font-size-md); }
+.text-lg { font-size: var(--brutal-font-size-lg); }
+.text-xl { font-size: var(--brutal-font-size-xl); }
+.text-2xl { font-size: var(--brutal-font-size-2xl); }
+.text-3xl { font-size: var(--brutal-font-size-3xl); }
+
+.font-bold { font-weight: bold; }
+.font-mono { font-family: var(--brutal-font); }
+.uppercase { text-transform: uppercase; }
+
+.text-fg { color: var(--brutal-fg); }
+.text-muted { color: var(--brutal-muted); }
+.text-accent { color: var(--brutal-accent); }
+.text-success { color: var(--brutal-success); }
+.text-warning { color: var(--brutal-warning); }
+.text-error { color: var(--brutal-error); }
+
+// === Spacing ===
+.m-0 { margin: 0; }
+.m-1 { margin: var(--space-1); }
+.m-2 { margin: var(--space-2); }
+.m-3 { margin: var(--space-3); }
+.m-4 { margin: var(--space-4); }
+.m-6 { margin: var(--space-6); }
+.m-8 { margin: var(--space-8); }
+
+.mt-1 { margin-top: var(--space-1); }
+.mt-2 { margin-top: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); }
+.mt-4 { margin-top: var(--space-4); }
+.mt-6 { margin-top: var(--space-6); }
+.mt-8 { margin-top: var(--space-8); }
+
+.mb-1 { margin-bottom: var(--space-1); }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.mb-4 { margin-bottom: var(--space-4); }
+.mb-6 { margin-bottom: var(--space-6); }
+.mb-8 { margin-bottom: var(--space-8); }
+
+.ml-1 { margin-left: var(--space-1); }
+.ml-2 { margin-left: var(--space-2); }
+.ml-3 { margin-left: var(--space-3); }
+.ml-4 { margin-left: var(--space-4); }
+
+.mr-1 { margin-right: var(--space-1); }
+.mr-2 { margin-right: var(--space-2); }
+.mr-3 { margin-right: var(--space-3); }
+.mr-4 { margin-right: var(--space-4); }
+
+.mx-4 { margin-left: var(--space-4); margin-right: var(--space-4); }
+.my-4 { margin-top: var(--space-4); margin-bottom: var(--space-4); }
+
+.p-0 { padding: 0; }
+.p-1 { padding: var(--space-1); }
+.p-2 { padding: var(--space-2); }
+.p-3 { padding: var(--space-3); }
+.p-4 { padding: var(--space-4); }
+.p-6 { padding: var(--space-6); }
+.p-8 { padding: var(--space-8); }
+
+.px-4 { padding-left: var(--space-4); padding-right: var(--space-4); }
+.px-6 { padding-left: var(--space-6); padding-right: var(--space-6); }
+.py-2 { padding-top: var(--space-2); padding-bottom: var(--space-2); }
+.py-3 { padding-top: var(--space-3); padding-bottom: var(--space-3); }
+.py-4 { padding-top: var(--space-4); padding-bottom: var(--space-4); }
+
+// === Sizing ===
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.min-h-screen { min-height: 100vh; }
+
+// === Background & Border ===
+.bg-bg { background-color: var(--brutal-bg); }
+.bg-card { background-color: var(--brutal-card-bg); }
+.bg-accent { background-color: var(--brutal-accent); }
+.bg-hover { background-color: var(--brutal-hover); }
+
+.border { border: var(--brutal-border-width) solid var(--brutal-border); }
+.border-b { border-bottom: var(--brutal-border-width) solid var(--brutal-border); }
+.border-t { border-top: var(--brutal-border-width) solid var(--brutal-border); }
+.border-l { border-left: var(--brutal-border-width) solid var(--brutal-border); }
+.border-r { border-right: var(--brutal-border-width) solid var(--brutal-border); }
+
+.rounded-none { border-radius: 0; }
+
+// === Overflow ===
+.overflow-hidden { overflow: hidden; }
+.overflow-scroll { overflow: scroll; }
+
+// === Position ===
+.relative { position: relative; }
+.absolute { position: absolute; }
+.fixed { position: fixed; }
+
+// === Gap ===
+.gap-1 { gap: var(--space-1); }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }

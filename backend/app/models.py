@@ -77,6 +77,11 @@ class User(Base):
     oauth_id = Column(String(255), nullable=True, index=True)
     avatar_url = Column(String(500), nullable=True)
 
+    # 微信小程序登录
+    wechat_openid = Column(String(100), nullable=True, index=True, unique=True)
+    wechat_unionid = Column(String(100), nullable=True)
+    wechat_session_key = Column(String(100), nullable=True)
+
     # 订阅/支付状态（Stripe Test Mode）
     subscription_status = Column(String(20), default="inactive", nullable=False)  # inactive / active / past_due / canceled
     stripe_customer_id = Column(String(255), nullable=True)
