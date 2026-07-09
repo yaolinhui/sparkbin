@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Literal
 from uuid import UUID
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, ConfigDict, Field, EmailStr
 
 from .models import ProjectStatus, StageKey, AIProvider, ProjectType
 
@@ -61,17 +61,6 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
-class WechatLoginRequest(BaseModel):
-    code: str = Field(..., min_length=1, description="微信小程序 wx.login 获取的 code")
-
-
-class WechatLoginResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    is_new_user: bool = False
-
-
 class OAuthUnbindRequest(BaseModel):
     provider: str = Field(..., pattern="^(google|github)$")
 
@@ -107,8 +96,7 @@ class UserInfo(BaseModel):
     quota: UserQuotaInfo
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PreferredModelUpdate(BaseModel):
@@ -136,8 +124,7 @@ class StageInfo(BaseModel):
     completed_at: Optional[datetime]
     is_locked: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StageContentUpdate(BaseModel):
@@ -151,8 +138,7 @@ class PromoteTaskInfo(BaseModel):
     done: bool
     sort_order: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PromoteTaskCreate(BaseModel):
@@ -169,8 +155,7 @@ class AISuggestionsInfo(BaseModel):
     channels: List[str]
     templates: List[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PromoteSuggestionInfo(BaseModel):
@@ -179,8 +164,7 @@ class PromoteSuggestionInfo(BaseModel):
     templates: List[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ========== 项目 ==========
@@ -211,8 +195,7 @@ class ProjectInfo(ProjectBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProjectDetail(ProjectInfo):
@@ -220,8 +203,7 @@ class ProjectDetail(ProjectInfo):
     promote_tasks: List[PromoteTaskInfo]
     promote_suggestions: List[PromoteSuggestionInfo]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProjectStatusUpdate(BaseModel):
@@ -259,24 +241,6 @@ class AIChatRequest(BaseModel):
     project_id: Optional[UUID] = None
     stage_key: Optional[StageKey] = None
     enable_stage_loop: bool = True
-
-
-class ChatSyncRequest(BaseModel):
-    provider: AIProvider
-    messages: List[dict]
-    project_id: Optional[UUID] = None
-    stage_key: Optional[StageKey] = None
-
-
-class ChatJobResponse(BaseModel):
-    job_id: str
-
-
-class ChatJobStatusResponse(BaseModel):
-    status: str  # pending | running | completed | failed
-    partial_content: str = ""
-    content: Optional[str] = None
-    error: Optional[str] = None
 
 
 class AIPromoteSuggestRequest(BaseModel):
@@ -399,8 +363,7 @@ class CreditTransactionInfo(BaseModel):
     reference_id: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PurchaseCreditsRequest(BaseModel):
@@ -467,8 +430,7 @@ class AgentTaskInfo(BaseModel):
     model: str = ""
     error: str = ""
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AgentRunStatus(BaseModel):
@@ -490,8 +452,7 @@ class AgentRunHistoryItem(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ========== AI 日志 ==========
@@ -504,5 +465,4 @@ class AICallLogInfo(BaseModel):
     status: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

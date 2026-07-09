@@ -15,9 +15,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Configure Aliyun PyPI mirror for faster builds in China
-RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ \
-    && pip config set install.trusted-host mirrors.aliyun.com
+# 可通过构建参数覆盖 PyPI 镜像，例如在中国大陆使用阿里云镜像
+ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+ARG PIP_TRUSTED_HOST=mirrors.aliyun.com
+
+RUN pip config set global.index-url ${PIP_INDEX_URL} \
+    && pip config set install.trusted-host ${PIP_TRUSTED_HOST}
 
 # Install Python dependencies (build context is backend/)
 COPY requirements.txt .

@@ -7,6 +7,8 @@ import time
 import sys
 import os
 
+import pytest
+
 # 临时处理 frontend/.env 中的 VITE_API_URL 导致 pydantic 报错的问题
 os.environ.pop("VITE_API_URL", None)
 os.environ["DATABASE_URL"] = "sqlite:///./sparkbin_v2.db"
@@ -20,6 +22,7 @@ from app.models import AIProvider
 from app.services.ai_proxy import AIProxyService
 
 
+@pytest.mark.asyncio
 async def test_idea_suggestions_latency():
     """测试想法建议生成的端到端延迟"""
     db = SessionLocal()

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Project, ProjectStatus, StageKey, Stage, PromoteStage } from '../types';
+import type { Project, ProjectStatus, StageKey, Stage, Stages } from '../types';
 import { projectsApi, type ProjectDetail } from '../services/api';
 
 interface ProjectState {
@@ -26,17 +26,25 @@ interface ProjectActions {
 
 // 转换后端项目数据为前端格式
 export function convertProjectDetailToProject(detail: ProjectDetail): Project {
-  const stages: Record<string, Stage | PromoteStage> = {};
+  // 先填充所有阶段的默认值，确保类型与 Stages 完全一致
+  const stages: Stages = {
+    idea: { content: '', completedAt: null, isLocked: false },
+    validate: { content: '', completedAt: null, isLocked: false },
+    prototype: { content: '', completedAt: null, isLocked: false },
+    ship: { content: '', completedAt: null, isLocked: false },
+    grow: { content: '', completedAt: null, isLocked: false },
+    monetize: { content: '', completedAt: null, isLocked: false, tasks: [], aiSuggestions: { channels: [], templates: [] } },
+  };
 
   detail.stages.forEach((stage) => {
-    const baseStage = {
+    const baseStage: Stage = {
       content: stage.content,
       completedAt: stage.completed_at,
       isLocked: stage.is_locked,
     };
 
     if (stage.stage_key === 'monetize') {
-      stages[stage.stage_key] = {
+      stages.monetize = {
         ...baseStage,
         tasks: detail.promote_tasks.map((t) => ({
           id: t.id,
@@ -59,7 +67,7 @@ export function convertProjectDetailToProject(detail: ProjectDetail): Project {
     status: detail.status,
     currentStage: detail.current_stage,
     projectType: (detail.project_type || 'other') as Project['projectType'],
-    stages: stages as unknown as Project['stages'],
+    stages,
     createdAt: detail.created_at,
     updatedAt: detail.updated_at,
   };

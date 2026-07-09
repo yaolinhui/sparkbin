@@ -182,16 +182,12 @@ class AIProxyService:
                     return {"success": False, "message": f"API 错误 (HTTP {response.status_code}): {error_text}"}
 
         except HTTPException as e:
-            import traceback
-            traceback.print_exc()
+            logger.exception("AI proxy config error: %s", e.detail)
             return {"success": False, "message": f"配置错误: {e.detail}"}
         except httpx.TimeoutException:
             return {"success": False, "message": "连接超时，请检查网络或 API 地址"}
         except Exception as e:
-            import sys
-            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
-            import traceback
-            traceback.print_exc()
+            logger.exception("AI proxy request failed")
             return {"success": False, "message": f"验证失败: {str(e)}"}
 
     async def chat_completion(
@@ -290,8 +286,7 @@ class AIProxyService:
                                     continue
 
         except HTTPException as e:
-            import traceback
-            traceback.print_exc()
+            logger.exception("HTTP Error in chat_completion")
             status = "error"
             error_msg = e.detail if hasattr(e, 'detail') else str(e)
             logger.error(f"HTTP Error in chat_completion: {error_msg}")
@@ -299,10 +294,7 @@ class AIProxyService:
             yield f"data: {error_data}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as e:
-            import sys
-            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
-            import traceback
-            traceback.print_exc()
+            logger.exception("AI proxy request failed")
             status = "error"
             error_msg = str(e)
             # 某些异常（如 httpx.ConnectError）message 为空，按类型构造友好提示
@@ -486,10 +478,7 @@ class AIProxyService:
                     return {"channels": [], "templates": []}
 
         except Exception as e:
-            import sys
-            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
-            import traceback
-            traceback.print_exc()
+            logger.exception("AI proxy request failed")
             status = "error"
             error_msg = str(e)
             raise
@@ -609,10 +598,7 @@ class AIProxyService:
             logger.error(f"Failed to parse AI response as JSON: {content[:200]}")
             return []
         except Exception as e:
-            import sys
-            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
-            import traceback
-            traceback.print_exc()
+            logger.exception("AI proxy request failed")
             status = "error"
             error_msg = str(e) or f"{provider.value} API 调用失败"
             raise HTTPException(
@@ -797,10 +783,7 @@ class AIProxyService:
             logger.error(f"Failed to parse AI response as JSON: {content[:200]}")
             return {"items": [], "tools": [], "analysis": ""}
         except Exception as e:
-            import sys
-            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
-            import traceback
-            traceback.print_exc()
+            logger.exception("AI proxy request failed")
             status = "error"
             error_msg = str(e) or f"{provider.value} API 调用失败"
             raise HTTPException(
@@ -960,10 +943,7 @@ class AIProxyService:
             logger.error(f"Failed to parse AI response as JSON: {content[:200]}")
             return {"variants": []}
         except Exception as e:
-            import sys
-            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
-            import traceback
-            traceback.print_exc()
+            logger.exception("AI proxy request failed")
             status = "error"
             error_msg = str(e) or f"{provider.value} API 调用失败"
             raise HTTPException(
@@ -1046,4 +1026,4 @@ def init_default_ai_configs(db: Session):
                 existing.default_model = env_model
 
     db.commit()
-    print("Default AI configs initialized")
+    logger.info("Default AI configs initialized")

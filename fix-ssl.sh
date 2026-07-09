@@ -1,22 +1,28 @@
 #!/bin/bash
 set -e
 
-cd /opt/sparkbin
+# SparkBin SSL enablement script
+# Usage: DOMAIN=api.example.com bash fix-ssl.sh
+# Requires: SSL certificate at /etc/letsencrypt/live/${DOMAIN}/
 
-echo "[1/3] 写入 Nginx SSL 配置..."
-cat > nginx.deploy.conf << 'NGINXEOF'
+DOMAIN="${DOMAIN:?DOMAIN must be set, e.g. api.example.com}"
+APP_DIR="${APP_DIR:-/opt/sparkbin}"
+
+echo "[1/3] Generating Nginx SSL config for ${DOMAIN}..."
+
+cat > "${APP_DIR}/nginx.deploy.conf" << EOF
 server {
     listen 80;
-    server_name api-sparkbin.wanchun.me;
+    server_name ${DOMAIN};
     return 301 https://\$server_name\$request_uri;
 }
 
 server {
     listen 443 ssl;
-    server_name api-sparkbin.wanchun.me;
+    server_name ${DOMAIN};
 
-    ssl_certificate /etc/letsencrypt/live/api-sparkbin.wanchun.me/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api-sparkbin.wanchun.me/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
 
     location / {
         proxy_pass http://backend:8000;
@@ -38,86 +44,20 @@ server {
         proxy_pass http://backend:8000/openapi.json;
     }
 }
-NGINXEOF
+EOF
 
-echo "[2/3] 写入 docker-compose 配置..."
-cat > docker-compose.deploy.yml << 'COMPOSEEOF'
-services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: sparkbin-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: sparkbin
-      POSTGRES_PASSWORD: sparkbin_pass_2024
-      POSTGRES_DB: sparkbin
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sparkbin -d sparkbin"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - sparkbin-net
+echo "[2/3] Checking SSL certificates..."
+if [ ! -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]; then
+    echo "WARNING: SSL certificate not found at /etc/letsencrypt/live/${DOMAIN}/"
+    echo "Obtain a certificate before restarting Nginx, e.g.:"
+    echo "  certbot certonly --standalone -d ${DOMAIN}"
+    echo "Or use your preferred ACME client."
+fi
 
-  backend:
-    image: sparkbin-backend:latest
-    container_name: sparkbin-backend
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: postgresql://sparkbin:sparkbin_pass_2024@postgres:5432/sparkbin
-      SECRET_KEY: \${SECRET_KEY}
-      ENCRYPTION_KEY: \${ENCRYPTION_KEY}
-      DEFAULT_USERNAME: admin
-      DEFAULT_PASSWORD: admin123456
-      API_PORT: 8000
-      DEBUG: "false"
-      CORS_ORIGINS: https://sparkbin.wanchun.me,https://wanchun.me
-      ENABLE_PAYMENTS: "false"
-      ENABLE_SAAS_FEATURES: "false"
-      FRONTEND_URL: https://sparkbin.wanchun.me
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "8000:8000"
-    networks:
-      - sparkbin-net
-
-  nginx:
-    image: nginx:alpine
-    container_name: sparkbin-nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.deploy.conf:/etc/nginx/conf.d/default.conf:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-    depends_on:
-      - backend
-    networks:
-      - sparkbin-net
-
-volumes:
-  postgres_data:
-
-networks:
-  sparkbin-net:
-    driver: bridge
-COMPOSEEOF
-
-echo "[3/3] 重启 Nginx 容器..."
-# 安全密钥必须从环境变量传入，脚本中不留硬编码值
-SECRET_KEY="${SECRET_KEY:?SECRET_KEY must be set}" \
-ENCRYPTION_KEY="${ENCRYPTION_KEY:?ENCRYPTION_KEY must be set}" \
+echo "[3/3] Restarting Nginx container..."
+cd "${APP_DIR}"
 docker compose -f docker-compose.deploy.yml up -d --force-recreate nginx
 
 echo ""
-echo "等待 3 秒..."
-sleep 3
-
-echo ""
-echo "验证 HTTPS..."
-curl -s "https://${DOMAIN:-api-sparkbin.wanchun.me}/health" && echo "  SSL 配置成功" || echo "  仍然失败"
+echo "SSL configuration updated for ${DOMAIN}"
+echo "Verify: curl -sf https://${DOMAIN}/health"

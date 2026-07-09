@@ -1,0 +1,56 @@
+server {
+    listen 80;
+    server_name _;  # Replace with your API domain, e.g. api.example.com
+
+    # Health check endpoint (no proxy needed)
+    location /health {
+        proxy_pass http://backend:8000/health;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # API and docs
+    location / {
+        proxy_pass http://backend:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location /docs {
+        proxy_pass http://backend:8000/docs;
+    }
+
+    location /openapi.json {
+        proxy_pass http://backend:8000/openapi.json;
+    }
+}
+
+# HTTPS configuration (uncomment after running certbot / fix-ssl.sh)
+# server {
+#     listen 443 ssl;
+#     server_name api.example.com;
+#
+#     ssl_certificate /etc/letsencrypt/live/api.example.com/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
+#
+#     location / {
+#         proxy_pass http://backend:8000;
+#         proxy_http_version 1.1;
+#         proxy_set_header Upgrade $http_upgrade;
+#         proxy_set_header Connection 'upgrade';
+#         proxy_set_header Host $host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#         proxy_cache_bypass $http_upgrade;
+#     }
+# }

@@ -105,7 +105,7 @@ export interface SmokeTest {
 }
 
 // 原型阶段专用类型
-export type PlatformType = 'web' | 'ios' | 'android' | 'miniapp' | 'desktop';
+export type PlatformType = 'web' | 'ios' | 'android' | 'desktop';
 
 export interface DesignTemplate {
   id: string;
@@ -267,7 +267,6 @@ export type ProjectType =
   | 'app'
   | 'plugin'
   | 'api'
-  | 'miniprogram'
   | 'desktop'
   | 'ai_agent'
   | 'game'
@@ -279,7 +278,6 @@ export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
   app: '移动 App',
   plugin: '浏览器插件',
   api: 'API 服务',
-  miniprogram: '小程序',
   desktop: '桌面应用',
   ai_agent: 'AI Agent',
   game: '游戏',
@@ -292,7 +290,6 @@ export const PROJECT_TYPE_ICONS: Record<ProjectType, string> = {
   app: '📱',
   plugin: '🔌',
   api: '⚡',
-  miniprogram: '📦',
   desktop: '💻',
   ai_agent: '🤖',
   game: '🎮',

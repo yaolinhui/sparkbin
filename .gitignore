@@ -7,11 +7,17 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+.swc/
 
 # Environment files
 .env
 .env.local
 .env.*.local
+backend/.env
+frontend/.env.production
+frontend/.env.local
+frontend/.env.*.local
+nginx.deploy.conf
 
 # IDE
 .vscode/
@@ -44,8 +50,6 @@ test-results/
 # Build artifacts
 dist-bundle.html
 .next/
-package.json
-package-lock.json
 
 # Claude Code local settings (may contain sensitive data)
 .claude/settings.local.json

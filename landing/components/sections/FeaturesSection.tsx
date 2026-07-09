@@ -69,11 +69,11 @@ export function FeaturesSection({
               </div>
               <div className="p-4 md:p-6 font-mono text-xs leading-relaxed overflow-x-auto">
                 <div className="mb-3">
-                  <span style={{ color: 'var(--brutal-muted)' }}>[System] Project "AI简历助手" entered stage 02 VALIDATE</span>
+                  <span style={{ color: 'var(--brutal-muted)' }}>[System] Project &ldquo;AI简历助手&rdquo; entered stage 02 VALIDATE</span>
                 </div>
                 <div className="mb-3">
                   <span style={{ color: 'var(--brutal-accent)' }}>Coach Pixel:</span>
-                  <span style={{ color: 'var(--brutal-text)' }}> 你验证了什么？别跟我说"我觉得有人需要"。</span>
+                  <span style={{ color: 'var(--brutal-text)' }}> 你验证了什么？别跟我说&ldquo;我觉得有人需要&rdquo;。</span>
                 </div>
                 <div className="mb-3">
                   <span style={{ color: 'var(--brutal-text-secondary)' }}>User: 我发了问卷，收了 47 份，63% 说愿意付费。</span>

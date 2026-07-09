@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
 
@@ -61,14 +61,10 @@ class Settings(BaseSettings):
     # 可信 Host 列表（生产环境逗号分隔，如 localhost,api.example.com）
     allowed_hosts: str = "localhost"
 
-    # 微信小程序配置
-    wechat_appid: str = ""
-    wechat_secret: str = ""
-
-    class Config:
-        # 自动加载 .env 文件中的配置
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
 
 _DEFAULT_SECRET_KEY = "your-secret-key-change-this"

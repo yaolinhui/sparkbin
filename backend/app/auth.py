@@ -61,7 +61,7 @@ def verify_captcha(ip: str, answer: str) -> bool:
     if not stored:
         return False
     correct_answer, expire_at, _salt = stored
-    now = datetime.utcnow().timestamp()
+    now = datetime.now(timezone.utc).timestamp()
     del _captcha_store[ip]
     if now > expire_at:
         return False
@@ -363,40 +363,6 @@ async def get_current_user_from_query_or_header(
         )
 
     payload = decode_token(token, expected_type="access")
-
-    if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    username: str = payload.get("sub")
-    if username is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    user = db.query(User).filter(User.username == username).first()
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    # 校验 token_version
-    token_ver = payload.get("ver", 0)
-    if token_ver != user.token_version:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been revoked",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    return user
 
     if payload is None:
         raise HTTPException(

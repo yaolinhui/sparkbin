@@ -24,7 +24,7 @@ services:
       - sparkbin-net
 
   backend:
-    image: ghcr.io/yourname/sparkbin-backend:latest
+    image: ghcr.io/${GHCR_NAMESPACE:-yourname}/sparkbin-backend:${SPARKBIN_VERSION:-latest}
     container_name: sparkbin-backend
     restart: unless-stopped
     env_file:
@@ -38,7 +38,7 @@ services:
       - sparkbin-net
 
   frontend:
-    image: ghcr.io/yourname/sparkbin-frontend:latest
+    image: ghcr.io/${GHCR_NAMESPACE:-yourname}/sparkbin-frontend:${SPARKBIN_VERSION:-latest}
     container_name: sparkbin-frontend
     restart: unless-stopped
     networks:

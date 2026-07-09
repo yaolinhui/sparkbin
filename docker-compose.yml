@@ -21,8 +21,8 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: docker/Dockerfile.backend
+      context: backend/
+      dockerfile: ../docker/Dockerfile.backend
     container_name: sparkbin-backend
     restart: unless-stopped
     env_file:
@@ -40,7 +40,9 @@ services:
       context: .
       dockerfile: docker/Dockerfile.frontend
       args:
-        VITE_API_URL: http://localhost:8000
+        # 在 Docker 网络中前端容器应通过 backend 服务名访问后端。
+        # 浏览器直接访问时，需配合 Caddy/Nginx 反向代理到 backend:8000。
+        VITE_API_URL: ${VITE_API_URL:-http://backend:8000}
     container_name: sparkbin-frontend
     restart: unless-stopped
     ports:

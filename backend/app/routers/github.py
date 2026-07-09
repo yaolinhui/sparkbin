@@ -2,7 +2,7 @@ import uuid
 import json
 import httpx
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -143,7 +143,7 @@ async def create_project_from_github(
         # 如果当前阶段在目标阶段之前，标记为已完成
         if idx < stage_keys.index(stage):
             stage_obj.is_locked = False
-            stage_obj.completed_at = datetime.utcnow()
+            stage_obj.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.add(stage_obj)
 
     # 将 README 内容写入 Idea 阶段

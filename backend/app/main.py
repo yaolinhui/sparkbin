@@ -153,12 +153,6 @@ def _ensure_sqlite_columns():
         if "token_version" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0 NOT NULL"))
             conn.execute(text("UPDATE users SET token_version = 0"))
-        if "wechat_openid" not in user_columns:
-            conn.execute(text("ALTER TABLE users ADD COLUMN wechat_openid VARCHAR(100)"))
-        if "wechat_unionid" not in user_columns:
-            conn.execute(text("ALTER TABLE users ADD COLUMN wechat_unionid VARCHAR(100)"))
-        if "wechat_session_key" not in user_columns:
-            conn.execute(text("ALTER TABLE users ADD COLUMN wechat_session_key VARCHAR(100)"))
 
     # projects 表
     project_columns = {col["name"] for col in inspector.get_columns("projects")}

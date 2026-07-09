@@ -11,8 +11,8 @@ echo "========================================"
 
 # ========== 配置区 ==========
 # ⚠️ 安全警告：请勿在脚本中硬编码敏感信息！请通过环境变量传入。
-DOMAIN="${DOMAIN:-api-sparkbin.wanchun.me}"
-FRONTEND_DOMAIN="${FRONTEND_DOMAIN:-sparkbin.wanchun.me}"
+DOMAIN="${DOMAIN:-api.sparkbin.example.com}"
+FRONTEND_DOMAIN="${FRONTEND_DOMAIN:-sparkbin.example.com}"
 REPO_URL="${REPO_URL:-https://github.com/yaolinhui/sparkbin.git}"
 BRANCH="${BRANCH:-deploy/production}"
 APP_DIR="${APP_DIR:-/opt/sparkbin}"

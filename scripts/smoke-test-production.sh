@@ -3,8 +3,8 @@
 # Usage: bash scripts/smoke-test-production.sh
 set -e
 
-FRONTEND_URL="https://sparkbin.wanchun.me"
-API_URL="https://api-sparkbin.wanchun.me"
+FRONTEND_URL="${FRONTEND_URL:?FRONTEND_URL must be set, e.g. https://sparkbin.example.com}"
+API_URL="${API_URL:?API_URL must be set, e.g. https://api.sparkbin.example.com}"
 HEALTH_ENDPOINT="$API_URL/health"
 AUTH_ME_ENDPOINT="$API_URL/auth/me"
 
@@ -88,7 +88,7 @@ fi
 
 # 5. SSL certificate validity
 echo "[5/7] SSL certificate check..."
-EXPIRY=$(echo | openssl s_client -servername api-sparkbin.wanchun.me -connect api-sparkbin.wanchun.me:443 2>/dev/null | openssl x509 -noout -dates 2>/dev/null | grep notAfter | cut -d= -f2)
+EXPIRY=$(echo | openssl s_client -servername "$(echo "$API_URL" | sed 's|https://||')" -connect "$(echo "$API_URL" | sed 's|https://||'):443" 2>/dev/null | openssl x509 -noout -dates 2>/dev/null | grep notAfter | cut -d= -f2)
 if [ -n "$EXPIRY" ]; then
   EXPIRY_TS=$(date -d "$EXPIRY" +%s 2>/dev/null || date -j -f "%b %d %H:%M:%S %Y %Z" "$EXPIRY" +%s 2>/dev/null)
   NOW_TS=$(date +%s)

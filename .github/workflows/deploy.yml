@@ -26,31 +26,30 @@ jobs:
             echo "Step 1: Sync code from GitHub"
             echo "=========================================="
             cd /opt/sparkbin
+            # Stash any local uncommitted changes before syncing
+            if ! git diff --quiet || ! git diff --cached --quiet; then
+              echo "WARNING: server has uncommitted changes. Stashing..."
+              git stash push -m "auto-stash-before-deploy-$(date +%s)"
+            fi
             # Use GITHUB_TOKEN to fetch private repo, then hard reset to match exactly
             git fetch https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/yaolinhui/sparkbin.git master
             git reset --hard FETCH_HEAD
 
             echo ""
             echo "=========================================="
-            echo "Step 2: Build backend Docker image"
+            echo "Step 2: Build and restart containers"
             echo "=========================================="
-            docker build -f docker/Dockerfile.backend -t sparkbin-backend:latest backend/
+            docker compose -f docker-compose.deploy.yml up -d --build
 
             echo ""
             echo "=========================================="
-            echo "Step 3: Restart containers"
-            echo "=========================================="
-            docker compose -f docker-compose.deploy.yml up -d
-
-            echo ""
-            echo "=========================================="
-            echo "Step 4: Cleanup unused images"
+            echo "Step 3: Cleanup unused images"
             echo "=========================================="
             docker image prune -f
 
             echo ""
             echo "=========================================="
-            echo "Step 5: Health check"
+            echo "Step 4: Health check"
             echo "=========================================="
             sleep 5
             curl -sf http://localhost:8000/health && echo "" && echo "Backend is healthy!" || echo "WARNING: Health check failed"

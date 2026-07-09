@@ -14,6 +14,7 @@ from ..schemas import (
 )
 from ..services.logger import OperationLogger
 from ..config import get_settings
+from datetime import datetime, timezone
 from sqlalchemy import func
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -237,7 +238,7 @@ def delete_project(
         raise HTTPException(status_code=404, detail="Project not found")
 
     from datetime import datetime
-    project.deleted_at = datetime.utcnow()
+    project.deleted_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.commit()
 
     # 记录日志
@@ -397,7 +398,7 @@ def complete_stage(
 
     # 完成当前阶段
     stage.is_locked = True
-    stage.completed_at = datetime.utcnow()
+    stage.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
     # 解锁下一个阶段
     stage_order = ["idea", "validate", "prototype", "ship", "grow", "monetize"]

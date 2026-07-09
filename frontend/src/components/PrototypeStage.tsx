@@ -65,16 +65,6 @@ const PLATFORMS: PlatformConfig[] = [
     recommendReason: '默认首选 — 开发成本最低，用户触达最快',
   },
   {
-    type: 'miniapp',
-    label: '小程序',
-    icon: Smartphone,
-    description: '微信/支付宝生态，即用即走',
-    details: '依托超级 App（微信/支付宝/抖音）的流量入口，用户无需下载安装，扫码或搜索即可使用。适合服务类、工具类、电商类产品。',
-    pros: ['庞大流量池', '即用即走', '社交传播强', '开发成本较低'],
-    cons: ['平台规则限制', '功能受限', '依赖微信生态'],
-    recommendReason: '适合需要利用社交裂变或微信生态的项目',
-  },
-  {
     type: 'ios',
     label: 'iOS App',
     icon: Smartphone,
@@ -112,9 +102,6 @@ function getPlatformRecommendation(project: Project): { platform: PlatformType; 
   const title = project.title.toLowerCase();
   const text = pain + ' ' + title;
 
-  if (/微信|小程序|社交|群|朋友圈|扫码|附近/.test(text)) {
-    return { platform: 'miniapp', reason: '项目关键词匹配小程序生态（微信/社交/扫码）' };
-  }
   if (/相机|拍照|定位|导航|地图|传感器|原生|推送/.test(text)) {
     return { platform: 'ios', reason: '项目需要调用手机原生能力（相机/定位/推送）' };
   }
