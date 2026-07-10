@@ -55,6 +55,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
 
   // Captcha & lockout states
@@ -144,7 +145,10 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
 
   if (!isOpen) return null;
 
-  const resetErrors = () => setError(null);
+  const resetErrors = () => {
+    setError(null);
+    setRegisterSuccess(null);
+  };
 
   // 获取验证码
   const fetchCaptcha = async () => {
@@ -242,9 +246,12 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
         honeypot,
         form_start_time: formStartTime > 0 ? formStartTime / 1000 : 0,
       });
-      setAuthToken(response.access_token);
-      setRefreshToken(response.refresh_token);
-      onLogin();
+      setRegisterSuccess(response.message || '注册成功，请查收验证邮件完成验证。');
+      // 清空注册表单，避免重复提交
+      setRegUsername('');
+      setRegEmail('');
+      setRegPassword('');
+      setRegConfirm('');
     } catch (err) {
       setError(err instanceof Error ? err.message : '注册失败');
     } finally {
@@ -531,7 +538,23 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
 
         {/* Register Tab */}
         {tab === 'register' && (
-          <form onSubmit={handleRegister} className="p-6 space-y-4 animate-fade-in-slide">
+          registerSuccess ? (
+            <div className="p-6 space-y-4 animate-fade-in-slide text-center">
+              <p className="text-sm font-mono text-brutal-success mb-4">
+                {registerSuccess}
+              </p>
+              <button
+                type="button"
+                onClick={() => { switchTab('login'); }}
+                className="px-6 py-2 bg-brutal-accent text-brutal-bg font-mono font-bold
+                           border-2 border-brutal-accent hover:bg-brutal-bg hover:text-brutal-accent transition-colors
+                           active:translate-x-[2px] active:translate-y-[2px]"
+              >
+                前往登录
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleRegister} className="p-6 space-y-4 animate-fade-in-slide">
             {/* Honeypot: 隐藏字段，机器人会填，人类看不到 */}
             <input
               type="text"
@@ -665,6 +688,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
               )}
             </button>
           </form>
+          )
         )}
 
         {/* Forgot Password Tab */}

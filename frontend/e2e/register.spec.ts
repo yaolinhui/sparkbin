@@ -67,11 +67,14 @@ test.describe('注册流程', () => {
       console.log('Registration error visible:', errorText);
     }
 
-    // 检查是否登录成功（token 写入 localStorage）
+    // 注册后不应自动登录，应显示成功提示
+    const successVisible = await page.locator('text=/注册成功|验证邮件/i').first().isVisible().catch(() => false);
+    expect(successVisible).toBeTruthy();
+
     const token = await page.evaluate(() => localStorage.getItem('sparkbin_token'));
     console.log('Token after register:', token ? 'exists' : 'null');
 
-    expect(token).toBeTruthy();
+    expect(token).toBeNull();
   });
 
   test('注册已存在的用户名应显示具体错误', async ({ page }) => {

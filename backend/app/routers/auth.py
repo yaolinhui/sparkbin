@@ -376,7 +376,7 @@ def update_theme_preference(
 
 # ========== 注册 / 邮箱验证 / 密码重置 ==========
 
-@router.post("/register", response_model=TokenPairResponse)
+@router.post("/register", response_model=BaseResponse)
 def register(
     request: RegisterRequest,
     db: Session = Depends(get_db),
@@ -464,14 +464,11 @@ def register(
     except Exception as e:
         logging.getLogger(__name__).exception("验证邮件发送异常")
 
-    # 自动登录
-    token_data = {"sub": new_user.username, "role": new_user.role.value}
-    access_token = create_access_token(data=token_data, token_version=new_user.token_version)
-    refresh_token = create_refresh_token(data=token_data, token_version=new_user.token_version)
-
-    return TokenPairResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
+    # 注册成功后不再自动签发 token，防止未验证邮箱被抢注后直接使用账号。
+    # 用户需点击验证邮件中的链接完成验证，再手动登录。
+    return BaseResponse(
+        success=True,
+        message="注册成功，请查收验证邮件完成验证。",
     )
 
 

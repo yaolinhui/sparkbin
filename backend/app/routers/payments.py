@@ -216,6 +216,17 @@ def create_checkout_session_demo(
     if not item:
         raise HTTPException(status_code=400, detail="至少选择一个项目")
 
+    if not _is_allowed_redirect_url(request.success_url):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="success_url 域名不在白名单中"
+        )
+    if not _is_allowed_redirect_url(request.cancel_url):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="cancel_url 域名不在白名单中"
+        )
+
     try:
         line_items = [
             {

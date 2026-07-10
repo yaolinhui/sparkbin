@@ -74,7 +74,7 @@ setup('authenticate', async ({ page }) => {
   // 验证登录成功
   let token = await page.evaluate(() => localStorage.getItem('sparkbin_token'));
 
-  // 如果登录仍然失败，注册一个新用户
+  // 如果登录仍然失败，注册一个新用户，然后手动登录
   if (!token) {
     // 切换到注册标签
     const registerTab = page.getByRole('button', { name: '注册' });
@@ -97,7 +97,22 @@ setup('authenticate', async ({ page }) => {
     await page.waitForResponse((resp) => resp.url().includes('/auth/register'), { timeout: 10000 }).catch(() => {});
     await page.waitForLoadState('networkidle');
 
-    // 注册后自动登录，等待 token 写入
+    // 注册后不再自动登录，切换到登录并手动登录
+    const loginTab = page.getByRole('button', { name: '登录' });
+    await loginTab.click();
+    await page.waitForTimeout(300);
+
+    const loginInputs = page.locator('input');
+    await loginInputs.nth(1).fill(testUsername); // 第0个是honeypot隐藏字段
+    await loginInputs.nth(2).fill(testPassword);
+
+    const loginSubmitButton = page.locator('form').getByRole('button', { name: '登录' });
+    await loginSubmitButton.click();
+
+    await page.waitForResponse(resp => resp.url().includes('/auth/login'), { timeout: 10000 }).catch(() => {});
+    await page.waitForLoadState('networkidle');
+
+    // 等待 token 写入
     await expect.poll(async () => {
       const t = await page.evaluate(() => localStorage.getItem('sparkbin_token'));
       return t;

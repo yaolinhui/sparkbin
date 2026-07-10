@@ -16,6 +16,7 @@ sys.dont_write_bytecode = True
 
 import bcrypt
 import pytest
+from datetime import datetime, timezone
 from fastapi import HTTPException, Request, Response
 from fastapi.testclient import TestClient
 from urllib.parse import urlparse, parse_qs
@@ -212,6 +213,40 @@ class TestRegisterUserEnumeration:
             )
         assert exc_info.value.status_code == 400
         assert "用户名或邮箱已被使用" in exc_info.value.detail
+
+
+class TestRegisterNoAutoLogin:
+    def test_register_does_not_issue_tokens(self, db_session):
+        """注册成功后不应自动签发 token，防止未验证邮箱被抢注后直接使用账号"""
+        from fastapi import Request
+
+        valid_start_time = datetime.now(timezone.utc).timestamp() - 5.0
+        request = Request({
+            "type": "http",
+            "headers": [],
+            "scheme": "http",
+            "path": "/auth/register",
+            "server": ("testserver", 80),
+        })
+
+        response = register(
+            request=RegisterRequest(
+                username="newnologin",
+                email="newnologin@example.com",
+                password="NewP@ssw0rd!1",
+                honeypot="",
+                form_start_time=valid_start_time,
+            ),
+            req=request,
+            db=db_session,
+        )
+
+        assert response.success is True
+        assert "验证邮件" in response.message
+        # 确认数据库中存在该用户，但邮箱未验证
+        user = db_session.query(User).filter(User.username == "newnologin").first()
+        assert user is not None
+        assert user.email_verified is False
 
 
 class TestOAuthStateSingleUse:

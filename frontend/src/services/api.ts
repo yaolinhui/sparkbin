@@ -314,6 +314,11 @@ export interface LoginResponse {
   token_type: string;
 }
 
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+}
+
 export interface RegisterRequest {
   username: string;
   email: string;
@@ -349,7 +354,7 @@ export const authApi = {
     }),
 
   register: (data: RegisterRequest) =>
-    request<LoginResponse>('/auth/register', {
+    request<RegisterResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
