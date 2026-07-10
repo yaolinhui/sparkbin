@@ -35,6 +35,7 @@ from app.auth import (
     record_rate_limit_failure,
     create_password_reset_token,
     create_email_verification_token,
+    create_refresh_token,
     decode_email_token,
     decode_token,
     generate_captcha,
@@ -43,6 +44,7 @@ from app.auth import (
 from app.agents.orchestrator import AgentOrchestrator
 from app.routers.auth import (
     register,
+    refresh_token,
     _create_bind_state, _verify_bind_state,
     _create_connect_state, _verify_connect_state,
     _sanitize_avatar_url,
@@ -51,7 +53,7 @@ from app.routers.auth import (
     oauth_google_callback,
 )
 from app.auth import _get_client_ip
-from app.schemas import RegisterRequest
+from app.schemas import RegisterRequest, RefreshTokenRequest
 
 
 # Create an in-memory SQLite DB for tests
@@ -298,6 +300,34 @@ class TestClientIpExtraction:
 
     def test_returns_unknown_for_none_request(self):
         assert _get_client_ip(None) == "unknown"
+
+    def test_ignores_x_real_ip_from_untrusted_client(self):
+        """直连公网 IP 时，X-Real-IP 应被忽略，防止伪造"""
+        from fastapi import Request
+
+        scope = {
+            "type": "http",
+            "client": ("1.2.3.4", 12345),
+            "headers": [
+                (b"x-real-ip", b"203.0.113.1"),
+            ],
+        }
+        request = Request(scope)
+        assert _get_client_ip(request) == "1.2.3.4"
+
+    def test_trusts_x_real_ip_from_loopback(self):
+        """来自 127.0.0.1 的请求应信任 X-Real-IP"""
+        from fastapi import Request
+
+        scope = {
+            "type": "http",
+            "client": ("127.0.0.1", 12345),
+            "headers": [
+                (b"x-real-ip", b"203.0.113.1"),
+            ],
+        }
+        request = Request(scope)
+        assert _get_client_ip(request) == "203.0.113.1"
 
 
 class TestAvatarUrlSanitization:
@@ -558,6 +588,48 @@ class TestCaptcha:
         assert verify_captcha("127.0.0.3", "wrong") is False
         # 超过 3 次错误后，验证码已被销毁，任何答案都失败
         assert verify_captcha("127.0.0.3", "still_wrong") is False
+
+
+class TestRefreshTokenRotation:
+    """Refresh Token Rotation 安全回归测试"""
+
+    def test_refresh_token_invalidates_after_use(self, db_session):
+        """同一条 refresh token 只能成功刷新一次，第二次应失效"""
+        user = User(
+            username="refreshuser",
+            email="refresh@example.com",
+            password_hash=hash_password("MyP@ssw0rd!1"),
+            role=UserRole.USER,
+            token_version=5,
+        )
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+
+        refresh_token_str = create_refresh_token(
+            data={"sub": user.username},
+            token_version=user.token_version,
+        )
+
+        # 第一次刷新应成功
+        first_response = refresh_token(
+            request=RefreshTokenRequest(refresh_token=refresh_token_str),
+            db=db_session,
+        )
+        assert first_response.access_token
+        assert first_response.refresh_token
+
+        # 用户版本号已递增
+        db_session.refresh(user)
+        assert user.token_version == 6
+
+        # 使用同一条旧 refresh token 再次刷新应失败
+        with pytest.raises(HTTPException) as exc_info:
+            refresh_token(
+                request=RefreshTokenRequest(refresh_token=refresh_token_str),
+                db=db_session,
+            )
+        assert exc_info.value.status_code == 401
 
 
 class TestGitHubConnectAuth:

@@ -1,6 +1,7 @@
 import logging
 import os
 import hashlib
+import ipaddress
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -32,6 +33,25 @@ _MAX_AUTH_ATTEMPTS_ENTRIES = 10000  # 防止内存 DoS：限制总 IP 条目数
 _captcha_store: dict[str, tuple[str, float]] = {}
 _CAPTCHA_TTL_SECONDS = 300  # 5分钟
 _MAX_CAPTCHA_ENTRIES = 1000  # 防止内存 DoS：限制验证码条目数
+
+# 可信反向代理网段（仅当直接连接 IP 属于这些网段时才信任 X-Real-IP）
+_TRUSTED_PROXY_NETWORKS = [
+    ipaddress.ip_network("127.0.0.1/32"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("fc00::/7"),
+]
+
+
+def _is_trusted_proxy(ip: str) -> bool:
+    """判断 IP 是否属于可信反向代理网段"""
+    try:
+        addr = ipaddress.ip_address(ip)
+        return any(addr in net for net in _TRUSTED_PROXY_NETWORKS)
+    except ValueError:
+        return False
 
 
 def generate_captcha(ip: str) -> dict:
@@ -95,24 +115,26 @@ def verify_captcha(ip: str, answer: str) -> bool:
 
 
 def _get_client_ip(request: Request | None) -> str:
-    """获取客户端真实 IP（优先信任反向代理设置的 X-Real-IP）。
+    """获取客户端真实 IP。
 
     安全说明：
-    - 生产环境必须在 nginx 中配置 `proxy_set_header X-Real-IP $remote_addr;`，
-      这样本函数拿到的是代理看到的真实客户端 IP。
-    - 不再使用 X-Forwarded-For 最左侧值，因为该值可被客户端任意伪造，
-      会导致速率限制、审计日志被绕过。
+    - 仅当直接连接方是可信赖的反向代理（如 nginx、内网 LB）时，才使用 X-Real-IP。
+    - 若后端被直连（客户端 IP 不在可信代理网段），则忽略 X-Real-IP，
+      防止攻击者伪造该头部绕过速率限制或嫁祸他人。
+    - 不使用 X-Forwarded-For，因为该值可被客户端任意伪造。
     """
     if request is None:
         return "unknown"
 
-    # 优先使用可信反向代理设置的 X-Real-IP
+    client_ip = request.client.host if request.client else None
+    if not client_ip:
+        return "unknown"
+
     real_ip = request.headers.get("x-real-ip")
-    if real_ip:
+    if real_ip and _is_trusted_proxy(client_ip):
         return real_ip.strip()
 
-    # 无代理时直接使用连接 IP
-    return request.client.host if request.client else "unknown"
+    return client_ip
 
 
 def get_login_attempts_remaining(request: Request) -> int:

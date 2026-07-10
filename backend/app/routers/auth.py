@@ -30,7 +30,7 @@ from ..models import AIProvider
 from ..config import get_settings
 from ..encryption import get_encryption_manager
 from ..email import send_verification_email, send_password_reset_email
-from sqlalchemy import func
+from sqlalchemy import func, update
 from datetime import datetime, timedelta, timezone
 from uuid import UUID as UuidType
 
@@ -161,21 +161,27 @@ def refresh_token(
             detail="用户不存在",
         )
 
-    # 校验 refresh token 的 version
+    # 校验 refresh token 的 version，并原子化递增。
+    # 使用 UPDATE ... WHERE token_version = ? 的乐观锁，确保并发请求中只有一条能成功刷新，
+    # 避免同一条旧 refresh token 被多次使用。
     token_ver = payload.get("ver", 0)
-    if token_ver != user.token_version:
+    result = db.execute(
+        update(User)
+        .where(User.id == user.id, User.token_version == token_ver)
+        .values(token_version=User.token_version + 1)
+    )
+    db.commit()
+    if result.rowcount == 0:
+        # 已被其他并发请求刷新过，当前 token 视为已撤销
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has been revoked",
         )
 
-    # Refresh Token Rotation：递增 token_version，使旧 refresh token 失效
-    user.token_version += 1
-    db.commit()
-
+    new_version = token_ver + 1
     token_data = {"sub": user.username, "role": user.role.value}
-    new_access_token = create_access_token(data=token_data, token_version=user.token_version)
-    new_refresh_token = create_refresh_token(data=token_data, token_version=user.token_version)
+    new_access_token = create_access_token(data=token_data, token_version=new_version)
+    new_refresh_token = create_refresh_token(data=token_data, token_version=new_version)
 
     return TokenPairResponse(
         access_token=new_access_token,
