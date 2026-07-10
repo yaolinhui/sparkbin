@@ -51,6 +51,10 @@ class VerifyEmailResponse(BaseModel):
     message: str
 
 
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
 class TokenPairResponse(BaseModel):
     access_token: str
     refresh_token: str

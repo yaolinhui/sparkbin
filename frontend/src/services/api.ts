@@ -404,8 +404,14 @@ export const authApi = {
       body: JSON.stringify(data),
     }),
 
-  verifyEmail: (token: string) =>
+  verifyEmailStatus: (token: string) =>
     request<VerifyEmailResponse>(`/auth/verify-email?token=${encodeURIComponent(token)}`),
+
+  verifyEmail: (token: string) =
+    request<VerifyEmailResponse>('/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    }),
 
   getOAuthUrl: (provider: 'google' | 'github') =>
     `${API_BASE_URL}/auth/oauth/${provider}`,

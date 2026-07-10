@@ -24,7 +24,7 @@ from ..schemas import (
     LoginRequest, LoginResponse, ChangePasswordRequest, BaseResponse,
     PreferredModelUpdate, PetConfigUpdate, ThemePreferenceUpdate,
     TokenPairResponse, RefreshTokenRequest, OAuthUnbindRequest,
-    RegisterRequest, ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailResponse,
+    RegisterRequest, ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailRequest, VerifyEmailResponse,
 )
 from ..models import AIProvider
 from ..config import get_settings
@@ -479,8 +479,8 @@ def register(
 
 
 @router.get("/verify-email", response_model=VerifyEmailResponse)
-def verify_email(token: str, db: Session = Depends(get_db)):
-    """邮箱验证回调"""
+def verify_email_status(token: str, db: Session = Depends(get_db)):
+    """邮箱验证链接状态检查（GET 不消耗 token，防止邮件客户端预取导致链接失效）"""
     payload = decode_email_token(token, "email_verify")
     if not payload:
         return VerifyEmailResponse(success=False, message="验证链接无效或已过期")
@@ -489,7 +489,40 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     email = payload.get("email")
     token_id = payload.get("jti")
 
-    user = db.query(User).filter(User.id == user_id).first()
+    from uuid import UUID
+    try:
+        user_uuid = UUID(user_id)
+    except (ValueError, TypeError):
+        return VerifyEmailResponse(success=False, message="验证链接无效或已过期")
+
+    user = db.query(User).filter(User.id == user_uuid).first()
+    if not user or user.email != email:
+        return VerifyEmailResponse(success=False, message="用户不存在")
+
+    if not token_id or user.email_verification_token_id != token_id:
+        return VerifyEmailResponse(success=False, message="验证链接无效或已使用")
+
+    return VerifyEmailResponse(success=True, message="验证链接有效，请点击确认完成验证")
+
+
+@router.post("/verify-email", response_model=VerifyEmailResponse)
+def verify_email(request: VerifyEmailRequest, db: Session = Depends(get_db)):
+    """确认完成邮箱验证（POST 实际消耗 token）"""
+    payload = decode_email_token(request.token, "email_verify")
+    if not payload:
+        return VerifyEmailResponse(success=False, message="验证链接无效或已过期")
+
+    user_id = payload.get("sub")
+    email = payload.get("email")
+    token_id = payload.get("jti")
+
+    from uuid import UUID
+    try:
+        user_uuid = UUID(user_id)
+    except (ValueError, TypeError):
+        return VerifyEmailResponse(success=False, message="验证链接无效或已过期")
+
+    user = db.query(User).filter(User.id == user_uuid).first()
     if not user or user.email != email:
         return VerifyEmailResponse(success=False, message="用户不存在")
 
@@ -557,7 +590,16 @@ def reset_password(
     email = payload.get("email")
     token_id = payload.get("jti")
 
-    user = db.query(User).filter(User.id == user_id).first()
+    from uuid import UUID
+    try:
+        user_uuid = UUID(user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="重置链接无效或已过期"
+        )
+
+    user = db.query(User).filter(User.id == user_uuid).first()
     if not user or user.email != email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

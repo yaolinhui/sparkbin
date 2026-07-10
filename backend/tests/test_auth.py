@@ -45,6 +45,8 @@ from app.agents.orchestrator import AgentOrchestrator
 from app.routers.auth import (
     register,
     refresh_token,
+    verify_email_status,
+    verify_email,
     _create_bind_state, _verify_bind_state,
     _create_connect_state, _verify_connect_state,
     _sanitize_avatar_url,
@@ -53,7 +55,7 @@ from app.routers.auth import (
     oauth_google_callback,
 )
 from app.auth import _get_client_ip
-from app.schemas import RegisterRequest, RefreshTokenRequest
+from app.schemas import RegisterRequest, RefreshTokenRequest, VerifyEmailRequest
 
 
 # Create an in-memory SQLite DB for tests
@@ -630,6 +632,65 @@ class TestRefreshTokenRotation:
                 db=db_session,
             )
         assert exc_info.value.status_code == 401
+
+
+class TestVerifyEmailLinkPrefetch:
+    """邮箱验证链接预取消耗防护回归测试"""
+
+    def _create_user_with_email_token(self, db_session):
+        user = User(
+            username="verifyuser",
+            email="verify@example.com",
+            password_hash=hash_password("MyP@ssw0rd!1"),
+            role=UserRole.USER,
+            email_verified=False,
+            email_verification_token_id="verify-token-id-1",
+        )
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        return user
+
+    def test_get_verify_email_does_not_consume_token(self, db_session):
+        """GET /verify-email 只检查状态，不应消耗 token"""
+        user = self._create_user_with_email_token(db_session)
+        token = create_email_verification_token(
+            str(user.id), user.email, token_id=user.email_verification_token_id
+        )
+
+        response = verify_email_status(token=token, db=db_session)
+        assert response.success is True
+
+        db_session.refresh(user)
+        assert user.email_verified is False
+        assert user.email_verification_token_id == "verify-token-id-1"
+
+    def test_post_verify_email_consumes_token(self, db_session):
+        """POST /verify-email 才实际消耗 token"""
+        user = self._create_user_with_email_token(db_session)
+        token = create_email_verification_token(
+            str(user.id), user.email, token_id=user.email_verification_token_id
+        )
+
+        response = verify_email(request=VerifyEmailRequest(token=token), db=db_session)
+        assert response.success is True
+
+        db_session.refresh(user)
+        assert user.email_verified is True
+        assert user.email_verification_token_id is None
+
+    def test_post_verify_email_rejects_reused_token(self, db_session):
+        """已消耗的 token 再次 POST 应失败"""
+        user = self._create_user_with_email_token(db_session)
+        token = create_email_verification_token(
+            str(user.id), user.email, token_id=user.email_verification_token_id
+        )
+
+        first = verify_email(request=VerifyEmailRequest(token=token), db=db_session)
+        assert first.success is True
+
+        second = verify_email(request=VerifyEmailRequest(token=token), db=db_session)
+        assert second.success is False
 
 
 class TestGitHubConnectAuth:
