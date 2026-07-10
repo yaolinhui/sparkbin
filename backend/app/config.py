@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     debug: bool = False
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
+    # Token 过期时间（分钟/天）
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 7
+
     # GitHub 备份（可选）
     github_token: str = ""
     github_owner: str = ""
@@ -159,6 +163,26 @@ def get_settings() -> Settings:
             "SECURITY ERROR: DEFAULT_PASSWORD is using a known weak value. "
             "Please generate a strong DEFAULT_PASSWORD in your .env file before starting the application."
         )
+
+    # 校验 CREDITS_PACKS 格式，避免运行时解析异常
+    if settings.credits_packs:
+        for pack_str in settings.credits_packs.split(","):
+            pack_str = pack_str.strip()
+            if not pack_str:
+                continue
+            try:
+                price_str, credits_str = pack_str.split(":")
+                price = float(price_str.strip())
+                credits = int(credits_str.strip())
+            except ValueError:
+                raise ValueError(
+                    "SECURITY ERROR: CREDITS_PACKS format is invalid. "
+                    "Expected 'price:credits,price:credits,...' with positive numbers."
+                )
+            if price < 0 or credits <= 0:
+                raise ValueError(
+                    "SECURITY ERROR: CREDITS_PACKS must contain positive price and credits."
+                )
 
     return settings
 

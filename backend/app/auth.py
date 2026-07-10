@@ -268,10 +268,6 @@ def hash_password(password: str) -> str:
     return hashed.decode('utf-8')
 
 
-_ACCESS_TOKEN_EXPIRE_MINUTES = 15
-_REFRESH_TOKEN_EXPIRE_DAYS = 7
-
-
 def _create_token(data: dict, expires_delta: timedelta, token_type: str, token_version: int = 0) -> str:
     """创建 JWT Token（内部通用）"""
     settings = get_settings()
@@ -286,16 +282,18 @@ def _create_token(data: dict, expires_delta: timedelta, token_type: str, token_v
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None, token_version: int = 0) -> str:
-    """创建 Access Token（默认15分钟）"""
+    """创建 Access Token（默认15分钟，可通过 ACCESS_TOKEN_EXPIRE_MINUTES 覆盖）"""
     if expires_delta is None:
-        expires_delta = timedelta(minutes=_ACCESS_TOKEN_EXPIRE_MINUTES)
+        settings = get_settings()
+        expires_delta = timedelta(minutes=settings.access_token_expire_minutes)
     return _create_token(data, expires_delta, "access", token_version)
 
 
 def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None, token_version: int = 0) -> str:
-    """创建 Refresh Token（默认7天）"""
+    """创建 Refresh Token（默认7天，可通过 REFRESH_TOKEN_EXPIRE_DAYS 覆盖）"""
     if expires_delta is None:
-        expires_delta = timedelta(days=_REFRESH_TOKEN_EXPIRE_DAYS)
+        settings = get_settings()
+        expires_delta = timedelta(days=settings.refresh_token_expire_days)
     return _create_token(data, expires_delta, "refresh", token_version)
 
 
