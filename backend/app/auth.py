@@ -35,49 +35,83 @@ _MAX_CAPTCHA_ENTRIES = 1000  # 防止内存 DoS：限制验证码条目数
 
 
 def generate_captcha(ip: str) -> dict:
-    """生成纯文本数学验证码（乘法，扩大数值范围，增加时间戳 salt 防预计算）"""
+    """生成纯文本数学验证码。
+
+    安全设计：
+    - 使用 10-99 的两位数和加/减/乘混合运算，显著扩大答案空间。
+    - 不再返回 answer_hash，避免客户端离线暴力破解。
+    - 服务端记录剩余可尝试次数，错误超过 3 次立即销毁该验证码。
+    """
     import random
-    a = random.randint(3, 20)
-    b = random.randint(3, 20)
-    answer = str(a * b)
-    question = f"{a} x {b}"
-    # 加入时间戳 salt，使同一答案的 hash 每次不同，防止预计算彩虹表
-    salt = str(int(datetime.now(timezone.utc).timestamp()))
-    answer_hash = hashlib.sha256(f"{answer}:{salt}".encode("utf-8")).hexdigest()
+    operations = [
+        ("+", lambda x, y: x + y),
+        ("-", lambda x, y: x - y),
+        ("x", lambda x, y: x * y),
+    ]
+    a = random.randint(10, 99)
+    b = random.randint(10, 99)
+    # 减法保证结果非负
+    if a < b:
+        a, b = b, a
+    op_symbol, op_func = random.choice(operations)
+    answer = str(op_func(a, b))
+    question = f"{a} {op_symbol} {b}"
     expire_at = datetime.now(timezone.utc).timestamp() + _CAPTCHA_TTL_SECONDS
+
     # 防 DoS：限制存储容量
     if len(_captcha_store) >= _MAX_CAPTCHA_ENTRIES:
-        # 移除最早的一半条目
         sorted_keys = sorted(_captcha_store.keys(), key=lambda k: _captcha_store[k][1])
         for k in sorted_keys[:_MAX_CAPTCHA_ENTRIES // 2]:
             del _captcha_store[k]
-    _captcha_store[ip] = (answer, expire_at, salt)
-    return {"question": question, "answer_hash": answer_hash}
+
+    # 存储格式：(answer, expire_at, remaining_attempts)
+    _captcha_store[ip] = (answer, expire_at, 3)
+    return {"question": question}
 
 
 def verify_captcha(ip: str, answer: str) -> bool:
-    """验证验证码答案，验证后清除记录"""
+    """验证验证码答案，超过最大尝试次数或过期则清除记录。"""
     stored = _captcha_store.get(ip)
     if not stored:
         return False
-    correct_answer, expire_at, _salt = stored
+    correct_answer, expire_at, remaining_attempts = stored
     now = datetime.now(timezone.utc).timestamp()
-    del _captcha_store[ip]
+
     if now > expire_at:
+        del _captcha_store[ip]
         return False
-    return answer.strip() == correct_answer
+
+    if answer.strip() == correct_answer:
+        del _captcha_store[ip]
+        return True
+
+    # 答案错误，递减剩余次数
+    remaining_attempts -= 1
+    if remaining_attempts <= 0:
+        del _captcha_store[ip]
+    else:
+        _captcha_store[ip] = (correct_answer, expire_at, remaining_attempts)
+    return False
 
 
 def _get_client_ip(request: Request | None) -> str:
-    """获取客户端真实 IP（支持代理环境）"""
+    """获取客户端真实 IP（优先信任反向代理设置的 X-Real-IP）。
+
+    安全说明：
+    - 生产环境必须在 nginx 中配置 `proxy_set_header X-Real-IP $remote_addr;`，
+      这样本函数拿到的是代理看到的真实客户端 IP。
+    - 不再使用 X-Forwarded-For 最左侧值，因为该值可被客户端任意伪造，
+      会导致速率限制、审计日志被绕过。
+    """
     if request is None:
         return "unknown"
-    forwarded_for = request.headers.get("x-forwarded-for")
-    if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
+
+    # 优先使用可信反向代理设置的 X-Real-IP
     real_ip = request.headers.get("x-real-ip")
     if real_ip:
         return real_ip.strip()
+
+    # 无代理时直接使用连接 IP
     return request.client.host if request.client else "unknown"
 
 
@@ -145,6 +179,11 @@ def check_rate_limit(request: Request, action: str) -> None:
 
 def record_rate_limit_failure(request: Request, action: str) -> None:
     """记录一次认证失败（测试模式下跳过）"""
+    record_rate_limit_attempt(request, action)
+
+
+def record_rate_limit_attempt(request: Request, action: str) -> None:
+    """记录一次动作尝试，用于通用端点速率限制（如 forgot-password 邮件发送）。"""
     if _is_rate_limit_disabled():
         return
 
@@ -250,19 +289,25 @@ def decode_token(token: str, expected_type: Optional[str] = None) -> Optional[di
         return None
 
 
-def create_email_verification_token(user_id: str, email: str) -> str:
+def create_email_verification_token(user_id: str, email: str, token_id: str | None = None) -> str:
     """创建邮箱验证 token（24小时有效）"""
+    data = {"sub": user_id, "email": email}
+    if token_id:
+        data["jti"] = token_id
     return _create_token(
-        {"sub": user_id, "email": email},
+        data,
         timedelta(hours=24),
         "email_verify"
     )
 
 
-def create_password_reset_token(user_id: str, email: str) -> str:
+def create_password_reset_token(user_id: str, email: str, token_id: str | None = None) -> str:
     """创建密码重置 token（24小时有效）"""
+    data = {"sub": user_id, "email": email}
+    if token_id:
+        data["jti"] = token_id
     return _create_token(
-        {"sub": user_id, "email": email},
+        data,
         timedelta(hours=24),
         "password_reset"
     )
@@ -423,6 +468,20 @@ def init_default_user(db: Session):
             "Please restart the application and clear __pycache__."
         ) from exc
 
+    # 安全检查：默认口令必须满足复杂度要求，且不能是已知弱组合
+    is_complex, error_msg = validate_password_complexity(settings.default_password)
+    if not is_complex:
+        raise ValueError(
+            f"SECURITY ERROR: DEFAULT_PASSWORD does not meet complexity requirements: {error_msg}. "
+            "Please set a strong DEFAULT_PASSWORD in your .env file before starting the application."
+        )
+
+    if settings.default_username.lower() == "admin":
+        raise ValueError(
+            "SECURITY ERROR: DEFAULT_USERNAME cannot be 'admin'. "
+            "Please change DEFAULT_USERNAME in your .env file before starting the application."
+        )
+
     existing_user = db.query(User).filter(
         User.username == settings.default_username
     ).first()
@@ -455,9 +514,3 @@ def init_default_user(db: Session):
     )
     db.add(new_user)
     db.commit()
-
-    if settings.default_username == "admin" and settings.default_password == "admin":
-        raise ValueError(
-            "SECURITY ERROR: Default user is using admin/admin. "
-            "Please change the default credentials via environment variables before starting the application."
-        )

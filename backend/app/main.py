@@ -153,6 +153,14 @@ def _ensure_sqlite_columns():
         if "token_version" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0 NOT NULL"))
             conn.execute(text("UPDATE users SET token_version = 0"))
+        if "password_reset_token_id" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN password_reset_token_id VARCHAR(64)"))
+        if "email_verification_token_id" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN email_verification_token_id VARCHAR(64)"))
+        if "oauth_bind_token_id" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN oauth_bind_token_id VARCHAR(64)"))
+        if "oauth_connect_token_id" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN oauth_connect_token_id VARCHAR(64)"))
 
     # projects 表
     project_columns = {col["name"] for col in inspector.get_columns("projects")}
@@ -206,7 +214,10 @@ app = FastAPI(
     title="SparkBin API",
     description="SparkBin 后端 API",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 
 # CORS 配置
@@ -226,9 +237,16 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestSizeLimitMiddleware)
 
 # 可信 Host 中间件（防止 Host Header 攻击）
+# 注意：DEBUG 模式不应关闭 Host 校验，生产环境必须显式配置 ALLOWED_HOSTS
+_allowed_hosts = [h.strip() for h in settings.allowed_hosts.split(',') if h.strip()]
+if not _allowed_hosts or "*" in _allowed_hosts:
+    raise ValueError(
+        "SECURITY ERROR: ALLOWED_HOSTS cannot be empty or contain '*'. "
+        "Please set explicit allowed hosts in your .env file before starting the application."
+    )
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["*"] if settings.debug else getattr(settings, 'allowed_hosts', 'localhost').split(','),
+    allowed_hosts=_allowed_hosts,
 )
 
 # 注册路由
@@ -245,7 +263,7 @@ def root():
     return {
         "name": "SparkBin API",
         "version": "1.0.0",
-        "docs": "/docs",
+        "health": "/health",
         "ci_deployed": "github-actions-v2"
     }
 

@@ -1,4 +1,5 @@
 import httpx
+import logging
 import os
 import secrets
 from typing import Optional
@@ -14,7 +15,7 @@ from ..auth import (
     get_current_user, get_current_user_from_query_or_header, hash_password,
     _get_client_ip,
     check_login_rate_limit, record_login_failure, validate_password_complexity,
-    check_rate_limit, record_rate_limit_failure,
+    check_rate_limit, record_rate_limit_failure, record_rate_limit_attempt,
     create_email_verification_token, create_password_reset_token, decode_email_token,
     generate_captcha, verify_captcha, is_captcha_required, get_login_attempts_remaining,
 )
@@ -63,6 +64,9 @@ def _record_audit_log(
 def get_captcha(req: Request):
     """获取数学验证码"""
     client_ip = _get_client_ip(req)
+    # 限制单个 IP 频繁获取验证码（5 次 / 5 分钟）
+    check_rate_limit(req, "captcha")
+    record_rate_limit_attempt(req, "captcha")
     return generate_captcha(client_ip)
 
 
@@ -400,20 +404,14 @@ def register(
             detail="请求异常，请重试",
         )
 
-    # 检查用户名唯一性
-    if db.query(User).filter(User.username == request.username).first():
+    # 检查用户名和邮箱唯一性（使用统一错误消息，防止账号枚举攻击）
+    username_exists = db.query(User).filter(User.username == request.username).first() is not None
+    email_exists = db.query(User).filter(User.email == request.email).first() is not None
+    if username_exists or email_exists:
         record_rate_limit_failure(req, "注册")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用户名已被使用"
-        )
-
-    # 检查邮箱唯一性
-    if db.query(User).filter(User.email == request.email).first():
-        record_rate_limit_failure(req, "注册")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="邮箱已被注册"
+            detail="用户名或邮箱已被使用"
         )
 
     # 密码复杂度校验
@@ -455,13 +453,16 @@ def register(
     # 发送验证邮件（失败不阻断注册，但记录错误）
     settings = get_settings()
     try:
-        token = create_email_verification_token(str(new_user.id), new_user.email)
+        token_id = secrets.token_urlsafe(16)
+        new_user.email_verification_token_id = token_id
+        db.commit()
+        token = create_email_verification_token(str(new_user.id), new_user.email, token_id=token_id)
         verify_url = f"{settings.frontend_url}/verify-email?token={token}"
         success, error = send_verification_email(new_user.email, new_user.username, verify_url)
         if not success:
-            print(f"[EMAIL ERROR] 验证邮件发送失败: {error}")
+            logging.getLogger(__name__).error(f"验证邮件发送失败: {error}")
     except Exception as e:
-        print(f"[EMAIL ERROR] 验证邮件发送异常: {e}")
+        logging.getLogger(__name__).exception("验证邮件发送异常")
 
     # 自动登录
     token_data = {"sub": new_user.username, "role": new_user.role.value}
@@ -483,12 +484,18 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
     user_id = payload.get("sub")
     email = payload.get("email")
+    token_id = payload.get("jti")
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user or user.email != email:
         return VerifyEmailResponse(success=False, message="用户不存在")
 
+    # 单次使用校验：防止验证链接被重放
+    if not token_id or user.email_verification_token_id != token_id:
+        return VerifyEmailResponse(success=False, message="验证链接无效或已使用")
+
     user.email_verified = True
+    user.email_verification_token_id = None
     db.commit()
 
     return VerifyEmailResponse(success=True, message="邮箱验证成功")
@@ -498,8 +505,14 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 def forgot_password(
     request: ForgotPasswordRequest,
     db: Session = Depends(get_db),
+    req: Request = None,
 ):
     """忘记密码：发送重置邮件"""
+    if req:
+        check_rate_limit(req, "forgot_password")
+        # 无论邮箱是否存在，均记录本次调用，防止端点被滥用滥发邮件
+        record_rate_limit_attempt(req, "forgot_password")
+
     user = db.query(User).filter(User.email == request.email).first()
 
     # 用户不存在时返回模糊成功消息，防止邮箱枚举攻击
@@ -509,7 +522,10 @@ def forgot_password(
     # 用户存在，尝试发送邮件
     settings = get_settings()
     try:
-        token = create_password_reset_token(str(user.id), user.email)
+        token_id = secrets.token_urlsafe(16)
+        user.password_reset_token_id = token_id
+        db.commit()
+        token = create_password_reset_token(str(user.id), user.email, token_id=token_id)
         reset_url = f"{settings.frontend_url}/reset-password?token={token}"
         success, error = send_password_reset_email(user.email, user.username or user.email, reset_url)
         if not success:
@@ -536,12 +552,20 @@ def reset_password(
 
     user_id = payload.get("sub")
     email = payload.get("email")
+    token_id = payload.get("jti")
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user or user.email != email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="用户不存在"
+        )
+
+    # 单次使用校验：防止重置链接被重放
+    if not token_id or user.password_reset_token_id != token_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="重置链接无效或已使用"
         )
 
     is_valid, error_msg = validate_password_complexity(request.new_password)
@@ -552,6 +576,8 @@ def reset_password(
         )
 
     user.password_hash = hash_password(request.new_password)
+    user.require_password_change = False
+    user.password_reset_token_id = None
     user.token_version += 1  # 使所有旧 token 失效
     db.commit()
 
@@ -631,10 +657,13 @@ def _verify_oauth_state(state: str) -> bool:
     return payload is not None and payload.get("oauth") is True
 
 
-def _create_connect_state(user_id: str) -> str:
+def _create_connect_state(user_id: str, token_id: str | None = None) -> str:
     """生成 GitHub 增量授权 state 参数（包含 user_id，10分钟有效）"""
+    data = {"oauth": "connect", "user_id": user_id}
+    if token_id:
+        data["jti"] = token_id
     return create_access_token(
-        data={"oauth": "connect", "user_id": user_id},
+        data=data,
         expires_delta=timedelta(minutes=10)
     )
 
@@ -647,10 +676,13 @@ def _verify_connect_state(state: str) -> Optional[dict]:
     return None
 
 
-def _create_bind_state(user_id: str) -> str:
+def _create_bind_state(user_id: str, token_id: str | None = None) -> str:
     """生成 OAuth 绑定 state 参数（包含 user_id，10分钟有效）"""
+    data = {"oauth": "bind", "user_id": user_id}
+    if token_id:
+        data["jti"] = token_id
     return create_access_token(
-        data={"oauth": "bind", "user_id": user_id},
+        data=data,
         expires_delta=timedelta(minutes=10)
     )
 
@@ -678,6 +710,19 @@ def _generate_username_from_email(email: str, db: Session) -> str:
         username = f"{base}_{suffix}"
         suffix += 1
     return username
+
+
+def _sanitize_avatar_url(url: str | None) -> str | None:
+    """校验 OAuth 返回的头像 URL，仅允许 http(s) scheme，防止 XSS/注入。"""
+    if not url:
+        return None
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return None
+    if not parsed.netloc:
+        return None
+    return url
 
 
 def _oauth_success_redirect(access_token: str, refresh_token: str) -> RedirectResponse:
@@ -791,7 +836,7 @@ def oauth_google_callback(
             # 自动绑定到现有账号（无论是有密码还是完全空白）
             existing.oauth_provider = "google"
             existing.oauth_id = google_id
-            existing.avatar_url = picture or existing.avatar_url
+            existing.avatar_url = _sanitize_avatar_url(picture) or existing.avatar_url
             if not existing.email_verified:
                 existing.email_verified = True
             db.commit()
@@ -804,7 +849,7 @@ def oauth_google_callback(
                 email_verified=True,
                 oauth_provider="google",
                 oauth_id=google_id,
-                avatar_url=picture,
+                avatar_url=_sanitize_avatar_url(picture),
                 role=UserRole.USER,
                 require_password_change=False,
             )
@@ -954,7 +999,7 @@ def oauth_github_callback(
                 # 自动绑定到现有账号（无论是有密码还是完全空白）
                 existing.oauth_provider = "github"
                 existing.oauth_id = github_id
-                existing.avatar_url = avatar_url or existing.avatar_url
+                existing.avatar_url = _sanitize_avatar_url(avatar_url) or existing.avatar_url
                 if not existing.email_verified:
                     existing.email_verified = True
                 db.commit()
@@ -970,7 +1015,7 @@ def oauth_github_callback(
                     email_verified=True,
                     oauth_provider="github",
                     oauth_id=github_id,
-                    avatar_url=avatar_url,
+                    avatar_url=_sanitize_avatar_url(avatar_url),
                     role=UserRole.USER,
                     require_password_change=False,
                 )
@@ -988,7 +1033,7 @@ def oauth_github_callback(
                 email_verified=False,
                 oauth_provider="github",
                 oauth_id=github_id,
-                avatar_url=avatar_url,
+                avatar_url=_sanitize_avatar_url(avatar_url),
                 role=UserRole.USER,
                 require_password_change=False,
             )
@@ -1017,7 +1062,10 @@ def oauth_github_connect_redirect(
             detail="GitHub OAuth not configured"
         )
 
-    state = _create_connect_state(str(current_user.id))
+    state_token_id = secrets.token_urlsafe(16)
+    current_user.oauth_connect_token_id = state_token_id
+    db.commit()
+    state = _create_connect_state(str(current_user.id), token_id=state_token_id)
     # 使用和普通登录相同的回调地址，GitHub OAuth App 只需配置一个 callback URL
     redirect_uri = _get_oauth_redirect_url("github")
     params = urlencode({
@@ -1039,6 +1087,7 @@ def _handle_github_connect_callback(code: str, state: str, db: Session):
         )
 
     user_id = payload.get("user_id")
+    token_id = payload.get("jti")
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1060,6 +1109,13 @@ def _handle_github_connect_callback(code: str, state: str, db: Session):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
+        )
+
+    # 单次使用校验：防止 connect state 被重放
+    if not token_id or user.oauth_connect_token_id != token_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired connect state"
         )
 
     settings = get_settings()
@@ -1098,10 +1154,15 @@ def _handle_github_connect_callback(code: str, state: str, db: Session):
         user.github_access_token_encrypted = encrypted_token
         user.github_token_scope = scope
         user.github_token_updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        # Connect state 已使用，立即失效
+        user.oauth_connect_token_id = None
         db.commit()
-    except Exception:
-        # 加密失败，不阻断流程
-        pass
+    except Exception as exc:
+        logging.getLogger(__name__).exception("Failed to encrypt GitHub connect token")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="GitHub token 加密保存失败，请稍后重试"
+        ) from exc
 
     # 重定向回前端，通过 URL hash 标记成功（前端从 fragment 读取）
     return RedirectResponse(url=f"{settings.frontend_url}/#github_connect=success")
@@ -1145,7 +1206,10 @@ def oauth_bind_redirect(
             detail="GitHub OAuth 未配置"
         )
 
-    state = _create_bind_state(str(current_user.id))
+    state_token_id = secrets.token_urlsafe(16)
+    current_user.oauth_bind_token_id = state_token_id
+    db.commit()
+    state = _create_bind_state(str(current_user.id), token_id=state_token_id)
     redirect_uri = _get_oauth_bind_redirect_url(provider)
 
     if provider == "google":
@@ -1184,6 +1248,7 @@ def oauth_bind_callback(
         )
 
     user_id_str = payload.get("user_id")
+    token_id = payload.get("jti")
     if not user_id_str:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1203,6 +1268,13 @@ def oauth_bind_callback(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
+        )
+
+    # 单次使用校验：防止 bind state 被重放
+    if not token_id or user.oauth_bind_token_id != token_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired bind state"
         )
 
     settings = get_settings()
@@ -1266,8 +1338,9 @@ def oauth_bind_callback(
 
         user.oauth_provider = "google"
         user.oauth_id = google_id
-        if picture:
-            user.avatar_url = picture
+        sanitized_picture = _sanitize_avatar_url(picture)
+        if sanitized_picture:
+            user.avatar_url = sanitized_picture
         if email and not user.email_verified:
             user.email_verified = True
         db.commit()
@@ -1355,8 +1428,9 @@ def oauth_bind_callback(
 
         user.oauth_provider = "github"
         user.oauth_id = github_id
-        if avatar_url:
-            user.avatar_url = avatar_url
+        sanitized_avatar_url = _sanitize_avatar_url(avatar_url)
+        if sanitized_avatar_url:
+            user.avatar_url = sanitized_avatar_url
         if email and not user.email_verified:
             user.email_verified = True
         db.commit()
@@ -1366,6 +1440,10 @@ def oauth_bind_callback(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="不支持的 OAuth 提供商"
         )
+
+    # Bind state 已使用，立即失效
+    user.oauth_bind_token_id = None
+    db.commit()
 
     return RedirectResponse(url=f"{settings.frontend_url}/#oauth_bind_success=1")
 

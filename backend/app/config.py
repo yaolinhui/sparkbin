@@ -1,10 +1,12 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+import base64
+import re
 
 
 class Settings(BaseSettings):
     # 数据库
-    database_url: str = "postgresql://postgres:password@localhost:5432/sparkbin"
+    database_url: str = "sqlite:///./sparkbin.db"
 
     # 安全密钥
     secret_key: str = "your-secret-key-change-this"
@@ -17,7 +19,7 @@ class Settings(BaseSettings):
     # API 配置
     api_port: int = 8000
     debug: bool = False
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174"
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     # GitHub 备份（可选）
     github_token: str = ""
@@ -61,7 +63,7 @@ class Settings(BaseSettings):
     # 可信 Host 列表（生产环境逗号分隔，如 localhost,api.example.com）
     allowed_hosts: str = "localhost"
 
-    model_config = SettingsConfigDict(
+model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
     )
@@ -69,6 +71,44 @@ class Settings(BaseSettings):
 
 _DEFAULT_SECRET_KEY = "your-secret-key-change-this"
 _DEFAULT_ENCRYPTION_KEY = "your-32-byte-encryption-key-here!"
+
+
+def _is_hex(key: str) -> bool:
+    """判断字符串是否全为十六进制字符。"""
+    if not key:
+        return False
+    return all(c in "0123456789abcdefABCDEF" for c in key)
+
+
+_FERNET_KEY_PATTERN = re.compile(r"^[A-Za-z0-9_-]{43}(=?)$")
+
+
+def _decode_fernet_key(key: str) -> bytes:
+    """验证并解码 Fernet 密钥。
+
+    要求：
+    - 仅包含 urlsafe base64 字符（A-Z, a-z, 0-9, -, _）和末尾可选的 = 填充。
+    - 长度为 43（无填充）或 44（有填充）。
+    - 解码后恰好 32 字节。
+    """
+    if not _FERNET_KEY_PATTERN.match(key):
+        raise ValueError(
+            "Fernet key must be 43 (unpadded) or 44 (padded) URL-safe base64 characters."
+        )
+    padded = key + "=" * (-len(key) % 4)
+    decoded = base64.urlsafe_b64decode(padded)
+    if len(decoded) != 32:
+        raise ValueError(f"Fernet key must decode to 32 bytes, got {len(decoded)}")
+    return decoded
+
+
+def _is_valid_fernet_key(key: str) -> bool:
+    """判断字符串是否为合法的 Fernet 密钥格式。"""
+    try:
+        _decode_fernet_key(key)
+        return True
+    except Exception:
+        return False
 
 
 @lru_cache()
@@ -80,9 +120,20 @@ def get_settings() -> Settings:
             "SECURITY ERROR: SECRET_KEY is not set or is using the default value. "
             "Please set a strong SECRET_KEY in your .env file before starting the application."
         )
-    if len(settings.secret_key) < 32:
+    # HS256 需要至少 256 位（32 字节）熵。若用户使用十六进制，需至少 64 字符；
+    # 若使用随机 ASCII 字符串，需至少 32 字符。
+    if _is_hex(settings.secret_key):
+        if len(settings.secret_key) < 64:
+            raise ValueError(
+                "SECURITY ERROR: SECRET_KEY appears to be hexadecimal but is less than 64 characters "
+                "(32 bytes). Please generate a 64-character hex string with: "
+                "python -c \"import secrets; print(secrets.token_hex(32))\""
+            )
+    elif len(settings.secret_key) < 32:
         raise ValueError(
-            "SECURITY ERROR: SECRET_KEY must be at least 32 characters long."
+            "SECURITY ERROR: SECRET_KEY must be at least 32 characters long "
+            "or 64 hexadecimal characters. "
+            "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
         )
 
     if not settings.encryption_key or settings.encryption_key == _DEFAULT_ENCRYPTION_KEY:
@@ -90,9 +141,23 @@ def get_settings() -> Settings:
             "SECURITY ERROR: ENCRYPTION_KEY is not set or is using the default value. "
             "Please set a strong ENCRYPTION_KEY in your .env file before starting the application."
         )
-    if len(settings.encryption_key) < 32:
+    # ENCRYPTION_KEY 必须是标准 Fernet 密钥：32 字节 urlsafe base64。
+    # 兼容 43 字符无填充（secrets.token_urlsafe(32)）和 44 字符有填充（Fernet.generate_key()）。
+    if not _is_valid_fernet_key(settings.encryption_key):
         raise ValueError(
-            "SECURITY ERROR: ENCRYPTION_KEY must be at least 32 characters long."
+            "SECURITY ERROR: ENCRYPTION_KEY must be a valid 32-byte URL-safe base64 Fernet key. "
+            "Generate one with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+        )
+
+    # 拒绝已知弱口令默认值，强制用户设置强密码
+    _default_weak_passwords = {
+        "admin", "password", "123456", "admin123", "changeme",
+        "changeme-strong-password", "password123", "qwerty", "12345678",
+    }
+    if settings.default_password and settings.default_password.lower() in _default_weak_passwords:
+        raise ValueError(
+            "SECURITY ERROR: DEFAULT_PASSWORD is using a known weak value. "
+            "Please generate a strong DEFAULT_PASSWORD in your .env file before starting the application."
         )
 
     return settings

@@ -105,6 +105,10 @@ class User(Base):
     # 安全字段
     require_password_change = Column(Boolean, default=False, nullable=False)
     token_version = Column(Integer, default=0, nullable=False)  # 用于使旧 token 失效
+    password_reset_token_id = Column(String(64), nullable=True)  # 密码重置 token 单次使用校验
+    email_verification_token_id = Column(String(64), nullable=True)  # 邮箱验证 token 单次使用校验
+    oauth_bind_token_id = Column(String(64), nullable=True)  # OAuth 绑定 state 单次使用校验
+    oauth_connect_token_id = Column(String(64), nullable=True)  # GitHub 增量授权 state 单次使用校验
 
     # GitHub 仓库导入（分步授权 token 加密存储）
     github_access_token_encrypted = Column(Text, nullable=True)

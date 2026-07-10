@@ -389,14 +389,20 @@ class AgentOrchestrator:
         return f"{success}/{total} 个 Agent 成功执行，总消耗 {total_tokens} tokens"
 
     def get_run_status(self, run_id: str) -> Optional[Dict[str, Any]]:
-        """查询运行状态"""
+        """查询运行状态（带 user_id 校验，防止 IDOR）"""
         from uuid import UUID
         try:
             run_uuid = UUID(run_id)
         except ValueError:
             return None
 
-        agent_run = self.db.query(AgentRun).filter(AgentRun.id == run_uuid).first()
+        query = self.db.query(AgentRun).filter(AgentRun.id == run_uuid)
+        if self.user_id:
+            try:
+                query = query.filter(AgentRun.user_id == UUID(self.user_id))
+            except ValueError:
+                return None
+        agent_run = query.first()
         if not agent_run:
             return None
 

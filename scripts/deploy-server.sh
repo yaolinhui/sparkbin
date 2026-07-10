@@ -160,14 +160,6 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
     }
-
-    location /docs {
-        proxy_pass http://backend:8000/docs;
-    }
-
-    location /openapi.json {
-        proxy_pass http://backend:8000/openapi.json;
-    }
 }
 EOF
 

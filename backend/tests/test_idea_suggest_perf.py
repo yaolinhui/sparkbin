@@ -11,9 +11,8 @@ import pytest
 
 # 临时处理 frontend/.env 中的 VITE_API_URL 导致 pydantic 报错的问题
 os.environ.pop("VITE_API_URL", None)
+# 本测试需要持久化 SQLite 文件以便人工检查，其他安全密钥由 conftest.py 统一注入。
 os.environ["DATABASE_URL"] = "sqlite:///./sparkbin_v2.db"
-os.environ["SECRET_KEY"] = "your-secret-key-for-jwt-here-change-in-production"
-os.environ["ENCRYPTION_KEY"] = "this-is-a-very-long-test-encryption-key-123"
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
