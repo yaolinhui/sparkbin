@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 from typing import Any, Dict, List, Optional
 import json
 import logging
+import os
 from uuid import UUID
+from collections import deque
 
 from ..database import get_db
 from ..auth import get_current_user, require_admin
@@ -32,6 +34,48 @@ from ..encryption import get_encryption_manager
 from ..config import get_settings
 from sqlalchemy import func
 from datetime import datetime, timezone
+
+
+# ========== AI 用户级速率限制 ==========
+# 内存中的按用户调用记录: {"{user_id}:ai": deque([timestamp, ...])}
+_AI_RATE_LIMIT_WINDOW_SECONDS = 60
+_MAX_AI_CALLS_PER_WINDOW = 30  # 每用户每分钟最多 30 次 AI 调用
+_ai_call_attempts: dict[str, deque] = {}
+
+
+def _is_ai_rate_limit_disabled() -> bool:
+    return os.environ.get("SPARKBIN_TESTING") == "1"
+
+
+def check_ai_rate_limit(user_id: str) -> None:
+    """检查当前用户是否超过 AI 调用速率限制"""
+    if _is_ai_rate_limit_disabled():
+        return
+
+    key = f"{user_id}:ai"
+    now = datetime.now(timezone.utc).timestamp()
+    attempts = _ai_call_attempts.get(key)
+    if attempts is not None:
+        while attempts and attempts[0] < now - _AI_RATE_LIMIT_WINDOW_SECONDS:
+            attempts.popleft()
+        if len(attempts) >= _MAX_AI_CALLS_PER_WINDOW:
+            raise HTTPException(
+                status_code=429,
+                detail="AI 调用过于频繁，请稍后再试",
+                headers={"Retry-After": str(_AI_RATE_LIMIT_WINDOW_SECONDS)},
+            )
+
+
+def record_ai_rate_limit(user_id: str) -> None:
+    """记录一次 AI 调用（测试模式下跳过）"""
+    if _is_ai_rate_limit_disabled():
+        return
+
+    key = f"{user_id}:ai"
+    now = datetime.now(timezone.utc).timestamp()
+    if key not in _ai_call_attempts:
+        _ai_call_attempts[key] = deque(maxlen=_MAX_AI_CALLS_PER_WINDOW * 2)
+    _ai_call_attempts[key].append(now)
 
 
 # ========== AI 额度检查与扣费 ==========
@@ -234,6 +278,8 @@ async def chat_completion(
     AI 聊天接口，支持流式返回
     返回 SSE 流
     """
+    check_ai_rate_limit(str(current_user.id))
+    record_ai_rate_limit(str(current_user.id))
     _check_ai_quota(current_user, db)
     _deduct_ai_credit(current_user, db, reference_id="chat")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
@@ -364,6 +410,8 @@ async def generate_promote_suggestions(
     db: Session = Depends(get_db)
 ):
     """生成推广建议"""
+    check_ai_rate_limit(str(current_user.id))
+    record_ai_rate_limit(str(current_user.id))
     _check_ai_quota(current_user, db)
     _deduct_ai_credit(current_user, db, reference_id="promote-suggest")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
@@ -413,6 +461,8 @@ async def generate_idea_suggestions(
     db: Session = Depends(get_db)
 ):
     """生成想法阶段便利贴建议"""
+    check_ai_rate_limit(str(current_user.id))
+    record_ai_rate_limit(str(current_user.id))
     _check_ai_quota(current_user, db)
     _deduct_ai_credit(current_user, db, reference_id="idea-suggest")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
@@ -438,6 +488,8 @@ async def generate_validate_suggestions(
     db: Session = Depends(get_db)
 ):
     """生成验证阶段建议（验证项 + 验证工具 + 分析）"""
+    check_ai_rate_limit(str(current_user.id))
+    record_ai_rate_limit(str(current_user.id))
     _check_ai_quota(current_user, db)
     _deduct_ai_credit(current_user, db, reference_id="validate-suggest")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
@@ -468,6 +520,8 @@ async def generate_smoke_test_suggestions(
     db: Session = Depends(get_db)
 ):
     """生成试水帖（Smoke Test）文案建议——只暴露痛点、不暴露解决方案"""
+    check_ai_rate_limit(str(current_user.id))
+    record_ai_rate_limit(str(current_user.id))
     _check_ai_quota(current_user, db)
     _deduct_ai_credit(current_user, db, reference_id="smoke-test-suggest")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
@@ -569,6 +623,8 @@ async def run_agent_cockpit(
     from ..services.stage_context import evaluate_stage_content
 
     # 检查配额并扣费
+    check_ai_rate_limit(str(current_user.id))
+    record_ai_rate_limit(str(current_user.id))
     _check_ai_quota(current_user, db)
     _deduct_ai_credit(current_user, db, reference_id="agent-run")
 
