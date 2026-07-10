@@ -5,7 +5,7 @@ import secrets
 from typing import Optional
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -643,18 +643,49 @@ def _get_oauth_connect_redirect_url() -> str:
     return f"{api_url}/auth/oauth/github/connect/callback"
 
 
-def _create_oauth_state() -> str:
-    """生成 OAuth state 参数（JWT，10分钟有效）"""
-    return create_access_token(
-        data={"oauth": True},
-        expires_delta=timedelta(minutes=10)
+_OAUTH_STATE_COOKIE_NAME = "oauth_state"
+_OAUTH_STATE_MAX_AGE_SECONDS = 600
+
+
+def _set_oauth_state_cookie(response: Response, request: Request, nonce: str) -> None:
+    """将 OAuth state nonce 写入 HttpOnly Secure SameSite cookie，与客户端会话绑定。"""
+    secure = request.url.scheme == "https"
+    response.set_cookie(
+        key=_OAUTH_STATE_COOKIE_NAME,
+        value=nonce,
+        max_age=_OAUTH_STATE_MAX_AGE_SECONDS,
+        httponly=True,
+        secure=secure,
+        samesite="lax",
     )
 
 
-def _verify_oauth_state(state: str) -> bool:
-    """验证 OAuth state 参数（校验签名和过期时间即可防止 CSRF）"""
+def _clear_oauth_state_cookie(response: Response) -> None:
+    """清除 OAuth state cookie（单次使用）。"""
+    response.delete_cookie(key=_OAUTH_STATE_COOKIE_NAME)
+
+
+def _create_oauth_state(response: Response, request: Request) -> str:
+    """生成绑定到当前会话的 OAuth state 参数（JWT，10分钟有效）。"""
+    nonce = secrets.token_urlsafe(32)
+    state = create_access_token(
+        data={"oauth": True, "nonce": nonce},
+        expires_delta=timedelta(minutes=10)
+    )
+    _set_oauth_state_cookie(response, request, nonce)
+    return state
+
+
+def _verify_oauth_state(state: str, request: Request) -> bool:
+    """验证 OAuth state 参数：校验签名、过期时间，并校验与 cookie 中的 nonce 一致。"""
     payload = decode_token(state, expected_type="access")
-    return payload is not None and payload.get("oauth") is True
+    if not payload or payload.get("oauth") is not True:
+        return False
+    nonce = payload.get("nonce")
+    cookie_nonce = request.cookies.get(_OAUTH_STATE_COOKIE_NAME)
+    if not nonce or not cookie_nonce:
+        return False
+    return secrets.compare_digest(nonce, cookie_nonce)
 
 
 def _create_connect_state(user_id: str, token_id: str | None = None) -> str:
@@ -737,7 +768,9 @@ def _oauth_success_redirect(access_token: str, refresh_token: str) -> RedirectRe
 
 
 @router.get("/oauth/google")
-def oauth_google_redirect():
+def oauth_google_redirect(
+    request: Request,
+):
     """跳转 Google OAuth 授权页"""
     settings = get_settings()
     if not settings.google_client_id:
@@ -746,7 +779,9 @@ def oauth_google_redirect():
             detail="Google OAuth 未配置"
         )
 
-    state = _create_oauth_state()
+    # 先创建 Response 对象，让 state cookie 能写入同一个响应
+    redirect_response = RedirectResponse(url="about:blank")
+    state = _create_oauth_state(redirect_response, request)
     params = urlencode({
         "client_id": settings.google_client_id,
         "redirect_uri": _get_oauth_redirect_url("google"),
@@ -755,20 +790,22 @@ def oauth_google_redirect():
         "state": state,
         "access_type": "online",
     })
-    return RedirectResponse(url=f"https://accounts.google.com/o/oauth2/v2/auth?{params}")
+    redirect_response.headers["location"] = f"https://accounts.google.com/o/oauth2/v2/auth?{params}"
+    return redirect_response
 
 
 @router.get("/oauth/google/callback")
 def oauth_google_callback(
     code: str,
     state: str,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """Google OAuth 回调"""
-    if not _verify_oauth_state(state):
+    if not _verify_oauth_state(state, request):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid OAuth state"
+            detail="Invalid or expired OAuth state"
         )
 
     settings = get_settings()
@@ -817,6 +854,13 @@ def oauth_google_callback(
             detail="Incomplete Google user info"
         )
 
+    # 安全策略：Google 必须声明邮箱已验证，否则不能作为可信身份源
+    if not user_info.get("email_verified"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google 账号邮箱未验证"
+        )
+
     # 查找或创建用户
     user = db.query(User).filter(
         User.oauth_provider == "google",
@@ -833,7 +877,13 @@ def oauth_google_callback(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="该邮箱已注册。请先登录现有账号，再在设置中绑定 Google。"
                 )
-            # 自动绑定到现有账号（无论是有密码还是完全空白）
+            # 安全策略：如果现有账号邮箱未验证，禁止 OAuth 自动绑定（防止账号劫持）
+            if not existing.email_verified:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="该邮箱已注册但未验证。请先验证邮箱后再绑定 Google 账号。"
+                )
+            # 自动绑定到现有已验证邮箱账号
             existing.oauth_provider = "google"
             existing.oauth_id = google_id
             existing.avatar_url = _sanitize_avatar_url(picture) or existing.avatar_url
@@ -861,11 +911,15 @@ def oauth_google_callback(
     token_data = {"sub": user.username, "role": user.role.value}
     access_token = create_access_token(data=token_data, token_version=user.token_version)
     refresh_token = create_refresh_token(data=token_data, token_version=user.token_version)
-    return _oauth_success_redirect(access_token, refresh_token)
+    redirect_response = _oauth_success_redirect(access_token, refresh_token)
+    _clear_oauth_state_cookie(redirect_response)
+    return redirect_response
 
 
 @router.get("/oauth/github")
-def oauth_github_redirect():
+def oauth_github_redirect(
+    request: Request,
+):
     """跳转 GitHub OAuth 授权页"""
     settings = get_settings()
     if not settings.github_client_id:
@@ -874,20 +928,23 @@ def oauth_github_redirect():
             detail="GitHub OAuth 未配置"
         )
 
-    state = _create_oauth_state()
+    redirect_response = RedirectResponse(url="about:blank")
+    state = _create_oauth_state(redirect_response, request)
     params = urlencode({
         "client_id": settings.github_client_id,
         "redirect_uri": _get_oauth_redirect_url("github"),
         "scope": "user:email",
         "state": state,
     })
-    return RedirectResponse(url=f"https://github.com/login/oauth/authorize?{params}")
+    redirect_response.headers["location"] = f"https://github.com/login/oauth/authorize?{params}"
+    return redirect_response
 
 
 @router.get("/oauth/github/callback")
 def oauth_github_callback(
     code: str,
     state: str,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """GitHub OAuth 回调（同时处理登录和仓库导入 connect）"""
@@ -897,10 +954,10 @@ def oauth_github_callback(
         return _handle_github_connect_callback(code, state, db)
 
     # 普通登录流程
-    if not _verify_oauth_state(state):
+    if not _verify_oauth_state(state, request):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid OAuth state"
+            detail="Invalid or expired OAuth state"
         )
 
     settings = get_settings()
@@ -1044,17 +1101,23 @@ def oauth_github_callback(
     token_data = {"sub": user.username, "role": user.role.value}
     access_token = create_access_token(data=token_data, token_version=user.token_version)
     refresh_token = create_refresh_token(data=token_data, token_version=user.token_version)
-    return _oauth_success_redirect(access_token, refresh_token)
+    redirect_response = _oauth_success_redirect(access_token, refresh_token)
+    _clear_oauth_state_cookie(redirect_response)
+    return redirect_response
 
 
 # ========== GitHub 增量授权（用于仓库导入）==========
 
 @router.get("/oauth/github/connect")
 def oauth_github_connect_redirect(
-    request: Request,
-    current_user: User = Depends(get_current_user_from_query_or_header),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    """跳转 GitHub OAuth 增量授权页（申请 public_repo 权限）"""
+    """获取 GitHub OAuth 增量授权 URL（通过 header 鉴权，避免 token 泄露到 URL）。
+
+    不再接受 URL query 中的 token，前端应使用 Authorization: Bearer header 调用本接口，
+    然后从返回的 JSON 中获取 `url` 再跳转。
+    """
     settings = get_settings()
     if not settings.github_client_id:
         raise HTTPException(
@@ -1062,10 +1125,18 @@ def oauth_github_connect_redirect(
             detail="GitHub OAuth not configured"
         )
 
+    # 在当前 DB session 中重新加载用户，确保能安全提交
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+
     state_token_id = secrets.token_urlsafe(16)
-    current_user.oauth_connect_token_id = state_token_id
+    user.oauth_connect_token_id = state_token_id
     db.commit()
-    state = _create_connect_state(str(current_user.id), token_id=state_token_id)
+    state = _create_connect_state(str(user.id), token_id=state_token_id)
     # 使用和普通登录相同的回调地址，GitHub OAuth App 只需配置一个 callback URL
     redirect_uri = _get_oauth_redirect_url("github")
     params = urlencode({
@@ -1074,7 +1145,7 @@ def oauth_github_connect_redirect(
         "scope": "user:email public_repo",
         "state": state,
     })
-    return RedirectResponse(url=f"https://github.com/login/oauth/authorize?{params}")
+    return {"url": f"https://github.com/login/oauth/authorize?{params}"}
 
 
 def _handle_github_connect_callback(code: str, state: str, db: Session):

@@ -408,9 +408,11 @@ export const authApi = {
   getCaptcha: () =>
     request<{ question: string; answer_hash: string }>('/auth/captcha'),
 
-  getGitHubConnectUrl: () => {
-    const token = getAuthToken();
-    return `${API_BASE_URL}/auth/oauth/github/connect${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+  getGitHubConnectUrl: async () => {
+    const data = await request<{ url: string }>('/auth/oauth/github/connect', {
+      __skipCache: true,
+    });
+    return data.url;
   },
 
   // 获取首选 AI 模型

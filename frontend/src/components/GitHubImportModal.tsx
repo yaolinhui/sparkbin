@@ -62,8 +62,15 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
     }
   };
 
-  const handleConnect = () => {
-    window.location.href = authApi.getGitHubConnectUrl();
+  const handleConnect = async () => {
+    setError(null);
+    try {
+      const url = await authApi.getGitHubConnectUrl();
+      window.location.href = url;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message || 'Failed to start GitHub authorization');
+    }
   };
 
   const handleSelectRepo = async (repo: GitHubRepo) => {

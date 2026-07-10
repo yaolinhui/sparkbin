@@ -16,12 +16,15 @@ sys.dont_write_bytecode = True
 
 import bcrypt
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, Request, Response
+from fastapi.testclient import TestClient
+from urllib.parse import urlparse, parse_qs
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # Must import app models before creating tables
 from app.models import Base, User, UserRole, AgentRun, Project
+from app.main import app
 from app.auth import (
     verify_password,
     hash_password,
@@ -32,6 +35,7 @@ from app.auth import (
     create_password_reset_token,
     create_email_verification_token,
     decode_email_token,
+    decode_token,
     generate_captcha,
     verify_captcha,
 )
@@ -41,6 +45,9 @@ from app.routers.auth import (
     _create_bind_state, _verify_bind_state,
     _create_connect_state, _verify_connect_state,
     _sanitize_avatar_url,
+    _create_oauth_state,
+    _verify_oauth_state,
+    oauth_google_callback,
 )
 from app.auth import _get_client_ip
 from app.schemas import RegisterRequest
@@ -276,6 +283,167 @@ class TestAvatarUrlSanitization:
         assert _sanitize_avatar_url(None) is None
 
 
+class TestGoogleOAuthAutoBind:
+    """Google OAuth 自动绑定安全回归测试"""
+
+    @staticmethod
+    def _mock_http_client(google_email_verified: bool = True):
+        """构造一个伪造的 httpx client，模拟 Google token/userinfo 接口"""
+        class FakeResp:
+            def __init__(self, status, data):
+                self.status_code = status
+                self._data = data
+
+            def json(self):
+                return self._data
+
+        class FakeClient:
+            def post(self, *args, **kwargs):
+                return FakeResp(200, {"access_token": "fake-google-token"})
+
+            def get(self, url, *args, **kwargs):
+                if "userinfo" in url:
+                    return FakeResp(200, {
+                        "id": "google-123",
+                        "email": "victim@example.com",
+                        "name": "Victim User",
+                        "picture": "https://example.com/avatar.png",
+                        "email_verified": google_email_verified,
+                    })
+                return FakeResp(404, {})
+
+        return FakeClient()
+
+    @staticmethod
+    def _make_state_request() -> tuple[str, Request]:
+        """生成 OAuth state 并构造带对应 cookie 的回调 Request"""
+        response = Response()
+        request = Request({
+            "type": "http",
+            "headers": [],
+            "scheme": "http",
+            "path": "/auth/oauth/google",
+            "server": ("testserver", 80),
+        })
+        state = _create_oauth_state(response, request)
+        payload = decode_token(state, expected_type="access")
+        nonce = payload["nonce"]
+        callback_request = Request({
+            "type": "http",
+            "headers": [(b"cookie", f"oauth_state={nonce}".encode())],
+            "scheme": "http",
+            "path": "/auth/oauth/google/callback",
+            "server": ("testserver", 80),
+        })
+        return state, callback_request
+
+    def test_google_oauth_does_not_auto_bind_unverified_email(self, db_session, monkeypatch):
+        """现有账号邮箱未验证时，Google OAuth 不应自动绑定并登录"""
+        existing = User(
+            username="victimuser",
+            email="victim@example.com",
+            password_hash=hash_password("MyP@ssw0rd!1"),
+            role=UserRole.USER,
+            email_verified=False,
+        )
+        db_session.add(existing)
+        db_session.commit()
+
+        monkeypatch.setattr(
+            "app.routers.auth._get_http_client",
+            lambda: self._mock_http_client(google_email_verified=True),
+        )
+
+        state, callback_request = self._make_state_request()
+        with pytest.raises(HTTPException) as exc_info:
+            oauth_google_callback(code="fake-code", state=state, request=callback_request, db=db_session)
+
+        assert exc_info.value.status_code == 409
+        assert "验证邮箱" in exc_info.value.detail or "未验证" in exc_info.value.detail
+
+    def test_google_oauth_requires_email_verified_claim(self, db_session, monkeypatch):
+        """Google 返回 email_verified=false 时不应创建或绑定用户"""
+        monkeypatch.setattr(
+            "app.routers.auth._get_http_client",
+            lambda: self._mock_http_client(google_email_verified=False),
+        )
+
+        state, callback_request = self._make_state_request()
+        with pytest.raises(HTTPException) as exc_info:
+            oauth_google_callback(code="fake-code", state=state, request=callback_request, db=db_session)
+
+        assert exc_info.value.status_code == 400
+
+    def test_google_oauth_auto_bind_verified_email(self, db_session, monkeypatch):
+        """现有账号邮箱已验证时，Google OAuth 可以自动绑定"""
+        existing = User(
+            username="verifieduser",
+            email="verified@example.com",
+            password_hash=hash_password("MyP@ssw0rd!1"),
+            role=UserRole.USER,
+            email_verified=True,
+        )
+        db_session.add(existing)
+        db_session.commit()
+
+        monkeypatch.setattr(
+            "app.routers.auth._get_http_client",
+            lambda: self._mock_http_client(google_email_verified=True),
+        )
+
+        state, callback_request = self._make_state_request()
+        response = oauth_google_callback(code="fake-code", state=state, request=callback_request, db=db_session)
+        assert response.status_code in (302, 307)
+        # 成功后 cookie 应被清除
+        assert "set-cookie" in response.headers
+        assert "oauth_state=\"\"" in response.headers["set-cookie"] or "oauth_state=;" in response.headers["set-cookie"]
+
+
+class TestOAuthStateBinding:
+    """OAuth 登录 state 与会话 cookie 绑定回归测试"""
+
+    def _make_state_request(self, with_cookie: bool = True, wrong_cookie: bool = False) -> tuple[str, Request]:
+        response = Response()
+        request = Request({
+            "type": "http",
+            "headers": [],
+            "scheme": "http",
+            "path": "/auth/oauth/google",
+            "server": ("testserver", 80),
+        })
+        state = _create_oauth_state(response, request)
+        payload = decode_token(state, expected_type="access")
+        nonce = payload["nonce"]
+        base_scope = {
+            "type": "http",
+            "scheme": "http",
+            "path": "/auth/oauth/google/callback",
+            "server": ("testserver", 80),
+        }
+        if not with_cookie:
+            callback_request = Request({**base_scope, "headers": []})
+        elif wrong_cookie:
+            callback_request = Request({**base_scope, "headers": [(b"cookie", b"oauth_state=attacker-nonce")]})
+        else:
+            callback_request = Request({**base_scope, "headers": [(b"cookie", f"oauth_state={nonce}".encode())]})
+        return state, callback_request
+
+    def test_state_verifies_with_matching_cookie(self):
+        """state 与 cookie nonce 匹配时应通过"""
+        state, callback_request = self._make_state_request(with_cookie=True)
+        assert _verify_oauth_state(state, callback_request) is True
+
+    def test_state_fails_without_cookie(self):
+        """缺少对应 cookie 时 state 验证应失败"""
+        state, callback_request = self._make_state_request(with_cookie=False)
+        assert _verify_oauth_state(state, callback_request) is False
+
+    def test_state_fails_with_wrong_cookie(self):
+        """cookie nonce 不匹配时 state 验证应失败"""
+        state, callback_request = self._make_state_request(wrong_cookie=True)
+        assert _verify_oauth_state(state, callback_request) is False
+
+
 class TestAgentRunIdor:
     def test_user_cannot_access_other_users_agent_run(self, db_session):
         # 创建两个用户
@@ -355,6 +523,64 @@ class TestCaptcha:
         assert verify_captcha("127.0.0.3", "wrong") is False
         # 超过 3 次错误后，验证码已被销毁，任何答案都失败
         assert verify_captcha("127.0.0.3", "still_wrong") is False
+
+
+class TestGitHubConnectAuth:
+    """GitHub 增量授权（仓库导入）鉴权回归测试"""
+
+    @staticmethod
+    def _login(client: TestClient) -> str:
+        resp = client.post("/auth/login", json={
+            "username": "testadmin",
+            "password": "Test@123456",
+        })
+        assert resp.status_code == 200, resp.text
+        return resp.json()["access_token"]
+
+    @staticmethod
+    def _get_user_id(client: TestClient, token: str) -> str:
+        resp = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200, resp.text
+        return resp.json()["id"]
+
+    def test_connect_rejects_token_in_query(self):
+        """URL query 中传 token 应被拒绝，防止 token 进入日志/Referer"""
+        with TestClient(app) as client:
+            token = self._login(client)
+            resp = client.get(f"/auth/oauth/github/connect?token={token}")
+            assert resp.status_code in (401, 403)
+
+    def test_connect_requires_authentication(self):
+        """未提供认证时应被拒绝"""
+        with TestClient(app) as client:
+            resp = client.get("/auth/oauth/github/connect")
+            assert resp.status_code in (401, 403)
+
+    def test_connect_returns_github_url_with_valid_state(self):
+        """使用 Authorization header 应返回带合法 state 的 GitHub 授权 URL"""
+        with TestClient(app) as client:
+            token = self._login(client)
+            user_id = self._get_user_id(client, token)
+            resp = client.get(
+                "/auth/oauth/github/connect",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert resp.status_code == 200, resp.text
+            data = resp.json()
+            assert "url" in data
+            url = data["url"]
+            assert "https://github.com/login/oauth/authorize" in url
+
+            parsed = urlparse(url)
+            query = parse_qs(parsed.query)
+            assert "state" in query
+            state = query["state"][0]
+
+            payload = _verify_connect_state(state)
+            assert payload is not None
+            assert payload.get("oauth") == "connect"
+            assert payload.get("user_id") == user_id
+            assert payload.get("jti") is not None
 
 
 if __name__ == "__main__":

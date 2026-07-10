@@ -10,4 +10,11 @@ os.environ.setdefault("SECRET_KEY", "00" * 32)  # 64 字符十六进制 = 32 字
 os.environ.setdefault("ENCRYPTION_KEY", "A" * 43 + "=")  # 标准 32 字节 Fernet 密钥
 os.environ.setdefault("DEFAULT_USERNAME", "testadmin")
 os.environ.setdefault("DEFAULT_PASSWORD", "Test@123456")
+# 使用内存数据库，避免测试文件污染和并行问题
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+# 为 GitHub connect 测试提供 mock client id
+os.environ.setdefault("GITHUB_CLIENT_ID", "test_github_client_id")
+os.environ.setdefault("GITHUB_CLIENT_SECRET", "test_github_client_secret")
+# FastAPI TestClient 使用 host "testserver"，必须加入可信 Host
+os.environ.setdefault("ALLOWED_HOSTS", "localhost,testserver")
 sys.dont_write_bytecode = True
