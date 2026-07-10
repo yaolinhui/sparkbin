@@ -3,7 +3,7 @@ import logging
 import os
 import secrets
 from typing import Optional
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from fastapi.responses import RedirectResponse
@@ -565,10 +565,12 @@ def forgot_password(
         reset_url = f"{settings.frontend_url}/reset-password?token={token}"
         success, error = send_password_reset_email(user.email, user.username or user.email, reset_url)
         if not success:
-            # 邮件发送失败，返回错误让前端提示用户重试
-            return BaseResponse(success=False, message=f"邮件发送失败：{error}")
+            # 邮件发送失败，记录原因但返回模糊提示，避免泄露 SMTP/Resend 细节
+            logger.error(f"Password reset email failed: {error}")
+            return BaseResponse(success=False, message="邮件发送失败，请稍后重试")
     except Exception as e:
-        return BaseResponse(success=False, message=f"邮件发送失败：{str(e)}")
+        logger.exception("Failed to send password reset email")
+        return BaseResponse(success=False, message="邮件发送失败，请稍后重试")
 
     return BaseResponse(message="如果该邮箱已注册，重置邮件已发送")
 
@@ -653,8 +655,21 @@ def _get_http_client() -> httpx.Client:
             proxies["http://"] = http_proxy
         if https_proxy:
             proxies["https://"] = https_proxy
-        import logging
-        logging.info(f"[httpx] init client with proxies: {proxies}")
+
+        def _redact_proxy_url(url: str | None) -> str | None:
+            """脱敏代理 URL 中的用户凭据"""
+            if not url:
+                return url
+            parsed = urlparse(url)
+            if parsed.username or parsed.password:
+                netloc = parsed.hostname or ""
+                if parsed.port:
+                    netloc += f":{parsed.port}"
+                return f"{parsed.scheme}://***@{netloc}{parsed.path}"
+            return url
+
+        safe_proxies = {k: _redact_proxy_url(v) for k, v in proxies.items()}
+        logging.info(f"[httpx] init client with proxies: {safe_proxies}")
         _http_client = httpx.Client(
             proxies=proxies if proxies else None,
             timeout=10.0,

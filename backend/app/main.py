@@ -4,6 +4,7 @@ import json
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -258,13 +259,23 @@ app.include_router(payments.router)
 app.include_router(github.router)
 
 
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    """全局未捕获异常处理器：避免在生产环境泄露堆栈或内部错误细节。"""
+    logger = logging.getLogger(__name__)
+    logger.exception("Unhandled exception: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
+
 @app.get("/")
 def root():
     return {
         "name": "SparkBin API",
         "version": "1.0.0",
         "health": "/health",
-        "ci_deployed": "github-actions-v2"
     }
 
 

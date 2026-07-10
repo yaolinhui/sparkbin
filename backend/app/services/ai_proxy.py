@@ -248,9 +248,10 @@ class AIProxyService:
                         error_text = await response.aread()
                         status = "error"
                         error_msg = f"HTTP {response.status_code}: {error_text}"
+                        logger.warning(f"AI API error from {provider.value}: {error_msg}")
                         raise HTTPException(
-                            status_code=response.status_code,
-                            detail=f"AI API error: {error_text}"
+                            status_code=502,
+                            detail="AI 服务暂时不可用，请稍后重试",
                         )
 
                     chunk_count = 0
@@ -451,9 +452,10 @@ class AIProxyService:
                 if response.status_code != 200:
                     status = "error"
                     error_msg = f"HTTP {response.status_code}: {response.text}"
+                    logger.warning(f"AI API error from {provider.value}: {error_msg}")
                     raise HTTPException(
-                        status_code=response.status_code,
-                        detail=f"AI API error: {response.text}"
+                        status_code=502,
+                        detail="AI 服务暂时不可用，请稍后重试",
                     )
 
                 result = response.json()
@@ -563,9 +565,10 @@ class AIProxyService:
                 if response.status_code != 200:
                     status = "error"
                     error_msg = f"HTTP {response.status_code}: {response.text}"
+                    logger.warning(f"AI API error from {provider.value}: {error_msg}")
                     raise HTTPException(
-                        status_code=response.status_code,
-                        detail=f"AI API error: {response.text}"
+                        status_code=502,
+                        detail="AI 服务暂时不可用，请稍后重试",
                     )
 
                 result = response.json()
@@ -603,7 +606,7 @@ class AIProxyService:
             error_msg = str(e) or f"{provider.value} API 调用失败"
             raise HTTPException(
                 status_code=503,
-                detail=f"AI 服务暂时不可用: {error_msg}"
+                detail="AI 服务暂时不可用，请稍后重试",
             )
         finally:
             log = AICallLog(
@@ -667,7 +670,7 @@ class AIProxyService:
         # 所有 provider 都失败
         raise HTTPException(
             status_code=503,
-            detail=f"AI 服务暂时不可用，已尝试所有模型。最后错误: {last_error}"
+            detail="AI 服务暂时不可用，请稍后重试",
         )
 
 
@@ -757,9 +760,10 @@ class AIProxyService:
                 if response.status_code != 200:
                     status = "error"
                     error_msg = f"HTTP {response.status_code}: {response.text}"
+                    logger.warning(f"AI API error from {provider.value}: {error_msg}")
                     raise HTTPException(
-                        status_code=response.status_code,
-                        detail=f"AI API error: {response.text}"
+                        status_code=502,
+                        detail="AI 服务暂时不可用，请稍后重试",
                     )
 
                 result = response.json()
@@ -788,7 +792,7 @@ class AIProxyService:
             error_msg = str(e) or f"{provider.value} API 调用失败"
             raise HTTPException(
                 status_code=503,
-                detail=f"AI 服务暂时不可用: {error_msg}"
+                detail="AI 服务暂时不可用，请稍后重试",
             )
         finally:
             log = AICallLog(
@@ -921,9 +925,10 @@ class AIProxyService:
                 if response.status_code != 200:
                     status = "error"
                     error_msg = f"HTTP {response.status_code}: {response.text}"
+                    logger.warning(f"AI API error from {provider.value}: {error_msg}")
                     raise HTTPException(
-                        status_code=response.status_code,
-                        detail=f"AI API error: {response.text}"
+                        status_code=502,
+                        detail="AI 服务暂时不可用，请稍后重试",
                     )
 
                 result = response.json()
@@ -948,7 +953,7 @@ class AIProxyService:
             error_msg = str(e) or f"{provider.value} API 调用失败"
             raise HTTPException(
                 status_code=503,
-                detail=f"AI 服务暂时不可用: {error_msg}"
+                detail="AI 服务暂时不可用，请稍后重试",
             )
         finally:
             log = AICallLog(

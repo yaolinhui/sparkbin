@@ -1,6 +1,7 @@
 import uuid
 import json
 import httpx
+import logging
 from typing import Optional
 from datetime import datetime, timezone
 
@@ -23,6 +24,7 @@ from ..services.ai_proxy import AIProxyService
 from ..models import OperationLog
 
 router = APIRouter(prefix="/github", tags=["github"])
+logger = logging.getLogger(__name__)
 
 
 def _get_user_github_token(user: User) -> Optional[str]:
@@ -67,7 +69,10 @@ async def list_github_repos(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="GitHub token expired. Please reconnect your GitHub account.",
             )
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="GitHub 服务暂时不可用，请稍后重试",
+        )
 
 
 @router.post("/preview", response_model=GitHubImportPreviewResponse)
@@ -92,7 +97,8 @@ async def preview_github_import(
         analysis = await service.analyze_repo(repo_data)
         return GitHubImportPreviewResponse(**analysis)
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+        logger.warning(f"GitHub preview failed for {request.owner}/{request.repo}: {e}")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="GitHub 服务暂时不可用，请稍后重试")
 
 
 @router.post("/import", response_model=ProjectDetail)

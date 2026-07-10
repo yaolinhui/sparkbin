@@ -116,8 +116,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "8000:8000"
+    # 安全：后端不直接暴露端口，所有流量通过 nginx
     networks:
       - sparkbin-net
 

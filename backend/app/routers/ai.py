@@ -153,12 +153,7 @@ def _extract_content_from_sse_chunks(chunks: List[str]) -> str:
 # _collect_sse_chunks 已移除：chat_completion 返回 AsyncGenerator，无需先收集再处理
 
 
-@router.get("/ping")
-def ping():
-    return {"message": "pong"}
-
-
-@router.get("/providers", response_model=List[AIProviderInfo])
+# ========== AI 额度检查与扣费 ==========
 def list_providers(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)

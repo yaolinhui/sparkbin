@@ -145,13 +145,13 @@ def purchase_credits(
         logger.error(f"Stripe error: {e.user_message or str(e)}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Stripe 错误: {e.user_message or str(e)}",
+            detail="支付服务暂时不可用，请稍后重试",
         )
     except Exception as e:
         logger.exception("Failed to create checkout session")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"创建结算会话失败: {str(e)}",
+            detail="创建结算会话失败，请稍后重试",
         )
 
 
@@ -270,7 +270,7 @@ def create_checkout_session_demo(
         logger.error(f"Stripe error: {e.user_message or str(e)}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Stripe 错误: {e.user_message or str(e)}",
+            detail="支付服务暂时不可用，请稍后重试",
         )
 
 
