@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # API 配置
     api_port: int = 8000
     debug: bool = False
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080"
 
     # Token 过期时间（分钟/天）
     access_token_expire_minutes: int = 15
@@ -54,8 +54,8 @@ class Settings(BaseSettings):
     github_client_secret: str = ""
     frontend_url: str = "http://localhost:5173"  # OAuth 回调和邮件链接基础地址
 
-    # HSTS 配置（生产环境启用）
-    hsts_max_age: int = 0  # 设为 31536000（1年）以启用 HSTS
+    # HSTS 配置（生产环境默认启用 1 年）
+    hsts_max_age: int = 31536000
 
     # HTTP 代理配置（用于后端访问外部 API，如 Google/GitHub）
     http_proxy: str = ""
@@ -162,6 +162,13 @@ def get_settings() -> Settings:
         raise ValueError(
             "SECURITY ERROR: DEFAULT_PASSWORD is using a known weak value. "
             "Please generate a strong DEFAULT_PASSWORD in your .env file before starting the application."
+        )
+
+    # 拒绝使用常见/可预测的管理员用户名
+    if settings.default_username.lower() == "admin":
+        raise ValueError(
+            "SECURITY ERROR: DEFAULT_USERNAME cannot be 'admin'. "
+            "Please change DEFAULT_USERNAME in your .env file before starting the application."
         )
 
     # 校验 CREDITS_PACKS 格式，避免运行时解析异常

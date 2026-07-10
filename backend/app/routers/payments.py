@@ -309,7 +309,8 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Webhook error: {str(e)}")
+        logger.exception("Stripe webhook processing failed: %s", e)
+        raise HTTPException(status_code=400, detail="Webhook processing failed")
 
     event_type = event.get("type")
     data_object = event.get("data", {}).get("object", {})

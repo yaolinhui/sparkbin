@@ -18,6 +18,9 @@ from ..auth import (
     check_rate_limit, record_rate_limit_failure, record_rate_limit_attempt,
     create_email_verification_token, create_password_reset_token, decode_email_token,
     generate_captcha, verify_captcha, is_captcha_required, get_login_attempts_remaining,
+    _set_token_cookies, _clear_token_cookies,
+    _set_oauth_state_cookie, _clear_oauth_state_cookie, _OAUTH_STATE_COOKIE_NAME,
+    _set_oauth_bind_state_cookie, _clear_oauth_bind_state_cookie, _OAUTH_BIND_STATE_COOKIE_NAME,
 )
 from ..models import User, LoginAuditLog, Project, AICallLog, UserRole, CreditTransaction
 from ..schemas import (
@@ -73,10 +76,11 @@ def get_captcha(req: Request):
 @router.post("/login", response_model=TokenPairResponse)
 def login(
     request: LoginRequest,
+    response: Response,
     db: Session = Depends(get_db),
     req: Request = None,
 ):
-    """用户登录（返回 Access Token + Refresh Token）"""
+    """用户登录（返回 Access Token + Refresh Token，同时写入 HttpOnly Cookie）"""
     client_ip = _get_client_ip(req) if req else "unknown"
     user_agent = req.headers.get("user-agent", "") if req else ""
 
@@ -116,9 +120,19 @@ def login(
             headers={"X-Login-Attempts-Remaining": str(remaining)},
         )
 
+    # 若账号设置了邮箱且未验证，则禁止登录（默认管理员无邮箱，允许登录）
+    if user.email and not user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="邮箱未验证，请查收邮件完成验证后再登录",
+        )
+
     token_data = {"sub": user.username, "role": user.role.value}
     access_token = create_access_token(data=token_data, token_version=user.token_version)
     refresh_token = create_refresh_token(data=token_data, token_version=user.token_version)
+
+    # 通过 HttpOnly Cookie 下发 token（前端优先使用 Cookie）
+    _set_token_cookies(response, req, access_token, refresh_token)
 
     # 记录成功审计日志
     _record_audit_log(
@@ -135,11 +149,26 @@ def login(
 
 @router.post("/refresh", response_model=TokenPairResponse)
 def refresh_token(
-    request: RefreshTokenRequest,
+    request: Request,
+    response: Response,
+    body: RefreshTokenRequest | None = None,
     db: Session = Depends(get_db),
 ):
-    """使用 Refresh Token 换取新的 Token Pair（Refresh Token Rotation）"""
-    payload = decode_token(request.refresh_token, expected_type="refresh")
+    """使用 Refresh Token 换取新的 Token Pair（Refresh Token Rotation）。
+
+    优先从 HttpOnly Cookie 读取 refresh_token；若请求体显式提供（旧客户端兼容），则使用请求体中的 token。
+    刷新成功后，新的 token 会同时通过 Set-Cookie 写回浏览器。
+    """
+    refresh_token_value = request.cookies.get("refresh_token")
+    if not refresh_token_value and body is not None:
+        refresh_token_value = body.refresh_token
+    if not refresh_token_value:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token 不存在",
+        )
+
+    payload = decode_token(refresh_token_value, expected_type="refresh")
 
     if payload is None:
         raise HTTPException(
@@ -183,6 +212,9 @@ def refresh_token(
     new_access_token = create_access_token(data=token_data, token_version=new_version)
     new_refresh_token = create_refresh_token(data=token_data, token_version=new_version)
 
+    # 刷新后的 token 重新写入 Cookie
+    _set_token_cookies(response, request, new_access_token, new_refresh_token)
+
     return TokenPairResponse(
         access_token=new_access_token,
         refresh_token=new_refresh_token,
@@ -192,15 +224,20 @@ def refresh_token(
 @router.post("/logout", response_model=BaseResponse)
 def logout(
     current_user: User = Depends(get_current_user),
+    response: Response = None,
     db: Session = Depends(get_db),
     req: Request = None,
 ):
-    """用户登出（记录审计日志）"""
+    """用户登出（记录审计日志并清除 Cookie）"""
     client_ip = _get_client_ip(req) if req else "unknown"
     user_agent = req.headers.get("user-agent", "") if req else ""
 
     current_user.token_version += 1  # 使所有旧 token 失效
     db.commit()
+
+    # 清除浏览器 Cookie
+    if response and req:
+        _clear_token_cookies(response, req)
 
     _record_audit_log(
         db, username=current_user.username, action="logout",
@@ -250,6 +287,7 @@ def change_password(
 
     current_user.password_hash = hash_password(request.new_password)
     current_user.require_password_change = False
+    current_user.password_reset_token_id = None  # 旧密码重置链接立即失效
     current_user.token_version += 1  # 使所有旧 token 失效
     db.commit()
 
@@ -433,7 +471,7 @@ def register(
     settings = get_settings()
     new_user = User(
         username=request.username,
-        email=request.email,
+        email=request.email.lower().strip(),
         email_verified=False,
         password_hash=hash_password(request.password),
         role=UserRole.USER,
@@ -549,7 +587,7 @@ def forgot_password(
         # 无论邮箱是否存在，均记录本次调用，防止端点被滥用滥发邮件
         record_rate_limit_attempt(req, "forgot_password")
 
-    user = db.query(User).filter(User.email == request.email).first()
+    user = db.query(User).filter(func.lower(User.email) == request.email.lower().strip()).first()
 
     # 用户不存在时返回模糊成功消息，防止邮箱枚举攻击
     if not user or not user.password_hash:
@@ -703,28 +741,6 @@ def _get_oauth_connect_redirect_url() -> str:
     return f"{api_url}/auth/oauth/github/connect/callback"
 
 
-_OAUTH_STATE_COOKIE_NAME = "oauth_state"
-_OAUTH_STATE_MAX_AGE_SECONDS = 600
-
-
-def _set_oauth_state_cookie(response: Response, request: Request, nonce: str) -> None:
-    """将 OAuth state nonce 写入 HttpOnly Secure SameSite cookie，与客户端会话绑定。"""
-    secure = request.url.scheme == "https"
-    response.set_cookie(
-        key=_OAUTH_STATE_COOKIE_NAME,
-        value=nonce,
-        max_age=_OAUTH_STATE_MAX_AGE_SECONDS,
-        httponly=True,
-        secure=secure,
-        samesite="lax",
-    )
-
-
-def _clear_oauth_state_cookie(response: Response) -> None:
-    """清除 OAuth state cookie（单次使用）。"""
-    response.delete_cookie(key=_OAUTH_STATE_COOKIE_NAME)
-
-
 def _create_oauth_state(response: Response, request: Request) -> str:
     """生成绑定到当前会话的 OAuth state 参数（JWT，10分钟有效）。"""
     nonce = secrets.token_urlsafe(32)
@@ -767,9 +783,9 @@ def _verify_connect_state(state: str) -> Optional[dict]:
     return None
 
 
-def _create_bind_state(user_id: str, token_id: str | None = None) -> str:
-    """生成 OAuth 绑定 state 参数（包含 user_id，10分钟有效）"""
-    data = {"oauth": "bind", "user_id": user_id}
+def _create_bind_state(user_id: str, nonce: str, token_id: str | None = None) -> str:
+    """生成 OAuth 绑定 state 参数（包含 user_id 与 nonce，10分钟有效）"""
+    data = {"oauth": "bind", "user_id": user_id, "nonce": nonce}
     if token_id:
         data["jti"] = token_id
     return create_access_token(
@@ -778,12 +794,18 @@ def _create_bind_state(user_id: str, token_id: str | None = None) -> str:
     )
 
 
-def _verify_bind_state(state: str) -> Optional[dict]:
-    """验证 OAuth 绑定 state 参数，返回 payload"""
+def _verify_bind_state(state: str, request: Request) -> Optional[dict]:
+    """验证 OAuth 绑定 state 参数，同时校验 URL state 中的 nonce 与 Cookie 一致。"""
     payload = decode_token(state, expected_type="access")
-    if payload and payload.get("oauth") == "bind":
-        return payload
-    return None
+    if not payload or payload.get("oauth") != "bind":
+        return None
+    nonce = payload.get("nonce")
+    cookie_nonce = request.cookies.get(_OAUTH_BIND_STATE_COOKIE_NAME)
+    if not nonce or not cookie_nonce:
+        return None
+    if not secrets.compare_digest(nonce, cookie_nonce):
+        return None
+    return payload
 
 
 def _get_oauth_bind_redirect_url(provider: str) -> str:
@@ -816,15 +838,16 @@ def _sanitize_avatar_url(url: str | None) -> str | None:
     return url
 
 
-def _oauth_success_redirect(access_token: str, refresh_token: str) -> RedirectResponse:
-    """OAuth 成功后跳回前端并带上 token（使用 fragment 避免进入历史/Referer）"""
+def _oauth_success_redirect(
+    access_token: str,
+    refresh_token: str,
+    request: Request,
+) -> RedirectResponse:
+    """OAuth 成功后跳回前端，token 通过 HttpOnly Cookie 下发，URL 中不再包含任何凭证。"""
     settings = get_settings()
-    fragment = urlencode({
-        "oauth_success": "1",
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-    })
-    return RedirectResponse(url=f"{settings.frontend_url}#{fragment}")
+    redirect_response = RedirectResponse(url=f"{settings.frontend_url}?oauth_success=1")
+    _set_token_cookies(redirect_response, request, access_token, refresh_token)
+    return redirect_response
 
 
 @router.get("/oauth/google")
@@ -929,7 +952,7 @@ def oauth_google_callback(
 
     if not user:
         # 检查邮箱是否已注册
-        existing = db.query(User).filter(User.email == email).first()
+        existing = db.query(User).filter(func.lower(User.email) == email.lower()).first()
         if existing:
             # 如果已有账号绑定了其他 OAuth 提供商，禁止自动覆盖
             if existing.oauth_provider and existing.oauth_provider != "google":
@@ -971,7 +994,7 @@ def oauth_google_callback(
     token_data = {"sub": user.username, "role": user.role.value}
     access_token = create_access_token(data=token_data, token_version=user.token_version)
     refresh_token = create_refresh_token(data=token_data, token_version=user.token_version)
-    redirect_response = _oauth_success_redirect(access_token, refresh_token)
+    redirect_response = _oauth_success_redirect(access_token, refresh_token, request)
     _clear_oauth_state_cookie(redirect_response)
     return redirect_response
 
@@ -1068,7 +1091,7 @@ def oauth_github_callback(
     login = user_info.get("login")
     avatar_url = user_info.get("avatar_url")
 
-    # 获取主邮箱
+    # 获取主邮箱（必须为已验证）
     emails_resp = _get_http_client().get(
         "https://api.github.com/user/emails",
         headers={
@@ -1077,18 +1100,31 @@ def oauth_github_callback(
         },
     )
     email = None
+    email_verified = False
     if emails_resp.status_code == 200:
         emails = emails_resp.json()
-        primary = next((e for e in emails if e.get("primary")), None)
+        # 优先使用主邮箱，且要求已验证
+        primary = next((e for e in emails if e.get("primary") and e.get("verified")), None)
         if primary:
             email = primary.get("email")
-        elif emails:
-            email = emails[0].get("email")
+            email_verified = True
+        else:
+            #  fallback 到任意已验证邮箱
+            verified = next((e for e in emails if e.get("verified")), None)
+            if verified:
+                email = verified.get("email")
+                email_verified = True
 
     if not github_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incomplete GitHub user info"
+        )
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GitHub 账号没有已验证的邮箱"
         )
 
     # 查找或创建用户
@@ -1099,7 +1135,7 @@ def oauth_github_callback(
 
     if not user:
         if email:
-            existing = db.query(User).filter(User.email == email).first()
+            existing = db.query(User).filter(func.lower(User.email) == email.lower()).first()
             if existing:
                 # 如果已有账号绑定了其他 OAuth 提供商，禁止自动覆盖
                 if existing.oauth_provider and existing.oauth_provider != "github":
@@ -1117,7 +1153,7 @@ def oauth_github_callback(
                 existing.oauth_provider = "github"
                 existing.oauth_id = github_id
                 existing.avatar_url = _sanitize_avatar_url(avatar_url) or existing.avatar_url
-                if not existing.email_verified:
+                if email_verified and not existing.email_verified:
                     existing.email_verified = True
                 db.commit()
                 user = existing
@@ -1129,7 +1165,7 @@ def oauth_github_callback(
                 user = User(
                     username=username,
                     email=email,
-                    email_verified=True,
+                    email_verified=email_verified,
                     oauth_provider="github",
                     oauth_id=github_id,
                     avatar_url=_sanitize_avatar_url(avatar_url),
@@ -1161,7 +1197,7 @@ def oauth_github_callback(
     token_data = {"sub": user.username, "role": user.role.value}
     access_token = create_access_token(data=token_data, token_version=user.token_version)
     refresh_token = create_refresh_token(data=token_data, token_version=user.token_version)
-    redirect_response = _oauth_success_redirect(access_token, refresh_token)
+    redirect_response = _oauth_success_redirect(access_token, refresh_token, request)
     _clear_oauth_state_cookie(redirect_response)
     return redirect_response
 
@@ -1340,8 +1376,13 @@ def oauth_bind_redirect(
     state_token_id = secrets.token_urlsafe(16)
     current_user.oauth_bind_token_id = state_token_id
     db.commit()
-    state = _create_bind_state(str(current_user.id), token_id=state_token_id)
+
+    nonce = secrets.token_urlsafe(32)
+    state = _create_bind_state(str(current_user.id), nonce=nonce, token_id=state_token_id)
     redirect_uri = _get_oauth_bind_redirect_url(provider)
+
+    redirect_response = RedirectResponse(url="about:blank")
+    _set_oauth_bind_state_cookie(redirect_response, request, nonce)
 
     if provider == "google":
         params = urlencode({
@@ -1352,7 +1393,7 @@ def oauth_bind_redirect(
             "state": state,
             "access_type": "online",
         })
-        return RedirectResponse(url=f"https://accounts.google.com/o/oauth2/v2/auth?{params}")
+        redirect_response.headers["location"] = f"https://accounts.google.com/o/oauth2/v2/auth?{params}"
     else:  # github
         params = urlencode({
             "client_id": settings.github_client_id,
@@ -1360,7 +1401,8 @@ def oauth_bind_redirect(
             "scope": "user:email",
             "state": state,
         })
-        return RedirectResponse(url=f"https://github.com/login/oauth/authorize?{params}")
+        redirect_response.headers["location"] = f"https://github.com/login/oauth/authorize?{params}"
+    return redirect_response
 
 
 @router.get("/oauth/{provider}/bind/callback")
@@ -1368,10 +1410,11 @@ def oauth_bind_callback(
     provider: str,
     code: str,
     state: str,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """OAuth 绑定回调——将第三方账号绑定到当前登录用户"""
-    payload = _verify_bind_state(state)
+    payload = _verify_bind_state(state, request)
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1410,6 +1453,10 @@ def oauth_bind_callback(
 
     settings = get_settings()
     redirect_uri = _get_oauth_bind_redirect_url(provider)
+
+    # 预创建最终跳转响应，用于在成功/失败时都能清除 bind state cookie
+    final_redirect = RedirectResponse(url=f"{settings.frontend_url}?oauth_bind_success=1")
+    _clear_oauth_bind_state_cookie(final_redirect)
 
     if provider == "google":
         # 交换 code 获取 access_token
@@ -1576,7 +1623,7 @@ def oauth_bind_callback(
     user.oauth_bind_token_id = None
     db.commit()
 
-    return RedirectResponse(url=f"{settings.frontend_url}/#oauth_bind_success=1")
+    return final_redirect
 
 
 @router.post("/oauth/unbind", response_model=BaseResponse)

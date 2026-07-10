@@ -31,8 +31,6 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-sparkbin}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-sparkbin}
-    ports:
-      - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy

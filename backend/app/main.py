@@ -19,23 +19,12 @@ logging.basicConfig(
 )
 from .database import engine, SessionLocal
 from .models import Base
-from .auth import init_default_user
+from .auth import init_default_user, _is_trusted_proxy
 from .services.ai_proxy import init_default_ai_configs
 import importlib.util
 
 # 禁用 .pyc 字节码缓存，防止 uvicorn reload 时加载过时的编译缓存
 sys.dont_write_bytecode = True
-
-# 启动时记录 auth 模块加载信息，便于诊断版本问题
-_auth_module_spec = importlib.util.find_spec("app.auth")
-if _auth_module_spec and _auth_module_spec.origin:
-    import os as _os
-
-    _auth_mtime = _os.path.getmtime(_auth_module_spec.origin)
-    logging.getLogger(__name__).info(
-        f"Loaded auth module from {_auth_module_spec.origin} "
-        f"(mtime: {_auth_mtime})"
-    )
 
 from .routers import auth, projects, ai, admin, payments, github
 
@@ -54,9 +43,16 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
             is_chunked = "chunked" in transfer_encoding
 
             if is_chunked:
-                # Chunked 请求无法预先知道总大小，依赖反向代理（Nginx）限制
-                # 这里记录警告，实际限制应由 nginx 的 client_max_body_size 处理
-                pass
+                # Chunked 请求无法预先知道总大小。若后端被直连（无可信反向代理），
+                # 则拒绝处理，防止巨型 body 耗尽内存；若经过 nginx 等可信代理，
+                # 则放行并由代理的 client_max_body_size 限制。
+                client_ip = request.client.host if request.client else None
+                if not client_ip or not _is_trusted_proxy(client_ip):
+                    return Response(
+                        content=json.dumps({"detail": "Chunked requests must be sent through a trusted reverse proxy"}),
+                        status_code=413,
+                        media_type="application/json"
+                    )
             elif content_length:
                 try:
                     length = int(content_length)
@@ -100,20 +96,21 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         api_url = getattr(settings, 'api_url', 'http://localhost:8000')
         csp = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
-            "style-src 'self' 'unsafe-inline'; "
+            "script-src 'self' https://js.stripe.com; "
+            "style-src 'self'; "
             "img-src 'self' data: https:; "
             "font-src 'self'; "
             f"connect-src 'self' {api_url} https://api.stripe.com; "
             "frame-src https://js.stripe.com https://hooks.stripe.com; "
             "object-src 'none'; "
-            "base-uri 'self';"
+            "base-uri 'self'; "
+            "upgrade-insecure-requests;"
         )
         response.headers["Content-Security-Policy"] = csp
 
-        # HSTS（通过环境变量控制，生产环境启用）
+        # HSTS（生产环境启用；DEBUG 模式不发送，避免本地 HTTP 开发被强制 HTTPS）
         hsts_max_age = getattr(settings, 'hsts_max_age', 0)
-        if hsts_max_age and hsts_max_age > 0:
+        if not settings.debug and hsts_max_age and hsts_max_age > 0:
             response.headers["Strict-Transport-Security"] = f"max-age={hsts_max_age}; includeSubDomains; preload"
 
         return response
@@ -290,6 +287,6 @@ if __name__ == "__main__":
         "app.main:app",
         host="0.0.0.0",
         port=settings.api_port,
-        reload=True,
+        reload=settings.debug,
         h11_max_request_size=10 * 1024 * 1024,  # 10MB
     )

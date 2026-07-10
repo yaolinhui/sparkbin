@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Literal
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, EmailStr, HttpUrl, field_validator
 
 from .models import ProjectStatus, StageKey, AIProvider, ProjectType
 
@@ -15,7 +15,7 @@ class BaseResponse(BaseModel):
 # ========== 认证 ==========
 class LoginRequest(BaseModel):
     username: str
-    password: str
+    password: str = Field(..., min_length=1, max_length=128)
     captcha_answer: Optional[str] = None
 
 
@@ -25,14 +25,14 @@ class LoginResponse(BaseModel):
 
 
 class ChangePasswordRequest(BaseModel):
-    old_password: str
-    new_password: str
+    old_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
 
 
 class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr = Field(...)
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=8, max_length=128)
     honeypot: Optional[str] = Field(default=None)
     form_start_time: Optional[float] = Field(default=None)  # Unix timestamp，用于检测机器人
 
@@ -43,7 +43,7 @@ class ForgotPasswordRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     token: str
-    new_password: str = Field(..., min_length=8)
+    new_password: str = Field(..., min_length=8, max_length=128)
 
 
 class VerifyEmailResponse(BaseModel):
@@ -132,7 +132,7 @@ class StageInfo(BaseModel):
 
 
 class StageContentUpdate(BaseModel):
-    content: str
+    content: str = Field(..., max_length=50000)
 
 
 # ========== 推广任务 ==========
@@ -174,8 +174,8 @@ class PromoteSuggestionInfo(BaseModel):
 # ========== 项目 ==========
 class ProjectBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    pain_point: str = ""
-    original_idea: str = ""
+    pain_point: str = Field(default="", max_length=20000)
+    original_idea: str = Field(default="", max_length=20000)
     project_type: ProjectType = ProjectType.OTHER
 
 
@@ -185,8 +185,8 @@ class ProjectCreate(ProjectBase):
 
 class ProjectUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=255)
-    pain_point: Optional[str] = None
-    original_idea: Optional[str] = None
+    pain_point: Optional[str] = Field(None, max_length=20000)
+    original_idea: Optional[str] = Field(None, max_length=20000)
     status: Optional[ProjectStatus] = None
     current_stage: Optional[StageKey] = None
     project_type: Optional[ProjectType] = None
@@ -226,14 +226,14 @@ class AIProviderInfo(BaseModel):
 
 
 class AIConfigUpdate(BaseModel):
-    base_url: str
+    base_url: HttpUrl
     api_key: str
     default_model: str
     is_active: bool = True
 
 
 class AITestConfigRequest(BaseModel):
-    base_url: str | None = None
+    base_url: HttpUrl | None = None
     api_key: str | None = None
     default_model: str | None = None
 
@@ -252,14 +252,14 @@ class AIChatRequest(BaseModel):
         """限制消息数量、角色与单条长度，防止 Prompt 注入和超大请求"""
         if len(v) > 50:
             raise ValueError("消息数量不能超过 50 条")
-        allowed_roles = {"system", "user", "assistant"}
+        allowed_roles = {"user", "assistant"}
         for idx, msg in enumerate(v):
             if not isinstance(msg, dict):
                 raise ValueError(f"第 {idx + 1} 条消息必须是字典")
             role = msg.get("role")
             content = msg.get("content")
             if role not in allowed_roles:
-                raise ValueError(f"第 {idx + 1} 条消息 role 必须是 system/user/assistant 之一")
+                raise ValueError(f"第 {idx + 1} 条消息 role 必须是 user/assistant 之一")
             if not isinstance(content, str):
                 raise ValueError(f"第 {idx + 1} 条消息 content 必须是字符串")
             if len(content) == 0:
@@ -271,9 +271,9 @@ class AIChatRequest(BaseModel):
 
 class AIPromoteSuggestRequest(BaseModel):
     provider: AIProvider
-    project_title: str
-    pain_point: str
-    project_description: str
+    project_title: str = Field(..., min_length=1, max_length=255)
+    pain_point: str = Field(..., max_length=5000)
+    project_description: str = Field(..., max_length=10000)
     project_id: Optional[UUID] = None  # 可选，用于保存建议
 
 
@@ -284,9 +284,9 @@ class NoteSuggestion(BaseModel):
 
 class IdeaSuggestRequest(BaseModel):
     project_id: Optional[UUID] = None
-    title: str
-    pain_point: str
-    original_idea: str = ""
+    title: str = Field(..., min_length=1, max_length=255)
+    pain_point: str = Field(..., max_length=5000)
+    original_idea: str = Field(default="", max_length=20000)
     current_notes: List[NoteSuggestion]
 
 
@@ -308,9 +308,9 @@ class ValidationToolSuggestion(BaseModel):
 
 class ValidateSuggestRequest(BaseModel):
     project_id: Optional[UUID] = None
-    title: str
-    pain_point: str
-    original_idea: str = ""
+    title: str = Field(..., min_length=1, max_length=255)
+    pain_point: str = Field(..., max_length=5000)
+    original_idea: str = Field(default="", max_length=20000)
     current_items: List[ValidationItemSuggestion] = []
     current_tools: List[ValidationToolSuggestion] = []
 
@@ -332,9 +332,9 @@ class SmokeTestVariantSuggestion(BaseModel):
 
 class SmokeTestSuggestRequest(BaseModel):
     project_id: Optional[UUID] = None
-    title: str
-    pain_point: str
-    original_idea: str = ""
+    title: str = Field(..., min_length=1, max_length=255)
+    pain_point: str = Field(..., max_length=5000)
+    original_idea: str = Field(default="", max_length=20000)
     platforms: List[str] = Field(default_factory=list)
     styles: List[str] = Field(default_factory=list)
 

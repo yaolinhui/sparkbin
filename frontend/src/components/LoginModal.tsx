@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Lock, User, AlertCircle, Loader2, X, Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
-import { authApi, setAuthToken, setRefreshToken, ApiError, type BaseResponse } from '../services/api';
+import { authApi, setAuthToken, ApiError, type BaseResponse } from '../services/api';
 import { DotGridBackground } from './DotGridBackground';
 import type { DotGridBackgroundRef } from './DotGridBackground';
 
@@ -174,13 +174,13 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     setIsLoading(true);
 
     try {
-      const response = await authApi.login({
+      await authApi.login({
         username,
         password,
         captcha_answer: captchaAnswer || undefined,
       });
-      setAuthToken(response.access_token);
-      setRefreshToken(response.refresh_token);
+      // token 已由后端写入 HttpOnly Cookie，JS 不持有真实 token
+      setAuthToken('ok');
       if (rememberMe) {
         localStorage.setItem('sparkbin_remembered_username', username);
       } else {

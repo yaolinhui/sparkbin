@@ -13,8 +13,8 @@ const ProjectDetail = lazy(() => import('./components/ProjectDetail'));
 const AdminPage = lazy(() => import('./components/AdminPage'));
 const ProfilePage = lazy(() => import('./components/ProfilePage'));
 import {
-  authApi, clearAuthToken, isAuthenticated, setCachedRole, setCachedUserId, setOnUnauthorized,
-  setRefreshToken, startTokenRefreshTimer, stopTokenRefreshTimer, setAuthToken,
+  authApi, clearAuthToken, setCachedRole, setCachedUserId, setOnUnauthorized,
+  startTokenRefreshTimer, stopTokenRefreshTimer, setAuthToken,
 } from './services/api';
 
 // React Router v7 兼容配置
@@ -23,34 +23,27 @@ const routerFuture: FutureConfig = {
   v7_relativeSplatPath: true,
 };
 
-function OAuthHandler({ onLogin }: { onLogin: (resp?: { access_token: string; refresh_token: string }) => void }) {
+function OAuthHandler({ onLogin }: { onLogin: () => void }) {
   useEffect(() => {
-    // 从 URL fragment 读取 OAuth 参数
-    const hash = window.location.hash.slice(1); // 去掉开头的 #
-    const params = new URLSearchParams(hash);
+    const params = new URLSearchParams(window.location.search);
     const oauthSuccess = params.get('oauth_success');
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
     const githubConnect = params.get('github_connect');
     const oauthBindSuccess = params.get('oauth_bind_success');
 
-    if (oauthSuccess === '1' && accessToken && refreshToken) {
-      setAuthToken(accessToken);
-      setRefreshToken(refreshToken);
-      // 清除 URL fragment
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      onLogin({ access_token: accessToken, refresh_token: refreshToken });
+    if (oauthSuccess === '1') {
+      // token 已通过后端 HttpOnly Cookie 写入，直接触发登录状态刷新
+      window.history.replaceState(null, '', window.location.pathname);
+      onLogin();
     }
 
     if (githubConnect === 'success') {
-      // GitHub 连接成功，清除 URL fragment 并标记 session
       sessionStorage.setItem('sparkbin_github_connected', '1');
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      window.history.replaceState(null, '', window.location.pathname);
     }
 
     if (oauthBindSuccess === '1') {
       sessionStorage.setItem('sparkbin_oauth_bind_success', '1');
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      window.history.replaceState(null, '', window.location.pathname);
     }
   }, [onLogin]);
 
@@ -76,65 +69,46 @@ function AppRoutes() {
     });
 
     const checkAuth = async () => {
-      // OAuth 回调：优先从 URL fragment 提取 token，避免页面闪烁
-      const hash = window.location.hash.slice(1);
-      const params = new URLSearchParams(hash);
+      // 处理 OAuth / bind / GitHub connect 回调标记（token 已通过 Cookie 写入）
+      const params = new URLSearchParams(window.location.search);
       const oauthSuccess = params.get('oauth_success');
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
       const githubConnect = params.get('github_connect');
       const oauthBindSuccess = params.get('oauth_bind_success');
 
-      if (oauthSuccess === '1' && accessToken && refreshToken) {
-        setAuthToken(accessToken);
-        setRefreshToken(refreshToken);
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      if (oauthSuccess === '1') {
+        window.history.replaceState(null, '', window.location.pathname);
       }
       if (githubConnect === 'success') {
         sessionStorage.setItem('sparkbin_github_connected', '1');
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        window.history.replaceState(null, '', window.location.pathname);
       }
       if (oauthBindSuccess === '1') {
         sessionStorage.setItem('sparkbin_oauth_bind_success', '1');
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        window.history.replaceState(null, '', window.location.pathname);
       }
 
-      if (isAuthenticated()) {
-        // 前置校验：token 格式必须是合法 JWT（header.payload.signature）
-        const token = localStorage.getItem('sparkbin_token');
-        const isValidJwt = token ? /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token) : false;
-        if (!isValidJwt) {
-          clearAuthToken();
-          stopTokenRefreshTimer();
-          setCachedRole(null);
-          setUserRole(null);
-          setIsLoggedIn(false);
-          setRequirePasswordChange(false);
-          setIsChecking(false);
-          return;
-        }
-
-        try {
-          const me = await authApi.getMe();
-          setCachedRole(me.role);
-          setCachedUserId(me.id);
-          setUserRole(me.role);
-          if (me.require_password_change) {
-            setRequirePasswordChange(true);
-            setIsLoggedIn(true);
-          } else {
-            setRequirePasswordChange(false);
-            setIsLoggedIn(true);
-          }
-          startTokenRefreshTimer();
-        } catch {
-          clearAuthToken();
-          stopTokenRefreshTimer();
-          setCachedRole(null);
-          setUserRole(null);
-          setIsLoggedIn(false);
+      // 始终尝试通过 Cookie 拉取当前用户信息（HttpOnly Cookie 自动携带）
+      try {
+        const me = await authApi.getMe();
+        setCachedRole(me.role);
+        setCachedUserId(me.id);
+        setUserRole(me.role);
+        setAuthToken('ok');
+        if (me.require_password_change) {
+          setRequirePasswordChange(true);
+        } else {
           setRequirePasswordChange(false);
         }
+        setIsLoggedIn(true);
+        startTokenRefreshTimer();
+      } catch {
+        clearAuthToken();
+        stopTokenRefreshTimer();
+        setCachedRole(null);
+        setCachedUserId(null);
+        setUserRole(null);
+        setIsLoggedIn(false);
+        setRequirePasswordChange(false);
       }
       setIsChecking(false);
     };
@@ -147,15 +121,13 @@ function AppRoutes() {
     };
   }, []);
 
-  const handleLogin = async (loginResponse?: { access_token: string; refresh_token: string }) => {
+  const handleLogin = async () => {
     try {
-      if (loginResponse) {
-        setRefreshToken(loginResponse.refresh_token);
-      }
       const me = await authApi.getMe();
       setCachedRole(me.role);
       setCachedUserId(me.id);
       setUserRole(me.role);
+      setAuthToken('ok');
       setIsLoggedIn(true);
       setShowLogin(false);
       startTokenRefreshTimer();

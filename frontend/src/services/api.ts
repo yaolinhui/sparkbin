@@ -2,33 +2,29 @@
 // Cache-bust: 2026-05-05
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// Token 和角色管理
-// 注意：userRole / userId 不再持久化到 localStorage（防止客户端篡改导致 UI 欺骗）
-let authToken: string | null = localStorage.getItem('sparkbin_token');
-let refreshToken: string | null = localStorage.getItem('sparkbin_refresh_token');
+// 认证状态（内存标记，不保存真实 token）
+// 真实 access/refresh token 现在由后端通过 HttpOnly Cookie 管理
+let authToken: string | null = null;
 let userRole: string | null = null;
 let userId: string | null = null;
 let onUnauthorizedCallback: (() => void) | null = null;
 let refreshTimerId: ReturnType<typeof setInterval> | null = null;
 
 // 清理旧版本残留的 localStorage 缓存（一次性迁移）
+localStorage.removeItem('sparkbin_token');
+localStorage.removeItem('sparkbin_refresh_token');
 localStorage.removeItem('sparkbin_role');
 localStorage.removeItem('sparkbin_user_id');
 
 export function setAuthToken(token: string) {
-  authToken = token;
-  localStorage.setItem('sparkbin_token', token);
-  // 不再从 JWT 中客户端解析角色（防止客户端篡改）
-  // 角色统一由 /auth/me 接口返回并写入 userRole
+  // token 参数仅用于保持向后兼容的调用签名；真实 token 不会进入 JS。
+  authToken = token || '1';
 }
 
 export function clearAuthToken() {
   authToken = null;
-  refreshToken = null;
   userRole = null;
   userId = null;
-  localStorage.removeItem('sparkbin_token');
-  localStorage.removeItem('sparkbin_refresh_token');
 }
 
 /** 设置用户角色（仅应由 /auth/me 调用后写入，不持久化到 localStorage） */
@@ -41,13 +37,12 @@ export function setCachedUserId(id: string | null) {
   userId = id;
 }
 
-export function setRefreshToken(token: string) {
-  refreshToken = token;
-  localStorage.setItem('sparkbin_refresh_token', token);
+export function setRefreshToken(_token: string) {
+  // refresh token 不再由 JS 持有，由后端 HttpOnly Cookie 管理
 }
 
 export function getRefreshToken(): string | null {
-  return refreshToken;
+  return null;
 }
 
 export function clearRememberedUsername() {
@@ -70,30 +65,22 @@ export function stopTokenRefreshTimer() {
 }
 
 async function refreshAccessToken(): Promise<boolean> {
-  const token = getRefreshToken();
-  if (!token) return false;
-
   const tryRefresh = async (): Promise<boolean> => {
     try {
+      // refresh_token 由后端 HttpOnly Cookie 自动携带
       const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: token }),
+        credentials: 'include',
       });
 
       if (!response.ok) {
         return false;
       }
 
-      const data = await response.json() as LoginResponse;
-      if (data.access_token) {
-        setAuthToken(data.access_token);
-        if (data.refresh_token) {
-          setRefreshToken(data.refresh_token);
-        }
-        return true;
-      }
-      return false;
+      // 后端刷新成功后会通过 Set-Cookie 写入新的 access_token
+      setAuthToken('refreshed');
+      return true;
     } catch {
       return false;
     }
@@ -216,7 +203,7 @@ async function request<T>(
   const isRetry = options.__retry ?? false;
   const skipCache = options.__skipCache ?? false;
   const isGet = !options.method || options.method === 'GET';
-  const cacheKey = `${url}:${authToken || ''}`;
+  const cacheKey = `${url}`;
 
   // GET 请求优先读缓存
   if (isGet && !skipCache) {
@@ -231,13 +218,11 @@ async function request<T>(
     ...((options.headers as Record<string, string>) || {}),
   };
 
-  if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
-  }
-
+  // 认证由后端 HttpOnly Cookie 自动携带，前端不再手动注入 Authorization
   const response = await fetch(url, {
     ...options,
     headers,
+    credentials: 'include',
   });
 
   if (response.status === 401) {
@@ -348,7 +333,7 @@ export interface VerifyEmailResponse {
 
 export const authApi = {
   login: (data: LoginRequest) =>
-    request<LoginResponse>('/auth/login', {
+    request<BaseResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -407,7 +392,7 @@ export const authApi = {
   verifyEmailStatus: (token: string) =>
     request<VerifyEmailResponse>(`/auth/verify-email?token=${encodeURIComponent(token)}`),
 
-  verifyEmail: (token: string) =
+  verifyEmail: (token: string) =>
     request<VerifyEmailResponse>('/auth/verify-email', {
       method: 'POST',
       body: JSON.stringify({ token }),
@@ -646,8 +631,8 @@ export const aiApi = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken || ''}`,
       },
+      credentials: 'include',
       body: JSON.stringify({ provider, messages, stream: true }),
     });
     return response;

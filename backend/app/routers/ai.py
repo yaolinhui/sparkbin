@@ -215,7 +215,7 @@ def update_config(
         # 创建新配置
         config = AIConfig(
             provider=provider,
-            base_url=request.base_url,
+            base_url=str(request.base_url),
             api_key_encrypted=encryption.encrypt(api_key_to_store),
             default_model=request.default_model,
             is_active=request.is_active
@@ -230,7 +230,7 @@ def update_config(
             "is_active": config.is_active
         }
 
-        config.base_url = request.base_url
+        config.base_url = str(request.base_url)
         config.api_key_encrypted = encryption.encrypt(api_key_to_store)
         config.default_model = request.default_model
         config.is_active = request.is_active
@@ -256,7 +256,7 @@ async def test_ai_config(
     ai_service = AIProxyService(db)
     result = await ai_service.test_connection(
         provider,
-        base_url=request.base_url if request else None,
+        base_url=str(request.base_url) if request and request.base_url else None,
         api_key=request.api_key if request else None,
         model=request.default_model if request else None,
     )
@@ -593,7 +593,8 @@ async def list_ollama_models(
             else:
                 return {"models": [], "base_url": native_base, "error": f"HTTP {response.status_code}"}
     except Exception as e:
-        return {"models": [], "base_url": native_base, "error": str(e)}
+        logger.exception("Failed to list Ollama models")
+        return {"models": [], "error": "Ollama 服务不可达"}
 
 
 # ========== Agent 驾驶舱接口 ==========

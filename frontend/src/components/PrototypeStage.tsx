@@ -1016,16 +1016,21 @@ function FeatureRow({
             </span>
           )}
 
-          {feature.referenceUrl && (
+          {feature.referenceUrl && (feature.referenceUrl.startsWith('http://') || feature.referenceUrl.startsWith('https://')) && (
             <a
               href={feature.referenceUrl}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer nofollow"
               className="text-xs text-brutal-accent hover:underline flex items-center gap-1"
             >
               <ExternalLink className="w-3 h-3" />
               参考
             </a>
+          )}
+          {feature.referenceUrl && !feature.referenceUrl.startsWith('http://') && !feature.referenceUrl.startsWith('https://') && (
+            <span className="text-xs text-brutal-error flex items-center gap-1">
+              链接格式不安全
+            </span>
           )}
 
           {feature.notes && !isEditing && (

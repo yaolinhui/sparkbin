@@ -52,7 +52,7 @@ jobs:
             echo "Step 4: Health check"
             echo "=========================================="
             sleep 5
-            curl -sf http://localhost:8000/health && echo "" && echo "Backend is healthy!" || echo "WARNING: Health check failed"
+            curl -sf http://localhost/health && echo "" && echo "Backend is healthy!" || echo "WARNING: Health check failed"
 
             echo ""
             echo "=========================================="

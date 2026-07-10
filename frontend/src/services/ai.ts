@@ -41,7 +41,7 @@ export const AI_PROVIDER_NAMES: Record<AIProvider, string> = {
 };
 
 // API 交互接口 - 从 api.ts 导入
-import { authApi, aiApi as originalAiApi, getAuthToken, type StageSnapshot } from './api';
+import { authApi, aiApi as originalAiApi, type StageSnapshot } from './api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -93,8 +93,6 @@ class AIService {
     handlers?: StageChatHandlers,
     signal?: AbortSignal,
   ): AsyncGenerator<string, void, unknown> {
-    const token = getAuthToken();
-
     // 始终使用最新的 provider（从 localStorage 读取）
     const provider = getCurrentProvider();
 
@@ -102,8 +100,8 @@ class AIService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token || ''}`,
       },
+      credentials: 'include',
       body: JSON.stringify({
         provider,
         messages,

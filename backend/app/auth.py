@@ -9,8 +9,9 @@ from collections import deque
 from jose import JWTError, jwt
 import bcrypt
 from sqlalchemy.orm import Session
-from fastapi import Depends, HTTPException, status, Request
+from fastapi import Depends, HTTPException, status, Request, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from urllib.parse import urlparse
 
 from .config import get_settings
 from .database import get_db
@@ -52,6 +53,113 @@ def _is_trusted_proxy(ip: str) -> bool:
         return any(addr in net for net in _TRUSTED_PROXY_NETWORKS)
     except ValueError:
         return False
+
+
+# ========== Token Cookie helpers ==========
+# 将 access/refresh token 写入 HttpOnly Cookie，替代 localStorage 和 URL fragment。
+# 支持跨子域名共享（当后端部署在 api.example.com、前端在 app.example.com 时）。
+
+_OAUTH_STATE_COOKIE_NAME = "oauth_state"
+_OAUTH_BIND_STATE_COOKIE_NAME = "oauth_bind_state"
+_OAUTH_STATE_MAX_AGE_SECONDS = 600
+
+
+def _get_cookie_domain(request: Request, frontend_url: str) -> str | None:
+    """计算跨子域共享 Cookie 所需的 Domain 属性。
+
+    若前端与后端为同一 host，则返回 None（Cookie 仅对当前 host 生效）。
+    若前端为子域名（如 app.example.com），后端在 api.example.com，
+    则返回 '.example.com'，使 Cookie 在两个子域间共享。
+    """
+    backend_host = request.url.hostname or ""
+    frontend_host = urlparse(frontend_url).hostname or ""
+    if not backend_host or not frontend_host:
+        return None
+    if backend_host.lower() == frontend_host.lower():
+        return None
+    frontend_parts = frontend_host.lower().split(".")
+    if len(frontend_parts) >= 3:
+        return "." + ".".join(frontend_parts[1:])
+    return None
+
+
+def _set_token_cookies(
+    response: Response,
+    request: Request,
+    access_token: str,
+    refresh_token: str,
+) -> None:
+    """设置 access_token / refresh_token HttpOnly Cookie。"""
+    settings = get_settings()
+    secure = request.url.scheme == "https"
+    samesite = "none" if secure else "lax"
+    domain = _get_cookie_domain(request, settings.frontend_url)
+
+    common = {
+        "httponly": True,
+        "secure": secure,
+        "samesite": samesite,
+    }
+    if domain:
+        common["domain"] = domain
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        max_age=settings.access_token_expire_minutes * 60,
+        **common,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        max_age=settings.refresh_token_expire_days * 86400,
+        **common,
+    )
+
+
+def _clear_token_cookies(response: Response, request: Request) -> None:
+    """清除 access_token / refresh_token Cookie。"""
+    settings = get_settings()
+    domain = _get_cookie_domain(request, settings.frontend_url)
+    common = {"domain": domain} if domain else {}
+    response.delete_cookie(key="access_token", **common)
+    response.delete_cookie(key="refresh_token", **common)
+
+
+def _set_oauth_state_cookie(response: Response, request: Request, nonce: str) -> None:
+    """将 OAuth state nonce 写入 HttpOnly Secure SameSite cookie，与客户端会话绑定。"""
+    secure = request.url.scheme == "https"
+    response.set_cookie(
+        key=_OAUTH_STATE_COOKIE_NAME,
+        value=nonce,
+        max_age=_OAUTH_STATE_MAX_AGE_SECONDS,
+        httponly=True,
+        secure=secure,
+        samesite="lax" if not secure else "none",
+    )
+
+
+def _clear_oauth_state_cookie(response: Response) -> None:
+    """清除 OAuth state cookie（单次使用）。"""
+    response.delete_cookie(key=_OAUTH_STATE_COOKIE_NAME)
+
+
+def _set_oauth_bind_state_cookie(response: Response, request: Request, nonce: str) -> None:
+    """将 OAuth bind state nonce 写入 HttpOnly cookie，与当前浏览器会话绑定。"""
+    secure = request.url.scheme == "https"
+    response.set_cookie(
+        key=_OAUTH_BIND_STATE_COOKIE_NAME,
+        value=nonce,
+        max_age=_OAUTH_STATE_MAX_AGE_SECONDS,
+        httponly=True,
+        secure=secure,
+        samesite="lax" if not secure else "none",
+    )
+
+
+def _clear_oauth_bind_state_cookie(response: Response) -> None:
+    """清除 OAuth bind state cookie。"""
+    response.delete_cookie(key=_OAUTH_BIND_STATE_COOKIE_NAME)
 
 
 def generate_captcha(ip: str) -> dict:
@@ -362,11 +470,25 @@ def validate_password_complexity(password: str) -> tuple[bool, str]:
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_optional),
     db: Session = Depends(get_db)
 ) -> User:
-    """获取当前登录用户（要求 access token）"""
-    token = credentials.credentials
+    """获取当前登录用户（要求 access token，支持 Header Bearer 或 HttpOnly Cookie）"""
+    token = None
+    if credentials is not None:
+        token = credentials.credentials
+    if not token:
+        # 回退到 HttpOnly Cookie（推荐，避免 token 暴露在 localStorage / URL）
+        token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     payload = decode_token(token, expected_type="access")
 
     if payload is None:
@@ -401,6 +523,20 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # 强制首次登录改密：除白名单接口外，一律拒绝访问
+    if user.require_password_change:
+        allowed_paths = {
+            "/auth/change-password",
+            "/auth/logout",
+            "/auth/refresh",
+            "/auth/me",
+        }
+        if request.url.path not in allowed_paths:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="请先修改初始密码",
+            )
+
     return user
 
 
@@ -409,18 +545,22 @@ async def get_current_user_from_query_or_header(
     credentials: HTTPAuthorizationCredentials | None = Depends(security_optional),
     db: Session = Depends(get_db)
 ) -> User:
-    """获取当前登录用户，支持从 Header Bearer Token 或 URL Query Param ?token=xxx 读取"""
+    """获取当前登录用户，支持从 Header Bearer Token、URL Query Param ?token=xxx 或 Cookie 读取"""
     token = None
 
     # 优先从 Header 读取
     if credentials is not None:
         token = credentials.credentials
 
-    # 如果 Header 没有，尝试从 query param 读取（用于浏览器跳转场景）
-    if token is None:
+    # 其次从 Cookie 读取
+    if not token:
+        token = request.cookies.get("access_token")
+
+    # 如果 Header/Cookie 都没有，尝试从 query param 读取（用于浏览器跳转场景）
+    if not token:
         token = request.query_params.get("token")
 
-    if token is None:
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
