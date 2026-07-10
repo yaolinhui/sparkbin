@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Literal
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field, EmailStr
+from pydantic import BaseModel, ConfigDict, Field, EmailStr, field_validator
 
 from .models import ProjectStatus, StageKey, AIProvider, ProjectType
 
@@ -246,6 +246,28 @@ class AIChatRequest(BaseModel):
     stage_key: Optional[StageKey] = None
     enable_stage_loop: bool = True
 
+    @field_validator("messages")
+    @classmethod
+    def _validate_messages(cls, v: List[dict]) -> List[dict]:
+        """限制消息数量、角色与单条长度，防止 Prompt 注入和超大请求"""
+        if len(v) > 50:
+            raise ValueError("消息数量不能超过 50 条")
+        allowed_roles = {"system", "user", "assistant"}
+        for idx, msg in enumerate(v):
+            if not isinstance(msg, dict):
+                raise ValueError(f"第 {idx + 1} 条消息必须是字典")
+            role = msg.get("role")
+            content = msg.get("content")
+            if role not in allowed_roles:
+                raise ValueError(f"第 {idx + 1} 条消息 role 必须是 system/user/assistant 之一")
+            if not isinstance(content, str):
+                raise ValueError(f"第 {idx + 1} 条消息 content 必须是字符串")
+            if len(content) == 0:
+                raise ValueError(f"第 {idx + 1} 条消息 content 不能为空")
+            if len(content) > 8000:
+                raise ValueError(f"第 {idx + 1} 条消息 content 不能超过 8000 字符")
+        return v
+
 
 class AIPromoteSuggestRequest(BaseModel):
     provider: AIProvider
@@ -416,7 +438,7 @@ class GitHubImportCreateRequest(BaseModel):
     pain_point: str = ""
     original_idea: str = ""
     stage: str = "idea"
-    readme_content: str = ""
+    readme_content: str = Field(default="", max_length=50000)
 
 
 # ========== Agent 驾驶舱 ==========
