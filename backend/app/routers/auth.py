@@ -37,6 +37,7 @@ from sqlalchemy import func, update
 from datetime import datetime, timedelta, timezone
 from uuid import UUID as UuidType
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
