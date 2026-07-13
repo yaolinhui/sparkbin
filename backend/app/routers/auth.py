@@ -726,19 +726,19 @@ def _close_http_client() -> None:
 # ========== OAuth 2.0（Google / GitHub）==========
 
 def _get_oauth_redirect_url(provider: str) -> str:
-    """构建 OAuth 回调地址（供 Google/GitHub 重定向回后端）"""
-    import os
+    """构建 OAuth 回调地址（供 Google/GitHub 重定向回后端）。
+
+    使用 settings.api_url（对应环境变量 API_URL），确保生产/开发环境一致，
+    不再裸读 os.environ，避免环境变量未注入时回退到 127.0.0.1:8000。
+    """
     settings = get_settings()
-    api_url = os.environ.get("API_URL", f"http://127.0.0.1:{settings.api_port}")
-    return f"{api_url}/auth/oauth/{provider}/callback"
+    return f"{settings.api_url}/auth/oauth/{provider}/callback"
 
 
 def _get_oauth_connect_redirect_url() -> str:
-    """构建 GitHub 增量授权（仓库导入）回调地址"""
-    import os
+    """构建 GitHub 增量授权（仓库导入）回调地址。"""
     settings = get_settings()
-    api_url = os.environ.get("API_URL", f"http://127.0.0.1:{settings.api_port}")
-    return f"{api_url}/auth/oauth/github/connect/callback"
+    return f"{settings.api_url}/auth/oauth/github/connect/callback"
 
 
 def _create_oauth_state(response: Response, request: Request) -> str:

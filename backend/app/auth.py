@@ -133,6 +133,7 @@ def _set_oauth_state_cookie(response: Response, request: Request, nonce: str) ->
         key=_OAUTH_STATE_COOKIE_NAME,
         value=nonce,
         max_age=_OAUTH_STATE_MAX_AGE_SECONDS,
+        path="/",
         httponly=True,
         secure=secure,
         samesite="lax" if not secure else "none",
@@ -141,7 +142,7 @@ def _set_oauth_state_cookie(response: Response, request: Request, nonce: str) ->
 
 def _clear_oauth_state_cookie(response: Response) -> None:
     """清除 OAuth state cookie（单次使用）。"""
-    response.delete_cookie(key=_OAUTH_STATE_COOKIE_NAME)
+    response.delete_cookie(key=_OAUTH_STATE_COOKIE_NAME, path="/")
 
 
 def _set_oauth_bind_state_cookie(response: Response, request: Request, nonce: str) -> None:
@@ -151,6 +152,7 @@ def _set_oauth_bind_state_cookie(response: Response, request: Request, nonce: st
         key=_OAUTH_BIND_STATE_COOKIE_NAME,
         value=nonce,
         max_age=_OAUTH_STATE_MAX_AGE_SECONDS,
+        path="/",
         httponly=True,
         secure=secure,
         samesite="lax" if not secure else "none",
@@ -159,7 +161,7 @@ def _set_oauth_bind_state_cookie(response: Response, request: Request, nonce: st
 
 def _clear_oauth_bind_state_cookie(response: Response) -> None:
     """清除 OAuth bind state cookie。"""
-    response.delete_cookie(key=_OAUTH_BIND_STATE_COOKIE_NAME)
+    response.delete_cookie(key=_OAUTH_BIND_STATE_COOKIE_NAME, path="/")
 
 
 def generate_captcha(ip: str) -> dict:
