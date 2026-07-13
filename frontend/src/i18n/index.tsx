@@ -803,7 +803,7 @@ const translations = {
     // Dialog
     dialog: {
       stay: '残る',
-      leave: '离开',
+      leave: '退出する',
     },
     // Account
     account: {
@@ -1105,12 +1105,12 @@ const translations = {
     },
     // Navigation
     nav: {
-      admin: 'ADMIN',
-      account: 'CUENTA',
-      logout: 'CERRAR SESIÓN',
-      back: 'ATRÁS',
-      dashboard: 'PANEL',
-      toggle_menu: 'ALTERNAR MENÚ',
+      admin: 'Administrar',
+      account: 'Cuenta',
+      logout: 'Cerrar sesión',
+      back: 'Atrás',
+      dashboard: 'Panel',
+      toggle_menu: 'Alternar menú',
     },
     // Status
     status: {
@@ -1150,7 +1150,7 @@ const translations = {
     },
     // Common
     common: {
-      or: 'O',
+      or: 'o',
       bind: 'Vincular',
       unbind: 'Desvincular',
     },
@@ -1171,7 +1171,7 @@ const translations = {
       create_first: 'Crea tu primer proyecto con el botón de abajo',
       awaiting_input: 'Esperando entrada...',
       ready_to_commit: 'Listo para confirmar...',
-      add_new: 'AGREGAR PROYECTO',
+      add_new: 'Agregar proyecto',
     },
     // Stages - Flujo Vibe/Indie Hacker
     stage: {
@@ -1225,7 +1225,7 @@ const translations = {
       channels: 'Canales de promoción',
       no_models_available: 'No hay modelos disponibles. Contacta al administrador.',
       providers_count: 'modelos disponibles',
-      credits: 'CRÉDITOS IA',
+      credits: 'Créditos IA',
     },
     // Modal
     modal: {
@@ -1289,7 +1289,7 @@ const translations = {
       light: 'Claro',
       switch_to_dark: 'Cambiar a modo oscuro',
       switch_to_light: 'Cambiar a modo claro',
-      toggle_theme: 'ALTERNAR TEMA',
+      toggle_theme: 'Alternar tema',
     },
     // Placeholders
     placeholder: {
@@ -1306,30 +1306,30 @@ const translations = {
     },
     // Backend
     backend: {
-      mode: 'MODO BACKEND',
+      mode: 'Modo backend',
       data_storage: 'Datos almacenados en PostgreSQL',
     },
     // Filter
     filter: {
-      filter: 'FILTRAR',
-      clear: '[LIMPIAR]',
-      filtered: 'FILTRADO',
+      filter: 'Filtrar',
+      clear: '[Limpiar]',
+      filtered: 'Filtrado',
       no_filtered_projects: 'No se encontraron proyectos coincidentes',
       try_different_filter: 'Prueba seleccionando otro filtro',
     },
     // Error Banner
     error_banner: {
-      error_prefix: 'ERROR',
-      retry: 'REINTENTAR',
+      error_prefix: 'Error',
+      retry: 'Reintentar',
     },
     // Empty State
     empty_state: {
       prompt: '> _',
-      awaiting_input: 'ESPERANDO_ENTRADA...',
+      awaiting_input: 'Esperando entrada...',
     },
     // Quota
     quota: {
-      credits: 'CRÉDITOS IA',
+      credits: 'Créditos IA',
       ai_label: 'IA: {{credits}}',
     },
     // Toast
@@ -1348,13 +1348,13 @@ const translations = {
     },
     // Dialog
     dialog: {
-      stay: 'QUEDARSE',
-      leave: 'SALIR',
+      stay: 'Quedarse',
+      leave: 'Salir',
     },
     // Account
     account: {
-      settings: 'CONFIGURACIÓN DE CUENTA',
-      oauth_binding: 'VINCULACIÓN DE CUENTAS DE TERCEROS',
+      settings: 'Configuración de cuenta',
+      oauth_binding: 'Vinculación de cuentas de terceros',
       bound: 'Vinculado',
       not_bound: 'No vinculado',
     },
@@ -1378,12 +1378,12 @@ const translations = {
     },
     // Navigation
     nav: {
-      admin: 'ADMIN',
-      account: 'COMPTE',
-      logout: 'DÉCONNEXION',
-      back: 'RETOUR',
-      dashboard: 'TABLEAU DE BORD',
-      toggle_menu: 'BASCULER LE MENU',
+      admin: 'Administrer',
+      account: 'Compte',
+      logout: 'Déconnexion',
+      back: 'Retour',
+      dashboard: 'Tableau de bord',
+      toggle_menu: 'Basculer le menu',
     },
     // Status
     status: {
@@ -1423,7 +1423,7 @@ const translations = {
     },
     // Common
     common: {
-      or: 'OU',
+      or: 'ou',
       bind: 'Lier',
       unbind: 'Délier',
     },
@@ -1444,7 +1444,7 @@ const translations = {
       create_first: 'Créez votre premier projet en utilisant le bouton ci-dessous',
       awaiting_input: 'En attente de saisie...',
       ready_to_commit: 'Prêt à valider...',
-      add_new: 'AJOUTER UN PROJET',
+      add_new: 'Ajouter un projet',
     },
     // Stages - Flux Vibe/Indie Hacker
     stage: {
@@ -1498,7 +1498,7 @@ const translations = {
       channels: 'Canaux de promotion',
       no_models_available: 'Aucun modèle disponible. Veuillez contacter l\'administrateur.',
       providers_count: 'modèles disponibles',
-      credits: 'CRÉDITS IA',
+      credits: 'Crédits IA',
     },
     // Modal
     modal: {
@@ -1562,7 +1562,7 @@ const translations = {
       light: 'Clair',
       switch_to_dark: 'Passer en mode sombre',
       switch_to_light: 'Passer en mode clair',
-      toggle_theme: 'BASCULER LE THÈME',
+      toggle_theme: 'Basculer le thème',
     },
     // Placeholders
     placeholder: {
@@ -1579,30 +1579,30 @@ const translations = {
     },
     // Backend
     backend: {
-      mode: 'MODE BACKEND',
+      mode: 'Mode backend',
       data_storage: 'Données stockées dans PostgreSQL',
     },
     // Filter
     filter: {
-      filter: 'FILTRER',
-      clear: '[EFFACER]',
-      filtered: 'FILTRÉ',
+      filter: 'Filtrer',
+      clear: '[Effacer]',
+      filtered: 'Filtré',
       no_filtered_projects: 'Aucun projet correspondant trouvé',
       try_different_filter: 'Essayez un autre filtre',
     },
     // Error Banner
     error_banner: {
-      error_prefix: 'ERREUR',
-      retry: 'RÉESSAYER',
+      error_prefix: 'Erreur',
+      retry: 'Réessayer',
     },
     // Empty State
     empty_state: {
       prompt: '> _',
-      awaiting_input: 'EN_ATTENTE_DE_SAISIE...',
+      awaiting_input: 'En attente de saisie...',
     },
     // Quota
     quota: {
-      credits: 'CRÉDITS IA',
+      credits: 'Crédits IA',
       ai_label: 'IA: {{credits}}',
     },
     // Toast
@@ -1621,13 +1621,13 @@ const translations = {
     },
     // Dialog
     dialog: {
-      stay: 'RESTER',
-      leave: 'PARTIR',
+      stay: 'Rester',
+      leave: 'Partir',
     },
     // Account
     account: {
-      settings: 'PARAMÈTRES DU COMPTE',
-      oauth_binding: 'LIEN DE COMPTE TIERS',
+      settings: 'Paramètres du compte',
+      oauth_binding: 'Lien de compte tiers',
       bound: 'Lié',
       not_bound: 'Non lié',
     },
@@ -1651,12 +1651,12 @@ const translations = {
     },
     // Navigation
     nav: {
-      admin: 'ADMIN',
-      account: 'KONTO',
-      logout: 'ABMELDEN',
-      back: 'ZURÜCK',
-      dashboard: 'DASHBOARD',
-      toggle_menu: 'MENÜ UMSCHALTEN',
+      admin: 'Verwalten',
+      account: 'Konto',
+      logout: 'Abmelden',
+      back: 'Zurück',
+      dashboard: 'Dashboard',
+      toggle_menu: 'Menü umschalten',
     },
     // Status
     status: {
@@ -1696,7 +1696,7 @@ const translations = {
     },
     // Common
     common: {
-      or: 'ODER',
+      or: 'oder',
       bind: 'Verbinden',
       unbind: 'Entkoppeln',
     },
@@ -1717,7 +1717,7 @@ const translations = {
       create_first: 'Erstellen Sie Ihr erstes Projekt mit der Schaltfläche unten',
       awaiting_input: 'Warte auf Eingabe...',
       ready_to_commit: 'Bereit zur Bestätigung...',
-      add_new: 'PROJEKT HINZUFÜGEN',
+      add_new: 'Projekt hinzufügen',
     },
     // Stages - Vibe/Indie Hacker-Fluss
     stage: {
@@ -1771,7 +1771,7 @@ const translations = {
       channels: 'Promotionskanäle',
       no_models_available: 'Keine Modelle verfügbar. Bitte Admin kontaktieren.',
       providers_count: 'verfügbare Modelle',
-      credits: 'AI-CREDITS',
+      credits: 'AI-Credits',
     },
     // Modal
     modal: {
@@ -1835,7 +1835,7 @@ const translations = {
       light: 'Hell',
       switch_to_dark: 'Zu Dunkelmodus wechseln',
       switch_to_light: 'Zu Hellmodus wechseln',
-      toggle_theme: 'THEMA UMSCHALTEN',
+      toggle_theme: 'Thema umschalten',
     },
     // Placeholders
     placeholder: {
@@ -1852,30 +1852,30 @@ const translations = {
     },
     // Backend
     backend: {
-      mode: 'BACKEND-MODUS',
+      mode: 'Backend-Modus',
       data_storage: 'Daten in PostgreSQL gespeichert',
     },
     // Filter
     filter: {
-      filter: 'FILTERN',
-      clear: '[LÖSCHEN]',
-      filtered: 'GEFILTERT',
+      filter: 'Filtern',
+      clear: '[Löschen]',
+      filtered: 'Gefiltert',
       no_filtered_projects: 'Keine passenden Projekte gefunden',
       try_different_filter: 'Versuchen Sie einen anderen Filter',
     },
     // Error Banner
     error_banner: {
-      error_prefix: 'FEHLER',
-      retry: 'WIEDERHOLEN',
+      error_prefix: 'Fehler',
+      retry: 'Wiederholen',
     },
     // Empty State
     empty_state: {
       prompt: '> _',
-      awaiting_input: 'WARTE_AUF_EINGABE...',
+      awaiting_input: 'Warte auf Eingabe...',
     },
     // Quota
     quota: {
-      credits: 'AI-CREDITS',
+      credits: 'AI-Credits',
       ai_label: 'AI: {{credits}}',
     },
     // Toast
@@ -1894,13 +1894,13 @@ const translations = {
     },
     // Dialog
     dialog: {
-      stay: 'BLEIBEN',
-      leave: 'VERLASSEN',
+      stay: 'Bleiben',
+      leave: 'Verlassen',
     },
     // Account
     account: {
-      settings: 'KONTOEINSTELLUNGEN',
-      oauth_binding: 'DRITTANBIETER-KONTOVERBINDUNG',
+      settings: 'Kontoeinstellungen',
+      oauth_binding: 'Drittanbieter-Kontoverbindung',
       bound: 'Verbunden',
       not_bound: 'Nicht verbunden',
     },
