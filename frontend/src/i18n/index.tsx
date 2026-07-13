@@ -382,6 +382,7 @@ const translations = {
       delete_failed: '删除失败，请稍后重试。',
       sync_empty: '同步内容为空，无法写入左侧面板。',
       sync_failed: '同步失败，请稍后重试。',
+      unknown: '未知错误',
     },
     // Backend
     backend: {
@@ -830,6 +831,7 @@ const translations = {
       delete_failed: 'Delete failed. Please try again later.',
       sync_empty: 'Sync content is empty. Cannot write to left panel.',
       sync_failed: 'Sync failed. Please try again later.',
+      unknown: 'UNKNOWN ERROR',
     },
     // Backend
     backend: {
@@ -1278,6 +1280,7 @@ const translations = {
       delete_failed: '削除に失敗しました。後でもう一度お試しください。',
       sync_empty: '同期内容が空です。左側のパネルに書き込めません。',
       sync_failed: '同期に失敗しました。後でもう一度お試しください。',
+      unknown: '不明なエラー',
     },
     // Backend
     backend: {
@@ -1726,6 +1729,7 @@ const translations = {
       delete_failed: '삭제에 실패했습니다. 잠시 후 다시 시도해주세요.',
       sync_empty: '동기화 내용이 비어 있습니다. 왼쪽 패널에 쓸 수 없습니다.',
       sync_failed: '동기화에 실패했습니다. 잠시 후 다시 시도해주세요.',
+      unknown: '알 수 없는 오류',
     },
     // Backend
     backend: {
@@ -1910,9 +1914,9 @@ const translations = {
       type_game: 'Juego',
       type_script: 'Script de Utilidad',
       type_other: 'Otro',
-      blueprint: 'PLANO DEL PROYECTO',
-      agent_cockpit: 'CABINA DE AGENTE IA',
-      stage_label: 'ETAPA',
+      blueprint: 'Plano del proyecto',
+      agent_cockpit: 'Cabina de agente IA',
+      stage_label: 'Etapa',
       delete_warning: 'Esto eliminará el proyecto de tu lista (eliminación lógica en backend).',
       confirm_delete_prompt: 'Por favor confirma que quieres eliminar el proyecto:',
       confirm_delete_label: 'Ingresa el título del proyecto para confirmar la eliminación',
@@ -1931,9 +1935,9 @@ const translations = {
       stage_label: 'Etapa',
       empty_confirm: 'La etapa actual no tiene contenido registrado. ¿Estás seguro de completarla y pasar a la siguiente?',
       no_content_status: 'No se detectó contenido',
-      warning_empty: 'ADVERTENCIA: CONTENIDO DE ETAPA VACÍO',
+      warning_empty: 'Advertencia: contenido de etapa vacío',
       no_content_detected: 'No se detectó contenido',
-      status_label: 'ESTADO',
+      status_label: 'Estado',
     },
     // GitHub
     github: {
@@ -2011,16 +2015,16 @@ const translations = {
       suggestions_generating: 'Generando sugerencias de IA...',
       estimate_time: 'Tiempo estimado 10-15 segundos; puedes revisar el contenido existente a la izquierda',
       suggestion_hint: 'El lado izquierdo muestra el contenido actual, el derecho las sugerencias de IA. Puedes editar las sugerencias directamente a la derecha.',
-      suggestions_editable: 'SUGERENCIAS DE IA (EDITABLES)',
+      suggestions_editable: 'Sugerencias de IA (editables)',
       merge_keep_original: 'Fusión inteligente: esta nota conserva el contenido original',
       merge_description: 'Sobrescribe solo las notas adhesivas con contenido de marcador de posición, manteniendo tu contenido editado',
       overwrite_description: 'Reemplaza todo el contenido de las notas adhesivas con sugerencias de IA (incluyendo tus ediciones)',
-      sync_suggestion: 'SUGERENCIA DE SINCRONIZACIÓN DE IA',
-      sync_summary: 'RESUMEN DE SINCRONIZACIÓN DE IA',
-      sync_preview: 'VISTA PREVIA DE SINCRONIZACIÓN',
+      sync_suggestion: 'Sugerencia de sincronización de IA',
+      sync_summary: 'Resumen de sincronización de IA',
+      sync_preview: 'Vista previa de sincronización',
       sync_description: 'Sincroniza la respuesta de IA de la derecha en el panel de etapa actual de la izquierda.',
-      suggested_plan: 'PLAN SUGERIDO POR IA',
-      sync_source: 'SINCRONIZACIÓN IA',
+      suggested_plan: 'Plan sugerido por IA',
+      sync_source: 'Sincronización IA',
       open_assistant: 'Abrir asistente de IA',
     },
     // Create
@@ -2174,6 +2178,7 @@ const translations = {
       delete_failed: 'Error al eliminar. Por favor inténtalo de nuevo más tarde.',
       sync_empty: 'El contenido de sincronización está vacío. No se puede escribir en el panel izquierdo.',
       sync_failed: 'Error al sincronizar. Por favor inténtalo de nuevo más tarde.',
+      unknown: 'Error desconocido',
     },
     // Backend
     backend: {
@@ -2224,7 +2229,7 @@ const translations = {
       unsaved_leave: 'Tienes cambios no guardados. ¿Estás seguro de que quieres salir?',
       continue_editing: 'Continuar editando',
       confirm_leave: 'Salir',
-      warning: 'ADVERTENCIA',
+      warning: 'Advertencia',
     },
     // Account
     account: {
@@ -2358,9 +2363,9 @@ const translations = {
       type_game: 'Jeu',
       type_script: 'Script Utilitaire',
       type_other: 'Autre',
-      blueprint: 'BLUEPRINT DU PROJET',
-      agent_cockpit: 'COCKPIT AGENT IA',
-      stage_label: 'ÉTAPE',
+      blueprint: 'Blueprint du projet',
+      agent_cockpit: 'Cockpit agent IA',
+      stage_label: 'Étape',
       delete_warning: 'Cela retirera le projet de votre liste (suppression logique côté backend).',
       confirm_delete_prompt: 'Veuillez confirmer que vous voulez supprimer le projet :',
       confirm_delete_label: 'Saisissez le titre du projet pour confirmer la suppression',
@@ -2379,9 +2384,9 @@ const translations = {
       stage_label: 'Étape',
       empty_confirm: 'L\'étape actuelle n\'a aucun contenu enregistré. Êtes-vous sûr de vouloir la terminer et passer à la suivante ?',
       no_content_status: 'Aucun contenu détecté',
-      warning_empty: 'AVERTISSEMENT : CONTENU DE L\'ÉTAPE VIDE',
+      warning_empty: 'Avertissement : contenu de l\'étape vide',
       no_content_detected: 'Aucun contenu détecté',
-      status_label: 'STATUT',
+      status_label: 'Statut',
     },
     // GitHub
     github: {
@@ -2459,16 +2464,16 @@ const translations = {
       suggestions_generating: 'Génération des suggestions IA...',
       estimate_time: 'Estimé à 10-15 secondes ; vous pouvez consulter le contenu existant à gauche',
       suggestion_hint: 'La gauche montre le contenu actuel, la droite les suggestions IA. Vous pouvez modifier les suggestions directement à droite.',
-      suggestions_editable: 'SUGGESTIONS IA (MODIFIABLES)',
+      suggestions_editable: 'Suggestions IA (modifiables)',
       merge_keep_original: 'Fusion intelligente : ce post-it conserve son contenu original',
       merge_description: 'N\'écrase que les post-its avec du contenu d\'espace réservé, en conservant votre contenu modifié',
       overwrite_description: 'Remplace tout le contenu des post-its par les suggestions IA (y compris vos modifications)',
-      sync_suggestion: 'SUGGESTION DE SYNCHRONISATION IA',
-      sync_summary: 'RÉSUMÉ DE SYNCHRONISATION IA',
-      sync_preview: 'APERÇU DE SYNCHRONISATION',
+      sync_suggestion: 'Suggestion de synchronisation IA',
+      sync_summary: 'Résumé de synchronisation IA',
+      sync_preview: 'Aperçu de synchronisation',
       sync_description: 'Synchronise la réponse IA de droite dans le panneau de l\'étape actuelle de gauche.',
-      suggested_plan: 'PLAN SUGGÉRÉ PAR L\'IA',
-      sync_source: 'SYNC IA',
+      suggested_plan: 'Plan suggéré par l\'IA',
+      sync_source: 'Sync IA',
       open_assistant: 'Ouvrir l\'assistant IA',
     },
     // Create
@@ -2622,6 +2627,7 @@ const translations = {
       delete_failed: 'Échec de la suppression. Veuillez réessayer plus tard.',
       sync_empty: 'Le contenu de synchronisation est vide. Impossible d\'écrire dans le panneau de gauche.',
       sync_failed: 'Échec de la synchronisation. Veuillez réessayer plus tard.',
+      unknown: 'Erreur inconnue',
     },
     // Backend
     backend: {
@@ -2672,7 +2678,7 @@ const translations = {
       unsaved_leave: 'Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir partir ?',
       continue_editing: 'Continuer à modifier',
       confirm_leave: 'Partir',
-      warning: 'ATTENTION',
+      warning: 'Attention',
     },
     // Account
     account: {
@@ -2806,9 +2812,9 @@ const translations = {
       type_game: 'Spiel',
       type_script: 'Hilfsskript',
       type_other: 'Sonstiges',
-      blueprint: 'PROJEKT-BLUEPRINT',
-      agent_cockpit: 'AI-AGENT-COCKPIT',
-      stage_label: 'PHASE',
+      blueprint: 'Projekt-Blueprint',
+      agent_cockpit: 'AI-Agent-Cockpit',
+      stage_label: 'Phase',
       delete_warning: 'Dies entfernt das Projekt aus Ihrer Liste (Soft-Delete im Backend).',
       confirm_delete_prompt: 'Bitte bestätigen Sie, dass Sie das Projekt löschen möchten:',
       confirm_delete_label: 'Geben Sie den Projekttitel zur Bestätigung ein',
@@ -2827,9 +2833,9 @@ const translations = {
       stage_label: 'Phase',
       empty_confirm: 'Die aktuelle Phase hat keinen aufgezeichneten Inhalt. Möchten Sie sie wirklich abschließen und zur nächsten Phase wechseln?',
       no_content_status: 'Kein Inhalt erkannt',
-      warning_empty: 'WARNUNG: LEERE PHASENINHALTE',
+      warning_empty: 'Warnung: leere Phaseninhalte',
       no_content_detected: 'Kein Inhalt erkannt',
-      status_label: 'STATUS',
+      status_label: 'Status',
     },
     // GitHub
     github: {
@@ -2907,16 +2913,16 @@ const translations = {
       suggestions_generating: 'KI-Vorschläge werden generiert...',
       estimate_time: 'Geschätzt 10-15 Sekunden; Sie können bestehende Inhalte links überprüfen',
       suggestion_hint: 'Links wird der aktuelle Inhalt angezeigt, rechts die KI-Vorschläge. Sie können Vorschläge rechts direkt bearbeiten.',
-      suggestions_editable: 'KI-VORSCHLÄGE (BEARBEITBAR)',
+      suggestions_editable: 'KI-Vorschläge (bearbeitbar)',
       merge_keep_original: 'Intelligentes Zusammenführen: Diese Haftnotiz behält den Originalinhalt',
       merge_description: 'Nur Haftnotizen mit Platzhalterinhalt überschreiben, Ihre bearbeiteten Inhalte behalten',
       overwrite_description: 'Alle Haftnotizinhalte durch KI-Vorschläge ersetzen (einschließlich Ihrer Bearbeitungen)',
-      sync_suggestion: 'KI-SYNCHRONISATIONSVORSCHLAG',
-      sync_summary: 'KI-SYNCHRONISIERUNGSZUSAMMENFASSUNG',
-      sync_preview: 'SYNCHRONISIERUNGSVORSCHAU',
+      sync_suggestion: 'KI-Synchronisationsvorschlag',
+      sync_summary: 'KI-Synchronisierungszusammenfassung',
+      sync_preview: 'Synchronisierungsvorschau',
       sync_description: 'Synchronisiert die KI-Antwort rechts in das aktuelle Phase-Panel links.',
-      suggested_plan: 'KI-VORGESCHLAGENER PLAN',
-      sync_source: 'KI-SYNC',
+      suggested_plan: 'KI-vorgeschlagener Plan',
+      sync_source: 'KI-Sync',
       open_assistant: 'KI-Assistent öffnen',
     },
     // Create
@@ -3070,6 +3076,7 @@ const translations = {
       delete_failed: 'Löschen fehlgeschlagen. Bitte versuchen Sie es später erneut.',
       sync_empty: 'Synchronisierungsinhalt ist leer. Kann nicht in das linke Panel schreiben.',
       sync_failed: 'Synchronisierung fehlgeschlagen. Bitte versuchen Sie es später erneut.',
+      unknown: 'Unbekannter Fehler',
     },
     // Backend
     backend: {
@@ -3120,7 +3127,7 @@ const translations = {
       unsaved_leave: 'Sie haben ungespeicherte Änderungen. Möchten Sie wirklich verlassen?',
       continue_editing: 'Bearbeitung fortsetzen',
       confirm_leave: 'Verlassen',
-      warning: 'WARNUNG',
+      warning: 'Warnung',
     },
     // Account
     account: {

@@ -524,7 +524,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       .catch((err) => {
         if (cancelled) return;
         console.error('Failed to fetch project:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        const errorMessage = err instanceof Error ? err.message : t('error.unknown');
         if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
           setFetchError(t('error.connection_failed_detail'));
         } else if (errorMessage.includes('404')) {
