@@ -1445,7 +1445,8 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
       if (vars) {
         Object.entries(vars).forEach(([varKey, varValue]) => {
-          result = result.replace(new RegExp(`\\{\\{${varKey}\\}\\}`, 'g'), String(varValue));
+          const placeholder = `{{${varKey}}}`;
+          result = result.split(placeholder).join(String(varValue));
         });
       }
 
