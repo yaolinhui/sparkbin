@@ -3,7 +3,7 @@ import { X, ArrowRight, Check, Edit2, ChevronDown, ChevronUp, Github } from 'luc
 import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
 import { useI18n } from '../i18n/hooks';
-import { PROJECT_TYPE_LABELS, type ProjectType } from '../types';
+import { type ProjectType } from '../types';
 import { aiService } from '../services/ai';
 import { SnakeLoader } from './SnakeLoader';
 
@@ -13,6 +13,8 @@ interface UnderstandingDimension {
   content: string;
   isCorrect: boolean;
 }
+
+const PROJECT_TYPES: ProjectType[] = ['web', 'app', 'plugin', 'api', 'desktop', 'ai_agent', 'game', 'script', 'other'];
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -481,9 +483,9 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
                              focus:border-brutal-accent transition-colors font-mono text-sm
                              appearance-none cursor-pointer"
                 >
-                  {Object.entries(PROJECT_TYPE_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
+                  {PROJECT_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {t(`project.type_${type}`)}
                     </option>
                   ))}
                 </select>
