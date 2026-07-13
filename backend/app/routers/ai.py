@@ -153,7 +153,7 @@ def _extract_content_from_sse_chunks(chunks: List[str]) -> str:
 # _collect_sse_chunks 已移除：chat_completion 返回 AsyncGenerator，无需先收集再处理
 
 
-# ========== AI 额度检查与扣费 ==========
+@router.get("/providers")
 def list_providers(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)

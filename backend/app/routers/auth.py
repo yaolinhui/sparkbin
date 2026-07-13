@@ -1133,17 +1133,12 @@ def oauth_github_callback(
         if email:
             existing = db.query(User).filter(func.lower(User.email) == email.lower()).first()
             if existing:
-                # 如果已有账号绑定了其他 OAuth 提供商，禁止自动覆盖
-                if existing.oauth_provider and existing.oauth_provider != "github":
+                # 如果已有账号设置了密码且绑定了其他 OAuth 提供商，要求先登录再绑定，防止账号劫持。
+                # 若该账号没有密码（纯 OAuth 用户），则允许 GitHub 自动覆盖绑定，避免用户无法登录。
+                if existing.password_hash and existing.oauth_provider and existing.oauth_provider != "github":
                     raise HTTPException(
                         status_code=status.HTTP_409_CONFLICT,
                         detail="该邮箱已注册。请先登录现有账号，再在设置中绑定 GitHub。"
-                    )
-                # 安全策略：如果现有账号邮箱未验证，禁止 OAuth 自动绑定（防止账号劫持）
-                if not existing.email_verified:
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT,
-                        detail="该邮箱已注册但未验证。请先验证邮箱后再绑定 GitHub 账号。"
                     )
                 # 自动绑定到现有账号（无论是有密码还是完全空白）
                 existing.oauth_provider = "github"
