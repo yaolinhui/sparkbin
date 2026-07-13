@@ -14,7 +14,7 @@ const LANG_OPTIONS: { code: Language; label: string; flag: string }[] = [
 ];
 
 export function LanguageSwitcher() {
-  const { language, setLanguage } = useI18n();
+  const { language, setLanguage, t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -44,6 +44,7 @@ export function LanguageSwitcher() {
         className={`flex items-center gap-2 px-3 py-2 border bg-brutal-surface text-brutal-text transition-colors
                    ${isOpen ? 'border-brutal-accent bg-brutal-surface-hover' : 'border-brutal-border hover:border-brutal-accent hover:bg-brutal-surface-hover'}`}
         title={currentLabel}
+        aria-label={t(`language.name_${language}`)}
       >
         <Globe className="w-4 h-4" />
         <span className="text-xs font-mono">{currentLabel}</span>

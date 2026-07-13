@@ -159,10 +159,10 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
       setIsGitHubModalOpen(true);
     }
 
-    // 检查是否刚从 OAuth 绑定成功返回
+    // 检查是否刚从 OAuth {t('common.bind')}成功返回
     if (sessionStorage.getItem('sparkbin_oauth_bind_success') === '1') {
       sessionStorage.removeItem('sparkbin_oauth_bind_success');
-      showToast('第三方账号绑定成功', 'success');
+      showToast(t('toast.oauth_bind_success'), 'success');
       // 刷新 OAuth 状态
       authApi.getMe()
         .then((data) => {
@@ -222,7 +222,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
 
   const getSystemStatus = () => {
     if (isLoading) return { text: t('status.syncing'), color: 'text-brutal-warning' };
-    return { text: 'ONLINE', color: 'text-brutal-success' };
+    return { text: t('status.online'), color: 'text-brutal-success' };
   };
 
   const status = getSystemStatus();
@@ -305,7 +305,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
 
               {quota && quota.ai_credits !== undefined && (
                 <div className="text-right">
-                  <div className="text-xs text-brutal-muted">AI 额度</div>
+                  <div className="text-xs text-brutal-muted">{t('quota.credits')}</div>
                   <div className={`text-xs font-mono ${quota.ai_credits <= 3 ? 'text-brutal-warning' : 'text-brutal-text'}`}>
                     {quota.ai_credits}
                   </div>
@@ -325,26 +325,26 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                   <Link
                     to="/admin"
                     className="btn-brutal h-9 flex items-center gap-2"
-                    title="系统管理"
+                    title={t('nav.admin')}
                   >
                     <Settings className="w-4 h-4" />
-                    <span className="text-xs font-mono">管理</span>
+                    <span className="text-xs font-mono">{t('nav.admin')}</span>
                   </Link>
                 )}
                 <ModelSelector />
                 <Link
                   to="/profile"
                   className="btn-brutal h-9 flex items-center gap-2"
-                  title="个人账户"
+                  title={t('nav.account')}
                 >
                   <User className="w-4 h-4" />
-                  <span className="text-xs font-mono">账户</span>
+                  <span className="text-xs font-mono">{t('nav.account')}</span>
                 </Link>
                 <button
                   type="button"
                   onClick={() => setShowLogoutConfirm(true)}
                   className="btn-brutal h-9 flex items-center gap-2"
-                  title="Logout"
+                  title={t('nav.logout')}
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -355,14 +355,14 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
             <div className="flex md:hidden items-center gap-2">
               {quota && quota.ai_credits !== undefined && (
                 <span className={`text-xs font-mono ${quota.ai_credits <= 3 ? 'text-brutal-warning' : 'text-brutal-text'}`}>
-                  AI: {quota.ai_credits}
+                  {t('quota.ai_label', { credits: quota.ai_credits })}
                 </span>
               )}
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="w-9 h-9 border border-brutal-border flex items-center justify-center hover:border-brutal-accent transition-colors"
-                aria-label="Toggle menu"
+                aria-label={t('nav.toggle_menu')}
               >
                 {mobileMenuOpen ? (
                   <X className="w-4 h-4" />
@@ -391,7 +391,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                   className="btn-brutal h-9 flex items-center gap-2"
                 >
                   <Settings className="w-4 h-4" />
-                  <span className="text-xs font-mono">管理</span>
+                  <span className="text-xs font-mono">{t('nav.admin')}</span>
                 </Link>
               )}
               <ModelSelector />
@@ -401,7 +401,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                 className="btn-brutal h-9 flex items-center gap-2"
               >
                 <User className="w-4 h-4" />
-                <span className="text-xs font-mono">账户</span>
+                <span className="text-xs font-mono">{t('nav.account')}</span>
               </Link>
               <button
                 type="button"
@@ -412,7 +412,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                 className="btn-brutal h-9 flex items-center gap-2"
               >
                 <LogOut className="w-4 h-4" />
-                <span className="text-xs font-mono">退出</span>
+                <span className="text-xs font-mono">{t('nav.logout')}</span>
               </button>
             </div>
           </div>
@@ -471,14 +471,14 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
       {error && (
         <div className="px-6 py-3 border-b border-brutal-warning bg-brutal-warning/10">
           <div className="flex items-center gap-2 text-brutal-warning text-sm font-mono">
-            <span className="font-bold">ERROR:</span>
+            <span className="font-bold">{t('error_banner.error_prefix')}:</span>
             <span>{error}</span>
             <button
               type="button"
               onClick={() => fetchProjects()}
               className="ml-auto underline hover:no-underline"
             >
-              RETRY
+              {t('error_banner.retry')}
             </button>
           </div>
         </div>
@@ -489,22 +489,22 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         {/* Backend Mode Badge */}
         <div className="mb-4 p-2 border border-brutal-accent bg-brutal-accent/5 text-xs font-mono flex items-center gap-2">
           <Server className="w-3 h-3 text-brutal-accent" />
-          <span className="text-brutal-accent">BACKEND MODE</span>
+          <span className="text-brutal-accent">{t('backend.mode')}</span>
           <span className="text-brutal-muted">|</span>
-          <span className="text-brutal-muted">Data stored in PostgreSQL</span>
+          <span className="text-brutal-muted">{t('backend.data_storage')}</span>
         </div>
 
         {/* Filter Status */}
         {filter !== 'all' && (
           <div className="mb-4 p-2 border border-brutal-accent bg-brutal-accent/10 text-sm font-mono">
-            <span className="text-brutal-muted">// FILTER: </span>
+            <span className="text-brutal-muted">// {t('filter.filter')}: </span>
             <span className="text-brutal-accent uppercase">{filter}</span>
             <button
               type="button"
               onClick={() => setFilter('all')}
               className="ml-4 text-xs text-brutal-muted hover:text-brutal-text underline"
             >
-              [CLEAR]
+              {t('filter.clear')}
             </button>
           </div>
         )}
@@ -513,7 +513,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         {(filteredProjects.length > 0 || filter === 'all') && (
           <>
             <SectionHeader
-              title={filter === 'all' ? t('section.active_projects') : `FILTERED: ${filter}`}
+              title={filter === 'all' ? t('section.active_projects') : `${t('filter.filtered')}: ${filter}`}
               index={1}
             />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -524,7 +524,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                   index={index}
                 />
               ))}
-              {/* 添加新项目卡片 */}
+              {/* {t('project.add_new')}卡片 */}
               {filter !== 'archived' && (
                 <button
                   type="button"
@@ -539,7 +539,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                                 group-hover:border-brutal-accent">
                     <Plus className="w-6 h-6 text-brutal-muted" />
                   </div>
-                  <span className="text-sm font-mono text-brutal-muted">添加新项目</span>
+                  <span className="text-sm font-mono text-brutal-muted">{t('project.add_new')}</span>
                 </button>
               )}
             </div>
@@ -607,10 +607,10 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
           <div className="border border-brutal-border bg-brutal-surface p-12 text-center mt-6">
             <div className="text-6xl mb-4 opacity-30">&gt;_</div>
             <h3 className="text-sm font-mono uppercase tracking-wider mb-2">
-              {filter === 'all' ? t('project.no_projects') : `No ${filter} projects found`}
+              {filter === 'all' ? t('project.no_projects') : t('filter.no_filtered_projects')}
             </h3>
             <p className="text-brutal-muted text-sm mb-6">
-              {filter === 'all' ? t('project.create_first') : 'Try selecting a different filter'}
+              {filter === 'all' ? t('project.create_first') : t('filter.try_different_filter')}
             </p>
             <div className="text-xs text-brutal-muted font-mono">
               {'>'} {t('project.awaiting_input')}
@@ -647,12 +647,12 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
         feature="ai_calls"
       />
 
-      {/* 账号设置模态框 */}
+      {/* {t('account.settings')}模态框 */}
       {isAccountModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-md border-2 border-brutal-border bg-brutal-surface p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-sm font-mono font-bold uppercase tracking-wider">账号设置</h2>
+              <h2 className="text-sm font-mono font-bold uppercase tracking-wider">{t('account.settings')}</h2>
               <button
                 type="button"
                 onClick={() => setIsAccountModalOpen(false)}
@@ -663,10 +663,10 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
             </div>
 
             <div className="space-y-4">
-              {/* 第三方账号绑定 */}
+              {/* {t('account.oauth_binding')} */}
               <div className="border border-brutal-border p-4">
                 <div className="text-xs font-mono text-brutal-muted mb-3 uppercase tracking-wider">
-                  第三方账号绑定
+                  {t('account.oauth_binding')}
                 </div>
 
                 {/* Google */}
@@ -687,15 +687,15 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                         try {
                           await authApi.unbindOAuth('google');
                           setOauthProvider(null);
-                          showToast('Google 账号已解绑', 'success');
+                          showToast(t('toast.google_unbind_success'), 'success');
                         } catch (e: unknown) {
-                          const msg = e instanceof Error ? e.message : '解绑失败';
+                          const msg = e instanceof Error ? e.message : t('toast.unbind_failed');
                           showToast(msg, 'error');
                         }
                       }}
                       className="text-xs font-mono px-3 py-1 border border-brutal-warning text-brutal-warning hover:bg-brutal-warning hover:text-brutal-bg transition-colors"
                     >
-                      解绑
+                      {t('common.unbind')}
                     </button>
                   ) : (
                     <button
@@ -705,7 +705,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                       }}
                       className="text-xs font-mono px-3 py-1 border border-brutal-accent text-brutal-accent hover:bg-brutal-accent hover:text-brutal-bg transition-colors"
                     >
-                      绑定
+                      {t('common.bind')}
                     </button>
                   )}
                 </div>
@@ -725,15 +725,15 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                         try {
                           await authApi.unbindOAuth('github');
                           setOauthProvider(null);
-                          showToast('GitHub 账号已解绑', 'success');
+                          showToast(t('toast.github_unbind_success'), 'success');
                         } catch (e: unknown) {
-                          const msg = e instanceof Error ? e.message : '解绑失败';
+                          const msg = e instanceof Error ? e.message : t('toast.unbind_failed');
                           showToast(msg, 'error');
                         }
                       }}
                       className="text-xs font-mono px-3 py-1 border border-brutal-warning text-brutal-warning hover:bg-brutal-warning hover:text-brutal-bg transition-colors"
                     >
-                      解绑
+                      {t('common.unbind')}
                     </button>
                   ) : (
                     <button
@@ -743,19 +743,19 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                       }}
                       className="text-xs font-mono px-3 py-1 border border-brutal-accent text-brutal-accent hover:bg-brutal-accent hover:text-brutal-bg transition-colors"
                     >
-                      绑定
+                      {t('common.bind')}
                     </button>
                   )}
                 </div>
 
                 {oauthProvider && (
                   <div className="text-[10px] font-mono text-brutal-muted mt-2">
-                    当前已绑定: {oauthProvider}
+                    {t('account.bound')}: {oauthProvider}
                   </div>
                 )}
                 {!oauthProvider && (
                   <div className="text-[10px] font-mono text-brutal-muted mt-2">
-                    未绑定第三方账号
+                    {t('account.not_bound')}
                   </div>
                 )}
               </div>
@@ -812,7 +812,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                            transition-colors
                            active:translate-x-[2px] active:translate-y-[2px]"
               >
-                留下陪我
+                {t('dialog.stay')}
               </button>
               <button
                 type="button"
@@ -826,7 +826,7 @@ export function ProjectBoard({ onLogout }: ProjectBoardProps) {
                            transition-colors
                            active:translate-x-[2px] active:translate-y-[2px]"
               >
-                狠心离开
+                {t('dialog.leave')}
               </button>
             </div>
           </div>

@@ -13,8 +13,12 @@ const translations = {
     },
     // Navigation
     nav: {
+      admin: '管理',
+      account: '账号',
+      logout: '退出登录',
       back: '返回',
       dashboard: '项目面板',
+      toggle_menu: '切换菜单',
     },
     // Status
     status: {
@@ -55,6 +59,8 @@ const translations = {
     // Common
     common: {
       or: '或',
+      bind: '绑定',
+      unbind: '解绑',
     },
     // Project
     project: {
@@ -73,6 +79,7 @@ const translations = {
       create_first: '点击下方按钮创建您的第一个项目',
       awaiting_input: '等待输入...',
       ready_to_commit: '准备提交...',
+      add_new: '添加项目',
     },
     // Stages - Vibe/独立开发专用流程
     stage: {
@@ -126,6 +133,7 @@ const translations = {
       channels: '推广渠道',
       no_models_available: '暂无可用模型，请联系管理员配置',
       providers_count: '个可用模型',
+      credits: 'AI 额度',
     },
     // Modal
     modal: {
@@ -189,6 +197,7 @@ const translations = {
       light: '浅色',
       switch_to_dark: '切换到深色模式',
       switch_to_light: '切换到浅色模式',
+      toggle_theme: '切换主题',
     },
     // Placeholders
     placeholder: {
@@ -203,6 +212,70 @@ const translations = {
       connection_failed: '连接失败',
       optimize_failed: '优化失败',
     },
+    // Backend
+    backend: {
+      mode: '后端模式',
+      data_storage: '数据存储在 PostgreSQL',
+    },
+    // Filter
+    filter: {
+      filter: '筛选',
+      clear: '清除',
+      filtered: '已筛选',
+      no_filtered_projects: '未找到匹配项目',
+      try_different_filter: '尝试选择其他筛选条件',
+    },
+    // Error Banner
+    error_banner: {
+      error_prefix: '错误',
+      retry: '重试',
+    },
+    // Empty State
+    empty_state: {
+      prompt: '> _',
+      awaiting_input: '等待输入...',
+    },
+    // Quota
+    quota: {
+      credits: 'AI 额度',
+      ai_label: 'AI: {{credits}}',
+    },
+    // Toast
+    toast: {
+      oauth_bind_success: '第三方账号绑定成功',
+      google_unbind_success: 'Google 账号已解绑',
+      github_unbind_success: 'GitHub 账号已解绑',
+      unbind_failed: '解绑失败',
+      load_user_failed: '加载用户信息失败',
+      pet_saved: '宠物配置已保存',
+      pet_save_failed: '保存失败',
+      merge_suggestions: 'AI 建议已智能合并到便利贴',
+      override_suggestions: 'AI 建议已覆盖全部便利贴',
+      query_status_failed: '查询运行状态失败',
+      load_suggestions_failed: '获取 AI 建议失败',
+    },
+    // Dialog
+    dialog: {
+      stay: '留下',
+      leave: '离开',
+    },
+    // Account
+    account: {
+      settings: '账号设置',
+      oauth_binding: '第三方账号绑定',
+      bound: '已绑定',
+      not_bound: '未绑定',
+    },
+    // Language
+    language: {
+      name_zh: '简体中文',
+      name_en: 'English',
+      name_ja: '日本語',
+      name_ko: '한국어',
+      name_es: 'Español',
+      name_fr: 'Français',
+      name_de: 'Deutsch',
+    },
   },
   en: {
     // App
@@ -213,8 +286,12 @@ const translations = {
     },
     // Navigation
     nav: {
+      admin: 'ADMIN',
+      account: 'ACCOUNT',
+      logout: 'LOGOUT',
       back: 'BACK',
       dashboard: 'DASHBOARD',
+      toggle_menu: 'TOGGLE MENU',
     },
     // Status
     status: {
@@ -275,6 +352,7 @@ const translations = {
       create_first: 'Initialize your first project using the button below.',
       awaiting_input: 'AWAITING_INPUT...',
       ready_to_commit: 'READY_TO_COMMIT...',
+      add_new: 'ADD PROJECT',
     },
     // Stages - Vibe/Indie Hacker flow
     stage: {
@@ -328,6 +406,7 @@ const translations = {
       channels: 'channels',
       no_models_available: 'No models available. Please contact admin to configure.',
       providers_count: 'available models',
+      credits: 'AI CREDITS',
     },
     // Modal
     modal: {
@@ -391,6 +470,7 @@ const translations = {
       light: 'LIGHT',
       switch_to_dark: 'Switch to Dark Mode',
       switch_to_light: 'Switch to Light Mode',
+      toggle_theme: 'TOGGLE THEME',
     },
     // Placeholders
     placeholder: {
@@ -405,6 +485,70 @@ const translations = {
       connection_failed: 'CONNECTION_FAILED',
       optimize_failed: 'OPTIMIZE_FAILED',
     },
+    // Backend
+    backend: {
+      mode: 'BACKEND MODE',
+      data_storage: 'Data stored in PostgreSQL',
+    },
+    // Filter
+    filter: {
+      filter: 'FILTER',
+      clear: '[CLEAR]',
+      filtered: 'FILTERED',
+      no_filtered_projects: 'No matching projects found',
+      try_different_filter: 'Try selecting a different filter',
+    },
+    // Error Banner
+    error_banner: {
+      error_prefix: 'ERROR',
+      retry: 'RETRY',
+    },
+    // Empty State
+    empty_state: {
+      prompt: '> _',
+      awaiting_input: 'AWAITING_INPUT...',
+    },
+    // Quota
+    quota: {
+      credits: 'AI CREDITS',
+      ai_label: 'AI: {{credits}}',
+    },
+    // Toast
+    toast: {
+      oauth_bind_success: 'Third-party account bound successfully',
+      google_unbind_success: 'Google account unbound',
+      github_unbind_success: 'GitHub account unbound',
+      unbind_failed: 'Unbind failed',
+      load_user_failed: 'Failed to load user info',
+      pet_saved: 'Pet config saved',
+      pet_save_failed: 'Save failed',
+      merge_suggestions: 'AI suggestions merged into sticky notes',
+      override_suggestions: 'AI suggestions replaced all sticky notes',
+      query_status_failed: 'Failed to query running status',
+      load_suggestions_failed: 'Failed to get AI suggestions',
+    },
+    // Dialog
+    dialog: {
+      stay: 'STAY',
+      leave: 'LEAVE',
+    },
+    // Account
+    account: {
+      settings: 'ACCOUNT SETTINGS',
+      oauth_binding: 'THIRD-PARTY ACCOUNT BINDING',
+      bound: 'Bound',
+      not_bound: 'Not bound',
+    },
+    // Language
+    language: {
+      name_zh: '简体中文',
+      name_en: 'English',
+      name_ja: '日本語',
+      name_ko: '한국어',
+      name_es: 'Español',
+      name_fr: 'Français',
+      name_de: 'Deutsch',
+    },
   },
   ja: {
     // App
@@ -415,8 +559,12 @@ const translations = {
     },
     // Navigation
     nav: {
+      admin: '管理',
+      account: 'アカウント',
+      logout: 'ログアウト',
       back: '戻る',
       dashboard: 'ダッシュボード',
+      toggle_menu: 'メニュー切り替え',
     },
     // Status
     status: {
@@ -457,6 +605,8 @@ const translations = {
     // Common
     common: {
       or: 'または',
+      bind: '連携',
+      unbind: '解除',
     },
     // Project
     project: {
@@ -475,6 +625,7 @@ const translations = {
       create_first: '下のボタンをクリックして最初のプロジェクトを作成してください',
       awaiting_input: '入力待ち...',
       ready_to_commit: '確定準備完了...',
+      add_new: 'プロジェクトを追加',
     },
     // Stages - Vibe/独立開発専用フロー
     stage: {
@@ -528,6 +679,7 @@ const translations = {
       channels: 'プロモーション渠道',
       no_models_available: '利用可能なモデルがありません。管理者に連絡して設定してください',
       providers_count: '個の利用可能モデル',
+      credits: 'AI クレジット',
     },
     // Modal
     modal: {
@@ -591,6 +743,7 @@ const translations = {
       light: 'ライト',
       switch_to_dark: 'ダークモードに切り替え',
       switch_to_light: 'ライトモードに切り替え',
+      toggle_theme: 'テーマ切り替え',
     },
     // Placeholders
     placeholder: {
@@ -605,6 +758,70 @@ const translations = {
       connection_failed: '接続に失敗しました',
       optimize_failed: '最適化に失敗しました',
     },
+    // Backend
+    backend: {
+      mode: 'バックエンドモード',
+      data_storage: 'PostgreSQL にデータを保存',
+    },
+    // Filter
+    filter: {
+      filter: 'フィルタ',
+      clear: '[クリア]',
+      filtered: 'フィルタ済み',
+      no_filtered_projects: '一致するプロジェクトがありません',
+      try_different_filter: '別のフィルタ条件を試してください',
+    },
+    // Error Banner
+    error_banner: {
+      error_prefix: 'エラー',
+      retry: '再試行',
+    },
+    // Empty State
+    empty_state: {
+      prompt: '> _',
+      awaiting_input: '入力待ち...',
+    },
+    // Quota
+    quota: {
+      credits: 'AI クレジット',
+      ai_label: 'AI: {{credits}}',
+    },
+    // Toast
+    toast: {
+      oauth_bind_success: 'サードパーティアカウントの連携に成功しました',
+      google_unbind_success: 'Googleアカウントの連携を解除しました',
+      github_unbind_success: 'GitHubアカウントの連携を解除しました',
+      unbind_failed: '連携解除に失敗しました',
+      load_user_failed: 'ユーザー情報の読み込みに失敗しました',
+      pet_saved: 'ペット設定を保存しました',
+      pet_save_failed: '保存に失敗しました',
+      merge_suggestions: 'AI提案を付箋に統合しました',
+      override_suggestions: 'AI提案ですべての付箋を上書きしました',
+      query_status_failed: '実行状態の確認に失敗しました',
+      load_suggestions_failed: 'AI提案の取得に失敗しました',
+    },
+    // Dialog
+    dialog: {
+      stay: '残る',
+      leave: '离开',
+    },
+    // Account
+    account: {
+      settings: 'アカウント設定',
+      oauth_binding: 'サードパーティアカウント連携',
+      bound: '連携済み',
+      not_bound: '未連携',
+    },
+    // Language
+    language: {
+      name_zh: '简体中文',
+      name_en: 'English',
+      name_ja: '日本語',
+      name_ko: '한국어',
+      name_es: 'Español',
+      name_fr: 'Français',
+      name_de: 'Deutsch',
+    },
   },
   ko: {
     // App
@@ -615,8 +832,12 @@ const translations = {
     },
     // Navigation
     nav: {
+      admin: '관리',
+      account: '계정',
+      logout: '로그아웃',
       back: '뒤로',
       dashboard: '대시보드',
+      toggle_menu: '메뉴 전환',
     },
     // Status
     status: {
@@ -657,6 +878,8 @@ const translations = {
     // Common
     common: {
       or: '또는',
+      bind: '연동',
+      unbind: '해제',
     },
     // Project
     project: {
@@ -675,6 +898,7 @@ const translations = {
       create_first: '아래 버튼을 클릭하여 첫 번째 프로젝트를 생성하세요',
       awaiting_input: '입력 대기 중...',
       ready_to_commit: '확정 준비 완료...',
+      add_new: '프로젝트 추가',
     },
     // Stages - Vibe/인디 개발자 전용 플로우
     stage: {
@@ -728,6 +952,7 @@ const translations = {
       channels: '프로모션 채널',
       no_models_available: '사용 가능한 모델이 없습니다. 관리자에게 문의하세요',
       providers_count: '개 사용 가능 모델',
+      credits: 'AI 크레딧',
     },
     // Modal
     modal: {
@@ -791,6 +1016,7 @@ const translations = {
       light: '라이트',
       switch_to_dark: '다크 모드로 전환',
       switch_to_light: '라이트 모드로 전환',
+      toggle_theme: '테마 전환',
     },
     // Placeholders
     placeholder: {
@@ -805,6 +1031,70 @@ const translations = {
       connection_failed: '연결 실패',
       optimize_failed: '최적화 실패',
     },
+    // Backend
+    backend: {
+      mode: '백엔드 모드',
+      data_storage: 'PostgreSQL에 데이터 저장',
+    },
+    // Filter
+    filter: {
+      filter: '필터',
+      clear: '[지우기]',
+      filtered: '필터링됨',
+      no_filtered_projects: '일치하는 프로젝트 없음',
+      try_different_filter: '다른 필터 조건을 선택해 보세요',
+    },
+    // Error Banner
+    error_banner: {
+      error_prefix: '오류',
+      retry: '재시도',
+    },
+    // Empty State
+    empty_state: {
+      prompt: '> _',
+      awaiting_input: '입력 대기 중...',
+    },
+    // Quota
+    quota: {
+      credits: 'AI 크레딧',
+      ai_label: 'AI: {{credits}}',
+    },
+    // Toast
+    toast: {
+      oauth_bind_success: '제3자 계정 연동 성공',
+      google_unbind_success: 'Google 계정 연동 해제됨',
+      github_unbind_success: 'GitHub 계정 연동 해제됨',
+      unbind_failed: '연동 해제 실패',
+      load_user_failed: '사용자 정보 로드 실패',
+      pet_saved: '펫 설정 저장됨',
+      pet_save_failed: '저장 실패',
+      merge_suggestions: 'AI 제안이 포스트잇에 스마트 병합됨',
+      override_suggestions: 'AI 제안이 모든 포스트잇을 덮어씀',
+      query_status_failed: '실행 상태 조회 실패',
+      load_suggestions_failed: 'AI 제안 가져오기 실패',
+    },
+    // Dialog
+    dialog: {
+      stay: '남기',
+      leave: '떠나기',
+    },
+    // Account
+    account: {
+      settings: '계정 설정',
+      oauth_binding: '제3자 계정 연동',
+      bound: '연동됨',
+      not_bound: '미연동',
+    },
+    // Language
+    language: {
+      name_zh: '简体中文',
+      name_en: 'English',
+      name_ja: '日本語',
+      name_ko: '한국어',
+      name_es: 'Español',
+      name_fr: 'Français',
+      name_de: 'Deutsch',
+    },
   },
   es: {
     // App
@@ -815,8 +1105,12 @@ const translations = {
     },
     // Navigation
     nav: {
-      back: 'Volver',
-      dashboard: 'Panel',
+      admin: 'ADMIN',
+      account: 'CUENTA',
+      logout: 'CERRAR SESIÓN',
+      back: 'ATRÁS',
+      dashboard: 'PANEL',
+      toggle_menu: 'ALTERNAR MENÚ',
     },
     // Status
     status: {
@@ -857,6 +1151,8 @@ const translations = {
     // Common
     common: {
       or: 'O',
+      bind: 'Vincular',
+      unbind: 'Desvincular',
     },
     // Project
     project: {
@@ -875,6 +1171,7 @@ const translations = {
       create_first: 'Crea tu primer proyecto con el botón de abajo',
       awaiting_input: 'Esperando entrada...',
       ready_to_commit: 'Listo para confirmar...',
+      add_new: 'AGREGAR PROYECTO',
     },
     // Stages - Flujo Vibe/Indie Hacker
     stage: {
@@ -928,6 +1225,7 @@ const translations = {
       channels: 'Canales de promoción',
       no_models_available: 'No hay modelos disponibles. Contacta al administrador.',
       providers_count: 'modelos disponibles',
+      credits: 'CRÉDITOS IA',
     },
     // Modal
     modal: {
@@ -991,6 +1289,7 @@ const translations = {
       light: 'Claro',
       switch_to_dark: 'Cambiar a modo oscuro',
       switch_to_light: 'Cambiar a modo claro',
+      toggle_theme: 'ALTERNAR TEMA',
     },
     // Placeholders
     placeholder: {
@@ -1005,6 +1304,70 @@ const translations = {
       connection_failed: 'Conexión fallida',
       optimize_failed: 'Optimización fallida',
     },
+    // Backend
+    backend: {
+      mode: 'MODO BACKEND',
+      data_storage: 'Datos almacenados en PostgreSQL',
+    },
+    // Filter
+    filter: {
+      filter: 'FILTRAR',
+      clear: '[LIMPIAR]',
+      filtered: 'FILTRADO',
+      no_filtered_projects: 'No se encontraron proyectos coincidentes',
+      try_different_filter: 'Prueba seleccionando otro filtro',
+    },
+    // Error Banner
+    error_banner: {
+      error_prefix: 'ERROR',
+      retry: 'REINTENTAR',
+    },
+    // Empty State
+    empty_state: {
+      prompt: '> _',
+      awaiting_input: 'ESPERANDO_ENTRADA...',
+    },
+    // Quota
+    quota: {
+      credits: 'CRÉDITOS IA',
+      ai_label: 'IA: {{credits}}',
+    },
+    // Toast
+    toast: {
+      oauth_bind_success: 'Cuenta de terceros vinculada correctamente',
+      google_unbind_success: 'Cuenta de Google desvinculada',
+      github_unbind_success: 'Cuenta de GitHub desvinculada',
+      unbind_failed: 'Error al desvincular',
+      load_user_failed: 'Error al cargar información del usuario',
+      pet_saved: 'Configuración de mascota guardada',
+      pet_save_failed: 'Error al guardar',
+      merge_suggestions: 'Sugerencias de IA fusionadas en notas adhesivas',
+      override_suggestions: 'Sugerencias de IA reemplazaron todas las notas adhesivas',
+      query_status_failed: 'Error al consultar el estado de ejecución',
+      load_suggestions_failed: 'Error al obtener sugerencias de IA',
+    },
+    // Dialog
+    dialog: {
+      stay: 'QUEDARSE',
+      leave: 'SALIR',
+    },
+    // Account
+    account: {
+      settings: 'CONFIGURACIÓN DE CUENTA',
+      oauth_binding: 'VINCULACIÓN DE CUENTAS DE TERCEROS',
+      bound: 'Vinculado',
+      not_bound: 'No vinculado',
+    },
+    // Language
+    language: {
+      name_zh: '简体中文',
+      name_en: 'English',
+      name_ja: '日本語',
+      name_ko: '한국어',
+      name_es: 'Español',
+      name_fr: 'Français',
+      name_de: 'Deutsch',
+    },
   },
   fr: {
     // App
@@ -1015,8 +1378,12 @@ const translations = {
     },
     // Navigation
     nav: {
-      back: 'Retour',
-      dashboard: 'Tableau de bord',
+      admin: 'ADMIN',
+      account: 'COMPTE',
+      logout: 'DÉCONNEXION',
+      back: 'RETOUR',
+      dashboard: 'TABLEAU DE BORD',
+      toggle_menu: 'BASCULER LE MENU',
     },
     // Status
     status: {
@@ -1057,6 +1424,8 @@ const translations = {
     // Common
     common: {
       or: 'OU',
+      bind: 'Lier',
+      unbind: 'Délier',
     },
     // Project
     project: {
@@ -1075,6 +1444,7 @@ const translations = {
       create_first: 'Créez votre premier projet en utilisant le bouton ci-dessous',
       awaiting_input: 'En attente de saisie...',
       ready_to_commit: 'Prêt à valider...',
+      add_new: 'AJOUTER UN PROJET',
     },
     // Stages - Flux Vibe/Indie Hacker
     stage: {
@@ -1128,6 +1498,7 @@ const translations = {
       channels: 'Canaux de promotion',
       no_models_available: 'Aucun modèle disponible. Veuillez contacter l\'administrateur.',
       providers_count: 'modèles disponibles',
+      credits: 'CRÉDITS IA',
     },
     // Modal
     modal: {
@@ -1191,6 +1562,7 @@ const translations = {
       light: 'Clair',
       switch_to_dark: 'Passer en mode sombre',
       switch_to_light: 'Passer en mode clair',
+      toggle_theme: 'BASCULER LE THÈME',
     },
     // Placeholders
     placeholder: {
@@ -1205,6 +1577,70 @@ const translations = {
       connection_failed: 'Échec de connexion',
       optimize_failed: 'Échec de l\'optimisation',
     },
+    // Backend
+    backend: {
+      mode: 'MODE BACKEND',
+      data_storage: 'Données stockées dans PostgreSQL',
+    },
+    // Filter
+    filter: {
+      filter: 'FILTRER',
+      clear: '[EFFACER]',
+      filtered: 'FILTRÉ',
+      no_filtered_projects: 'Aucun projet correspondant trouvé',
+      try_different_filter: 'Essayez un autre filtre',
+    },
+    // Error Banner
+    error_banner: {
+      error_prefix: 'ERREUR',
+      retry: 'RÉESSAYER',
+    },
+    // Empty State
+    empty_state: {
+      prompt: '> _',
+      awaiting_input: 'EN_ATTENTE_DE_SAISIE...',
+    },
+    // Quota
+    quota: {
+      credits: 'CRÉDITS IA',
+      ai_label: 'IA: {{credits}}',
+    },
+    // Toast
+    toast: {
+      oauth_bind_success: 'Compte tiers lié avec succès',
+      google_unbind_success: 'Compte Google délié',
+      github_unbind_success: 'Compte GitHub délié',
+      unbind_failed: 'Échec du déliage',
+      load_user_failed: 'Échec du chargement des infos utilisateur',
+      pet_saved: 'Configuration de l\'animal sauvegardée',
+      pet_save_failed: 'Échec de la sauvegarde',
+      merge_suggestions: 'Suggestions IA fusionnées dans les post-its',
+      override_suggestions: 'Suggestions IA remplacé tous les post-its',
+      query_status_failed: 'Échec de la consultation du statut',
+      load_suggestions_failed: 'Échec de l\'obtention des suggestions IA',
+    },
+    // Dialog
+    dialog: {
+      stay: 'RESTER',
+      leave: 'PARTIR',
+    },
+    // Account
+    account: {
+      settings: 'PARAMÈTRES DU COMPTE',
+      oauth_binding: 'LIEN DE COMPTE TIERS',
+      bound: 'Lié',
+      not_bound: 'Non lié',
+    },
+    // Language
+    language: {
+      name_zh: '简体中文',
+      name_en: 'English',
+      name_ja: '日本語',
+      name_ko: '한국어',
+      name_es: 'Español',
+      name_fr: 'Français',
+      name_de: 'Deutsch',
+    },
   },
   de: {
     // App
@@ -1215,8 +1651,12 @@ const translations = {
     },
     // Navigation
     nav: {
-      back: 'Zurück',
-      dashboard: 'Dashboard',
+      admin: 'ADMIN',
+      account: 'KONTO',
+      logout: 'ABMELDEN',
+      back: 'ZURÜCK',
+      dashboard: 'DASHBOARD',
+      toggle_menu: 'MENÜ UMSCHALTEN',
     },
     // Status
     status: {
@@ -1257,6 +1697,8 @@ const translations = {
     // Common
     common: {
       or: 'ODER',
+      bind: 'Verbinden',
+      unbind: 'Entkoppeln',
     },
     // Project
     project: {
@@ -1275,6 +1717,7 @@ const translations = {
       create_first: 'Erstellen Sie Ihr erstes Projekt mit der Schaltfläche unten',
       awaiting_input: 'Warte auf Eingabe...',
       ready_to_commit: 'Bereit zur Bestätigung...',
+      add_new: 'PROJEKT HINZUFÜGEN',
     },
     // Stages - Vibe/Indie Hacker-Fluss
     stage: {
@@ -1328,6 +1771,7 @@ const translations = {
       channels: 'Promotionskanäle',
       no_models_available: 'Keine Modelle verfügbar. Bitte Admin kontaktieren.',
       providers_count: 'verfügbare Modelle',
+      credits: 'AI-CREDITS',
     },
     // Modal
     modal: {
@@ -1391,6 +1835,7 @@ const translations = {
       light: 'Hell',
       switch_to_dark: 'Zu Dunkelmodus wechseln',
       switch_to_light: 'Zu Hellmodus wechseln',
+      toggle_theme: 'THEMA UMSCHALTEN',
     },
     // Placeholders
     placeholder: {
@@ -1404,6 +1849,70 @@ const translations = {
       stage_not_found: 'Phasendaten fehlen',
       connection_failed: 'Verbindung fehlgeschlagen',
       optimize_failed: 'Optimierung fehlgeschlagen',
+    },
+    // Backend
+    backend: {
+      mode: 'BACKEND-MODUS',
+      data_storage: 'Daten in PostgreSQL gespeichert',
+    },
+    // Filter
+    filter: {
+      filter: 'FILTERN',
+      clear: '[LÖSCHEN]',
+      filtered: 'GEFILTERT',
+      no_filtered_projects: 'Keine passenden Projekte gefunden',
+      try_different_filter: 'Versuchen Sie einen anderen Filter',
+    },
+    // Error Banner
+    error_banner: {
+      error_prefix: 'FEHLER',
+      retry: 'WIEDERHOLEN',
+    },
+    // Empty State
+    empty_state: {
+      prompt: '> _',
+      awaiting_input: 'WARTE_AUF_EINGABE...',
+    },
+    // Quota
+    quota: {
+      credits: 'AI-CREDITS',
+      ai_label: 'AI: {{credits}}',
+    },
+    // Toast
+    toast: {
+      oauth_bind_success: 'Drittanbieter-Konto erfolgreich verbunden',
+      google_unbind_success: 'Google-Konto entkoppelt',
+      github_unbind_success: 'GitHub-Konto entkoppelt',
+      unbind_failed: 'Entkopplung fehlgeschlagen',
+      load_user_failed: 'Benutzerinfo konnte nicht geladen werden',
+      pet_saved: 'Haustier-Konfiguration gespeichert',
+      pet_save_failed: 'Speichern fehlgeschlagen',
+      merge_suggestions: 'AI-Vorschläge in Haftnotizen gemerged',
+      override_suggestions: 'AI-Vorschläge haben alle Haftnotizen überschrieben',
+      query_status_failed: 'Abfrage des Ausführungsstatus fehlgeschlagen',
+      load_suggestions_failed: 'AI-Vorschläge konnten nicht geladen werden',
+    },
+    // Dialog
+    dialog: {
+      stay: 'BLEIBEN',
+      leave: 'VERLASSEN',
+    },
+    // Account
+    account: {
+      settings: 'KONTOEINSTELLUNGEN',
+      oauth_binding: 'DRITTANBIETER-KONTOVERBINDUNG',
+      bound: 'Verbunden',
+      not_bound: 'Nicht verbunden',
+    },
+    // Language
+    language: {
+      name_zh: '简体中文',
+      name_en: 'English',
+      name_ja: '日本語',
+      name_ko: '한국어',
+      name_es: 'Español',
+      name_fr: 'Français',
+      name_de: 'Deutsch',
     },
   },
 };
