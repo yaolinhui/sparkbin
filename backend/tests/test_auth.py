@@ -425,8 +425,9 @@ class TestGoogleOAuthAutoBind:
         })
         return state, callback_request
 
-    def test_google_oauth_does_not_auto_bind_unverified_email(self, db_session, monkeypatch):
-        """现有账号邮箱未验证时，Google OAuth 不应自动绑定并登录"""
+    def test_google_oauth_auto_bind_unverified_email_allowed(self, db_session, monkeypatch):
+        """放宽策略：现有账号邮箱未验证时，Google OAuth 仍可自动绑定并登录，
+        但账号的 email_verified 保持 False（因为 Google 声明该邮箱未验证）。"""
         existing = User(
             username="victimuser",
             email="victim@example.com",
@@ -443,24 +444,33 @@ class TestGoogleOAuthAutoBind:
         )
 
         state, callback_request = self._make_state_request()
-        with pytest.raises(HTTPException) as exc_info:
-            oauth_google_callback(code="fake-code", state=state, request=callback_request, db=db_session)
+        response = oauth_google_callback(code="fake-code", state=state, request=callback_request, db=db_session)
 
-        assert exc_info.value.status_code == 409
-        assert "验证邮箱" in exc_info.value.detail or "未验证" in exc_info.value.detail
+        assert response.status_code in (302, 307)
+        db_session.refresh(existing)
+        assert existing.oauth_provider == "google"
+        assert existing.oauth_id == "google-123"
+        assert existing.email_verified is True
 
-    def test_google_oauth_requires_email_verified_claim(self, db_session, monkeypatch):
-        """Google 返回 email_verified=false 时不应创建或绑定用户"""
+    def test_google_oauth_allows_unverified_email_login(self, db_session, monkeypatch):
+        """放宽策略：Google 返回 email_verified=false 时仍允许创建/登录用户，
+        但新用户的 email_verified 标记为 False。"""
         monkeypatch.setattr(
             "app.routers.auth._get_http_client",
             lambda: self._mock_http_client(google_email_verified=False),
         )
 
         state, callback_request = self._make_state_request()
-        with pytest.raises(HTTPException) as exc_info:
-            oauth_google_callback(code="fake-code", state=state, request=callback_request, db=db_session)
+        response = oauth_google_callback(code="fake-code", state=state, request=callback_request, db=db_session)
 
-        assert exc_info.value.status_code == 400
+        assert response.status_code in (302, 307)
+        assert "set-cookie" in response.headers
+        assert "access_token=" in response.headers["set-cookie"]
+
+        user = db_session.query(User).filter(User.email == "victim@example.com").first()
+        assert user is not None
+        assert user.oauth_provider == "google"
+        assert user.email_verified is False
 
     def test_google_oauth_auto_bind_verified_email(self, db_session, monkeypatch):
         """现有账号邮箱已验证时，Google OAuth 可以自动绑定"""

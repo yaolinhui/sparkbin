@@ -938,11 +938,11 @@ def oauth_google_callback(
             detail="Incomplete Google user info"
         )
 
-    # 安全策略：Google 必须声明邮箱已验证，否则不能作为可信身份源
-    if not user_info.get("email_verified"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Google 账号邮箱未验证"
+    # Google 邮箱验证状态（仅用于标记用户记录，不再强制拒绝未验证邮箱）
+    google_email_verified = bool(user_info.get("email_verified"))
+    if not google_email_verified:
+        logging.getLogger(__name__).warning(
+            f"Google OAuth login with unverified email: {email}"
         )
 
     # 查找或创建用户
@@ -961,17 +961,11 @@ def oauth_google_callback(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="该邮箱已注册。请先登录现有账号，再在设置中绑定 Google。"
                 )
-            # 安全策略：如果现有账号邮箱未验证，禁止 OAuth 自动绑定（防止账号劫持）
-            if not existing.email_verified:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="该邮箱已注册但未验证。请先验证邮箱后再绑定 Google 账号。"
-                )
-            # 自动绑定到现有已验证邮箱账号
+            # 自动绑定到现有账号，并根据 Google 的声明更新邮箱验证状态
             existing.oauth_provider = "google"
             existing.oauth_id = google_id
             existing.avatar_url = _sanitize_avatar_url(picture) or existing.avatar_url
-            if not existing.email_verified:
+            if google_email_verified and not existing.email_verified:
                 existing.email_verified = True
             db.commit()
             user = existing
@@ -980,7 +974,7 @@ def oauth_google_callback(
             user = User(
                 username=username,
                 email=email,
-                email_verified=True,
+                email_verified=google_email_verified,
                 oauth_provider="google",
                 oauth_id=google_id,
                 avatar_url=_sanitize_avatar_url(picture),
