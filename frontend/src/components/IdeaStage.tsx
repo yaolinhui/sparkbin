@@ -85,6 +85,7 @@ function SortableNote({
   };
 
   const colorClass = NOTE_COLORS[note.color] || NOTE_COLORS.default;
+  const { t } = useI18n();
 
   if (isEditing) {
     return (
@@ -95,22 +96,22 @@ function SortableNote({
             value={editTitle}
             onChange={(e) => onEditTitleChange(e.target.value)}
             className="w-full p-2 border border-brutal-accent bg-brutal-bg text-sm font-mono font-bold"
-            placeholder="标题"
+            placeholder={t('placeholder.note_title')}
             autoFocus
           />
           <textarea
             value={editContent}
             onChange={(e) => onEditContentChange(e.target.value)}
             className="flex-1 w-full p-2 border border-brutal-accent bg-brutal-bg text-sm font-mono resize-none"
-            placeholder="内容"
+            placeholder={t('placeholder.note_content')}
             rows={4}
           />
           <div className="flex gap-2">
             <button onClick={onSave} className="flex-1 py-1 text-xs bg-brutal-accent text-brutal-bg font-mono">
-              <Check className="w-3 h-3 inline mr-1" />保存
+              <Check className="w-3 h-3 inline mr-1" />{t('action.save')}
             </button>
             <button onClick={onCancel} className="flex-1 py-1 text-xs border border-brutal-border font-mono">
-              取消
+              {t('action.cancel')}
             </button>
           </div>
           <div className="flex gap-1 mt-1">
@@ -145,7 +146,7 @@ function SortableNote({
               {...attributes}
               {...listeners}
               className="p-1 text-brutal-muted hover:text-brutal-text cursor-grab active:cursor-grabbing"
-              title="拖拽排序"
+              title={t('placeholder.drag_sort')}
             >
               <GripVertical className="w-3 h-3" />
             </button>
@@ -154,10 +155,10 @@ function SortableNote({
         </div>
         {!isLocked && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={onStartEdit} className="p-1 text-brutal-muted hover:text-brutal-text" title="编辑">
+            <button onClick={onStartEdit} className="p-1 text-brutal-muted hover:text-brutal-text" title={t('action.edit')}>
               <Edit2 className="w-3 h-3" />
             </button>
-            <button onClick={onDelete} className="p-1 text-brutal-muted hover:text-brutal-warning" title="删除">
+            <button onClick={onDelete} className="p-1 text-brutal-muted hover:text-brutal-warning" title={t('action.delete')}>
               <X className="w-3 h-3" />
             </button>
           </div>
@@ -258,7 +259,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
 
   const addNote = async () => {
     if (isLocked) return;
-    const newNote: StickyNote = { id: Date.now().toString(), title: '新维度', content: '点击编辑...', color: 'default' };
+    const newNote: StickyNote = { id: Date.now().toString(), title: t('idea.new_dimension'), content: t('idea.click_to_edit'), color: 'default' };
     const newNotes = [...notes, newNote];
     setNotes(newNotes);
     await saveNotes(newNotes);
@@ -267,7 +268,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
 
   const deleteNote = async (id: string) => {
     if (isLocked) return;
-    if (!window.confirm('确定要删除这个便利贴吗？')) return;
+    if (!window.confirm(t('idea.confirm_delete'))) return;
     const newNotes = notes.filter((note) => note.id !== id);
     setNotes(newNotes);
     await saveNotes(newNotes);
@@ -280,17 +281,17 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
     await saveNotes(newNotes);
   };
 
-  const DEFAULT_PLACEHOLDERS = [
-    '描述你想解决的核心问题...',
-    '谁会使用这个产品？',
-    '用户在什么情况下会用？',
-    '简述核心功能...',
-    '与现有方案相比，你的优势是什么？',
-    '点击编辑...',
+  const getDefaultPlaceholders = (): string[] => [
+    t('placeholder.describe_pain_point'),
+    t('idea.target_user_example'),
+    t('idea.scenario_example'),
+    t('idea.solution_example'),
+    t('idea.differentiation_example'),
+    t('idea.click_to_edit'),
   ];
 
   const isPlaceholder = (content: string): boolean => {
-    return DEFAULT_PLACEHOLDERS.some((p) => content.includes(p));
+    return getDefaultPlaceholders().some((p) => content.includes(p));
   };
 
   // 后台预生成：当 notes 处于初始状态（空或少于5个）时自动调用 AI
@@ -347,7 +348,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
 
       setSuggestedNotes(suggestions);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '获取 AI 建议失败';
+      const message = error instanceof Error ? error.message : t('toast.load_suggestions_failed');
       setModalError(message);
       showToast(message, 'error');
     } finally {
@@ -369,7 +370,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
     await saveNotes(newNotes);
     setModalOpen(false);
     setSuggestedNotes(null);
-    showToast('AI 建议已智能合并到便利贴', 'success');
+    showToast(t('toast.merge_suggestions'), 'success');
   };
 
   const handleOverwrite = async () => {
@@ -383,7 +384,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
     await saveNotes(newNotes);
     setModalOpen(false);
     setSuggestedNotes(null);
-    showToast('AI 建议已覆盖全部便利贴', 'success');
+    showToast(t('toast.override_suggestions'), 'success');
   };
 
   return (
@@ -392,7 +393,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
         <div className="flex items-center gap-3">
           <Lightbulb className="w-4 h-4 text-brutal-accent" />
           <span className="font-mono text-sm">{t('stage.idea')}</span>
-          <span className="text-xs text-brutal-muted">({notes.length} 个维度)</span>
+          <span className="text-xs text-brutal-muted">({notes.length} {t('idea.dimensions_count')})</span>
         </div>
         {!isLocked ? (
           <div className="flex items-center gap-2">
@@ -402,11 +403,11 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
               ) : (
                 <span className="text-brutal-accent">✨</span>
               )}
-              AI 建议
+              {t('ai.suggest')}
             </button>
             <button onClick={addNote} className="btn-brutal h-9 flex items-center gap-2 text-xs group">
               <Plus className="w-3 h-3 text-brutal-text group-active:text-brutal-bg" />
-              添加
+              {t('action.add')}
             </button>
           </div>
         ) : (
@@ -415,7 +416,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
             className="btn-brutal h-9 flex items-center gap-2 text-xs text-brutal-warning border-brutal-warning"
           >
             <Edit2 className="w-3 h-3" />
-            重新打开编辑
+            {t('action.reopen_edit')}
           </button>
         )}
       </div>
@@ -448,23 +449,23 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
 
           {notes.length === 0 && (
             <div className="text-center py-12 flex-1 flex items-center justify-center flex-col gap-4">
-              <p className="text-brutal-muted font-mono text-sm">还没有便利贴，点击"添加"创建第一个</p>
+              <p className="text-brutal-muted font-mono text-sm">{t('idea.no_notes')}</p>
               {!isLocked && (
                 <button
                   onClick={() => {
                     const defaultNotes: StickyNote[] = [
-                      { id: '1', title: '核心痛点', content: project.painPoint || '描述你想解决的核心问题...', color: 'accent' },
-                      { id: '2', title: '目标用户', content: '谁会使用这个产品？\n例如：25-35岁职场人士', color: 'default' },
-                      { id: '3', title: '使用场景', content: '用户在什么情况下会用？\n例如：通勤时、工作中', color: 'default' },
-                      { id: '4', title: '解决方案', content: '你打算如何解决？\n简述核心功能...', color: 'warning' },
-                      { id: '5', title: '差异化价值', content: '与现有方案相比，你的优势是什么？', color: 'success' },
+                      { id: '1', title: t('idea.core_pain'), content: project.painPoint || t('placeholder.describe_pain_point'), color: 'accent' },
+                      { id: '2', title: t('idea.target_user'), content: t('idea.target_user_example'), color: 'default' },
+                      { id: '3', title: t('idea.scenario'), content: t('idea.scenario_example'), color: 'default' },
+                      { id: '4', title: t('idea.solution'), content: t('idea.solution_example'), color: 'warning' },
+                      { id: '5', title: t('idea.differentiation'), content: t('idea.differentiation_example'), color: 'success' },
                     ];
                     setNotes(defaultNotes);
                     saveNotes(defaultNotes);
                   }}
                   className="text-xs font-mono border border-brutal-accent text-brutal-accent px-3 py-1.5 hover:bg-brutal-accent/10 transition-colors"
                 >
-                  使用默认模板
+                  {t('idea.use_default_template')}
                 </button>
               )}
             </div>
@@ -472,7 +473,7 @@ export function IdeaStage({ project, onUpdateContent, isLocked, onToggleLock, on
         </div>
 
         <div className="px-6 py-4 border-t border-brutal-border bg-brutal-surface/50">
-          <p className="text-xs text-brutal-muted font-mono">💡 提示：拖拽便利贴可排序，点击编辑图标修改内容</p>
+          <p className="text-xs text-brutal-muted font-mono">💡 {t('idea.drag_hint')}</p>
         </div>
       </div>
 

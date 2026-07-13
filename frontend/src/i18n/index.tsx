@@ -32,6 +32,7 @@ const translations = {
       never_synced: '未同步',
       completed: '已完成',
       viewing: '查看中',
+      loading_project_data: '加载项目数据...',
     },
     // Actions
     action: {
@@ -58,7 +59,27 @@ const translations = {
       back: '返回',
       expand: '展开',
       collapse: '收起',
-      mark_correct: '标记正确',
+      mark_correct: '标记为正确',
+      apply: '应用建议',
+      saving: '保存中...',
+      add: '添加',
+      reopen_edit: '重新打开编辑',
+      smart_merge: '智能合并',
+      overwrite_all: '全部覆盖',
+      return_to_edit: '返回编辑',
+      proceed: '继续',
+      confirm_delete: '确认删除',
+      deleting: '删除中...',
+      save_failed: '保存失败',
+      saved: '已保存',
+      syncing: '同步中...',
+      confirm_sync: '确认同步',
+      append_recommended: '追加写入（推荐）',
+      overwrite_current_stage: '覆盖当前阶段',
+      delete_project: '删除项目',
+      more_options: '更多选项',
+      back_to_home: '返回首页',
+      retry: '重试',
     },
     // Common
     common: {
@@ -97,6 +118,13 @@ const translations = {
       type_game: '游戏',
       type_script: '工具脚本',
       type_other: '其他',
+      blueprint: '项目蓝图',
+      agent_cockpit: 'AI Agent 驾驶舱',
+      stage_label: '阶段',
+      delete_warning: '此操作会将项目从你的列表中删除（后端执行软删除）。',
+      confirm_delete_prompt: '请确认你要删除项目：',
+      confirm_delete_label: '输入项目标题以确认删除',
+      edit_title_hint: '点击修改项目名称',
     },
     // Stages - Vibe/独立开发专用流程
     stage: {
@@ -107,6 +135,13 @@ const translations = {
       grow: '增长',        // 增长（获取用户）
       monetize: '变现',    // 变现（独立开发要赚钱）
       stages_completed: '已完成阶段',
+      previous: '已完成阶段',
+      stage_label: '阶段',
+      empty_confirm: '当前阶段尚未记录内容，确定要完成并进入下一阶段吗？',
+      no_content_status: '未检测到内容',
+      warning_empty: '警告：阶段内容为空',
+      no_content_detected: '未检测到内容',
+      status_label: '状态',
     },
     // GitHub
     github: {
@@ -177,6 +212,24 @@ const translations = {
       recommended_by: '💡 {{pet}}推荐问：',
       gap: '缺口',
       format_retry_notice: '本轮已执行格式修复重试',
+      suggest: 'AI 建议',
+      suggestion_preview: 'AI 建议预览',
+      generating_suggestions: 'AI 正在根据你的原始想法生成建议…',
+      current_content: '当前内容',
+      suggestions_generating: 'AI 建议生成中…',
+      estimate_time: '预计需要 10-15 秒，可以先看看左侧现有内容',
+      suggestion_hint: '左侧为当前内容，右侧为 AI 建议。你可以在右侧直接编辑建议内容。',
+      suggestions_editable: 'AI 建议（可编辑）',
+      merge_keep_original: '智能合并：此条保留原内容',
+      merge_description: '只覆盖内容为占位符的便利贴，保留你已编辑的内容',
+      overwrite_description: '用 AI 建议替换所有便利贴内容（包括你已编辑的）',
+      sync_suggestion: 'AI 同步建议',
+      sync_summary: 'AI 同步摘要',
+      sync_preview: '同步预览',
+      sync_description: '将右侧 AI 回复同步到左侧当前阶段面板。',
+      suggested_plan: 'AI 建议方案',
+      sync_source: 'AI同步',
+      open_assistant: '打开 AI 助手',
     },
     // Create
     create: {
@@ -202,6 +255,7 @@ const translations = {
     },
     // Auth
     auth: {
+      session_expired: '登录已过期，请重新登录',
       account_auth: 'ACCOUNT AUTHENTICATION',
       login: 'LOGIN',
       register: 'REGISTER',
@@ -257,12 +311,40 @@ const translations = {
     },
     // Placeholders
     placeholder: {
-      describe_pain_point: '描述您的痛点或想法...',
+      describe_pain_point: '描述你想解决的核心问题...',
       enter_notes: '在此输入笔记...',
       type_message: '输入消息...',
       content_title: '内容标题...',
       note_title: '标题',
       note_content: '内容',
+      drag_sort: '拖拽排序',
+    },
+    // Idea stage
+    idea: {
+      new_dimension: '新维度',
+      click_to_edit: '点击编辑...',
+      no_notes: '还没有便利贴，点击"添加"创建第一个',
+      confirm_delete: '确定要删除这个便利贴吗？',
+      core_pain: '核心痛点',
+      target_user: '目标用户',
+      scenario: '使用场景',
+      solution: '解决方案',
+      differentiation: '差异化价值',
+      placeholder: '占位符',
+      use_default_template: '使用默认模板',
+      target_user_example: '谁会使用这个产品？\n例如：25-35岁职场人士',
+      scenario_example: '用户在什么情况下会用？\n例如：通勤时、工作中',
+      solution_example: '你打算如何解决？\n简述核心功能...',
+      differentiation_example: '与现有方案相比，你的优势是什么？',
+      drag_hint: '提示：拖拽便利贴可排序，点击编辑图标修改内容',
+      dimensions_count: '个维度',
+    },
+    // Prototype
+    prototype: {
+      default_note_account: '基础账户系统',
+      default_note_business: '主要业务逻辑',
+      default_note_preference: '用户偏好设置',
+      default_note_inherited: '继承自想法阶段的解决方案',
     },
     // Pet
     pet: {
@@ -294,6 +376,12 @@ const translations = {
       fetch_repos_failed: '获取仓库失败',
       github_auth_failed: '启动 GitHub 授权失败',
       analyze_repo_failed: '分析仓库失败',
+      load_failed_prefix: '加载失败: ',
+      connection_failed_detail: '无法连接到服务器，请检查后端是否已启动',
+      delete_confirm_mismatch: '请输入与项目标题完全一致的文本后再删除。',
+      delete_failed: '删除失败，请稍后重试。',
+      sync_empty: '同步内容为空，无法写入左侧面板。',
+      sync_failed: '同步失败，请稍后重试。',
     },
     // Backend
     backend: {
@@ -341,6 +429,10 @@ const translations = {
     dialog: {
       stay: '留下',
       leave: '离开',
+      unsaved_leave: '当前有未保存的内容，确定要离开吗？',
+      continue_editing: '继续编辑',
+      confirm_leave: '确定离开',
+      warning: '警告',
     },
     // Account
     account: {
@@ -388,6 +480,7 @@ const translations = {
       never_synced: 'NEVER_SYNCED',
       completed: 'COMPLETED',
       viewing: 'VIEWING',
+      loading_project_data: 'LOADING_PROJECT_DATA...',
     },
     // Actions
     action: {
@@ -414,7 +507,27 @@ const translations = {
       back: 'BACK',
       expand: 'EXPAND',
       collapse: 'COLLAPSE',
-      mark_correct: 'MARK CORRECT',
+      mark_correct: 'MARK AS CORRECT',
+      apply: 'APPLY SUGGESTIONS',
+      saving: 'SAVING...',
+      add: 'ADD',
+      reopen_edit: 'REOPEN FOR EDITING',
+      smart_merge: 'SMART MERGE',
+      overwrite_all: 'OVERWRITE ALL',
+      return_to_edit: 'RETURN TO EDIT',
+      proceed: 'PROCEED',
+      confirm_delete: 'CONFIRM DELETE',
+      deleting: 'DELETING...',
+      save_failed: 'SAVE FAILED',
+      saved: 'SAVED',
+      syncing: 'SYNCING...',
+      confirm_sync: 'CONFIRM SYNC',
+      append_recommended: 'APPEND (RECOMMENDED)',
+      overwrite_current_stage: 'OVERWRITE CURRENT STAGE',
+      delete_project: 'DELETE PROJECT',
+      more_options: 'MORE OPTIONS',
+      back_to_home: 'BACK TO HOME',
+      retry: 'RETRY',
     },
     // Common
     common: {
@@ -453,6 +566,13 @@ const translations = {
       type_game: 'Game',
       type_script: 'Utility Script',
       type_other: 'Other',
+      blueprint: 'PROJECT BLUEPRINT',
+      agent_cockpit: 'AI AGENT COCKPIT',
+      stage_label: 'STAGE',
+      delete_warning: 'This will remove the project from your list (soft delete on backend).',
+      confirm_delete_prompt: 'Please confirm you want to delete project:',
+      confirm_delete_label: 'Enter project title to confirm deletion',
+      edit_title_hint: 'Click to edit project name',
     },
     // Stages - Vibe/Indie Hacker flow
     stage: {
@@ -463,6 +583,13 @@ const translations = {
       grow: 'GROW',        // Grow (acquire users)
       monetize: 'MONETIZE', // Monetize (indie hackers need revenue)
       stages_completed: 'STAGES_COMPLETED',
+      previous: 'PREVIOUS STAGES',
+      stage_label: 'STAGE',
+      empty_confirm: 'The current stage has no recorded content. Are you sure you want to complete it and proceed to the next stage?',
+      no_content_status: 'NO CONTENT DETECTED',
+      warning_empty: 'WARNING: EMPTY STAGE CONTENT',
+      no_content_detected: 'NO CONTENT DETECTED',
+      status_label: 'STATUS',
     },
     // GitHub
     github: {
@@ -533,6 +660,24 @@ const translations = {
       recommended_by: '💡 {{pet}} RECOMMENDS:',
       gap: 'GAP',
       format_retry_notice: 'FORMAT RETRY EXECUTED',
+      suggest: 'AI SUGGEST',
+      suggestion_preview: 'AI SUGGESTION PREVIEW',
+      generating_suggestions: 'AI is generating suggestions based on your original idea...',
+      current_content: 'CURRENT CONTENT',
+      suggestions_generating: 'AI SUGGESTIONS GENERATING...',
+      estimate_time: 'Estimated 10-15 seconds; you can review existing content on the left',
+      suggestion_hint: 'Left side shows current content, right side shows AI suggestions. You can edit suggestions directly on the right.',
+      suggestions_editable: 'AI SUGGESTIONS (EDITABLE)',
+      merge_keep_original: 'Smart merge: this note keeps original content',
+      merge_description: 'Only overwrite sticky notes with placeholder content, keeping your edited content',
+      overwrite_description: 'Replace all sticky note content with AI suggestions (including your edits)',
+      sync_suggestion: 'AI SYNC SUGGESTION',
+      sync_summary: 'AI SYNC SUMMARY',
+      sync_preview: 'SYNC PREVIEW',
+      sync_description: 'Sync the AI reply on the right into the current stage panel on the left.',
+      suggested_plan: 'AI SUGGESTED PLAN',
+      sync_source: 'AI SYNC',
+      open_assistant: 'OPEN AI ASSISTANT',
     },
     // Create
     create: {
@@ -558,6 +703,7 @@ const translations = {
     },
     // Auth
     auth: {
+      session_expired: 'Session expired. Please log in again.',
       account_auth: 'ACCOUNT AUTHENTICATION',
       login: 'LOGIN',
       register: 'REGISTER',
@@ -613,12 +759,40 @@ const translations = {
     },
     // Placeholders
     placeholder: {
-      describe_pain_point: 'Describe your pain point or idea...',
+      describe_pain_point: 'Describe the core problem you want to solve...',
       enter_notes: 'Enter your notes here...',
       type_message: 'Type your message...',
       content_title: 'Content title...',
       note_title: 'TITLE',
       note_content: 'CONTENT',
+      drag_sort: 'DRAG TO SORT',
+    },
+    // Idea stage
+    idea: {
+      new_dimension: 'NEW DIMENSION',
+      click_to_edit: 'Click to edit...',
+      no_notes: 'No sticky notes yet. Click ADD to create the first one.',
+      confirm_delete: 'Are you sure you want to delete this sticky note?',
+      core_pain: 'CORE PAIN',
+      target_user: 'TARGET USER',
+      scenario: 'USAGE SCENARIO',
+      solution: 'SOLUTION',
+      differentiation: 'DIFFERENTIATION',
+      placeholder: 'PLACEHOLDER',
+      use_default_template: 'USE DEFAULT TEMPLATE',
+      target_user_example: 'Who will use this product?\nE.g. professionals aged 25-35',
+      scenario_example: 'When will users use it?\nE.g. during commute, at work',
+      solution_example: 'How will you solve it?\nBriefly describe core features...',
+      differentiation_example: 'What is your advantage over existing solutions?',
+      drag_hint: 'Tip: drag sticky notes to reorder, click the edit icon to modify content',
+      dimensions_count: 'dimensions',
+    },
+    // Prototype
+    prototype: {
+      default_note_account: 'Basic account system',
+      default_note_business: 'Core business logic',
+      default_note_preference: 'User preference settings',
+      default_note_inherited: 'Inherited from idea stage solution',
     },
     // Pet
     pet: {
@@ -650,6 +824,12 @@ const translations = {
       fetch_repos_failed: 'Failed to fetch repositories',
       github_auth_failed: 'Failed to start GitHub authorization',
       analyze_repo_failed: 'Failed to analyze repository',
+      load_failed_prefix: 'Failed to load: ',
+      connection_failed_detail: 'Cannot connect to server. Please check if the backend is running.',
+      delete_confirm_mismatch: 'Please enter text exactly matching the project title before deleting.',
+      delete_failed: 'Delete failed. Please try again later.',
+      sync_empty: 'Sync content is empty. Cannot write to left panel.',
+      sync_failed: 'Sync failed. Please try again later.',
     },
     // Backend
     backend: {
@@ -697,6 +877,10 @@ const translations = {
     dialog: {
       stay: 'STAY',
       leave: 'LEAVE',
+      unsaved_leave: 'You have unsaved changes. Are you sure you want to leave?',
+      continue_editing: 'CONTINUE EDITING',
+      confirm_leave: 'LEAVE',
+      warning: 'WARNING',
     },
     // Account
     account: {
@@ -744,6 +928,7 @@ const translations = {
       never_synced: '未同期',
       completed: '完了',
       viewing: '閲覧中',
+      loading_project_data: 'プロジェクトデータを読み込み中...',
     },
     // Actions
     action: {
@@ -771,6 +956,26 @@ const translations = {
       expand: '展開',
       collapse: '折りたたむ',
       mark_correct: '正しいとマーク',
+      apply: '提案を適用',
+      saving: '保存中...',
+      add: '追加',
+      reopen_edit: '編集を再開',
+      smart_merge: 'スマートマージ',
+      overwrite_all: 'すべて上書き',
+      return_to_edit: '編集に戻る',
+      proceed: '進む',
+      confirm_delete: '削除を確認',
+      deleting: '削除中...',
+      save_failed: '保存に失敗しました',
+      saved: '保存済み',
+      syncing: '同期中...',
+      confirm_sync: '同期を確認',
+      append_recommended: '追加（推奨）',
+      overwrite_current_stage: '現在のステージを上書き',
+      delete_project: 'プロジェクトを削除',
+      more_options: 'その他のオプション',
+      back_to_home: 'ホームに戻る',
+      retry: '再試行',
     },
     // Common
     common: {
@@ -809,6 +1014,13 @@ const translations = {
       type_game: 'ゲーム',
       type_script: 'ユーティリティスクリプト',
       type_other: 'その他',
+      blueprint: 'プロジェクトブループリント',
+      agent_cockpit: 'AIエージェントコックピット',
+      stage_label: 'ステージ',
+      delete_warning: 'この操作によりプロジェクトがリストから削除されます（バックエンドで論理削除）。',
+      confirm_delete_prompt: '次のプロジェクトを削除することを確認してください：',
+      confirm_delete_label: '削除を確認するためにプロジェクト名を入力',
+      edit_title_hint: 'クリックしてプロジェクト名を編集',
     },
     // Stages - Vibe/独立開発専用フロー
     stage: {
@@ -819,6 +1031,13 @@ const translations = {
       grow: '成長',
       monetize: '収益化',
       stages_completed: '完了済みステージ',
+      previous: '完了済みステージ',
+      stage_label: 'ステージ',
+      empty_confirm: '現在のステージには記録された内容がありません。完了して次のステージに進みますか？',
+      no_content_status: '内容が検出されません',
+      warning_empty: '警告：ステージ内容が空です',
+      no_content_detected: '内容が検出されません',
+      status_label: '状態',
     },
     // GitHub
     github: {
@@ -889,6 +1108,24 @@ const translations = {
       recommended_by: '💡 {{pet}}のおすすめ：',
       gap: 'ギャップ',
       format_retry_notice: 'このラウンドで形式修正リトライを実行しました',
+      suggest: 'AI 提案',
+      suggestion_preview: 'AI 提案プレビュー',
+      generating_suggestions: 'AIが元のアイデアに基づいて提案を生成中…',
+      current_content: '現在の内容',
+      suggestions_generating: 'AI 提案生成中…',
+      estimate_time: '所要時間の目安は10〜15秒です。それまで左側の既存内容を確認できます',
+      suggestion_hint: '左側が現在の内容、右側がAI提案です。右側で提案を直接編集できます。',
+      suggestions_editable: 'AI 提案（編集可能）',
+      merge_keep_original: 'スマートマージ：この項目は元の内容を保持',
+      merge_description: 'プレースホルダー内容の付箋のみを上書きし、編集済みの内容は保持します',
+      overwrite_description: 'AI提案ですべての付箋内容を置き換えます（編集済みも含む）',
+      sync_suggestion: 'AI 同期提案',
+      sync_summary: 'AI 同期サマリー',
+      sync_preview: '同期プレビュー',
+      sync_description: '右側のAI返答を左側の現在のステージパネルに同期します。',
+      suggested_plan: 'AI 提案プラン',
+      sync_source: 'AI同期',
+      open_assistant: 'AI アシスタントを開く',
     },
     // Create
     create: {
@@ -914,6 +1151,7 @@ const translations = {
     },
     // Auth
     auth: {
+      session_expired: 'ログインの有効期限が切れました。再度ログインしてください。',
       account_auth: 'ACCOUNT AUTHENTICATION',
       login: 'LOGIN',
       register: 'REGISTER',
@@ -969,12 +1207,40 @@ const translations = {
     },
     // Placeholders
     placeholder: {
-      describe_pain_point: '課題やアイデアを説明してください...',
+      describe_pain_point: '解決したい核心問題を説明してください...',
       enter_notes: 'ここにメモを入力...',
       type_message: 'メッセージを入力...',
       content_title: 'コンテンツタイトル...',
       note_title: 'タイトル',
       note_content: '内容',
+      drag_sort: 'ドラッグして並べ替え',
+    },
+    // Idea stage
+    idea: {
+      new_dimension: '新しい次元',
+      click_to_edit: 'クリックして編集...',
+      no_notes: 'まだ付箋がありません。「追加」をクリックして最初の付箋を作成してください',
+      confirm_delete: 'この付箋を削除してもよろしいですか？',
+      core_pain: '核心の痛み',
+      target_user: 'ターゲットユーザー',
+      scenario: '使用シーン',
+      solution: '解決策',
+      differentiation: '差別化価値',
+      placeholder: 'プレースホルダー',
+      use_default_template: 'デフォルトテンプレートを使用',
+      target_user_example: '誰がこの製品を使いますか？\n例：25-35歳のビジネスパーソン',
+      scenario_example: 'ユーザーはどのような状況で使いますか？\n例：通勤中、仕事中',
+      solution_example: 'どのように解決しますか？\n核心機能を簡潔に説明...',
+      differentiation_example: '既存の解決策と比べて、あなたの優位性は何ですか？',
+      drag_hint: 'ヒント：付箋をドラッグして並べ替え、編集アイコンをクリックして内容を変更',
+      dimensions_count: '次元',
+    },
+    // Prototype
+    prototype: {
+      default_note_account: '基本アカウントシステム',
+      default_note_business: '主要業務ロジック',
+      default_note_preference: 'ユーザー設定',
+      default_note_inherited: 'アイデアステージの解決策から継承',
     },
     // Pet
     pet: {
@@ -1006,6 +1272,12 @@ const translations = {
       fetch_repos_failed: 'リポジトリの取得に失敗しました',
       github_auth_failed: 'GitHub認可の開始に失敗しました',
       analyze_repo_failed: 'リポジトリの分析に失敗しました',
+      load_failed_prefix: '読み込みに失敗しました: ',
+      connection_failed_detail: 'サーバーに接続できません。バックエンドが起動しているか確認してください。',
+      delete_confirm_mismatch: '削除する前に、プロジェクト名と完全に一致するテキストを入力してください。',
+      delete_failed: '削除に失敗しました。後でもう一度お試しください。',
+      sync_empty: '同期内容が空です。左側のパネルに書き込めません。',
+      sync_failed: '同期に失敗しました。後でもう一度お試しください。',
     },
     // Backend
     backend: {
@@ -1053,6 +1325,10 @@ const translations = {
     dialog: {
       stay: '残る',
       leave: '退出する',
+      unsaved_leave: '保存されていない変更があります。本当に退出しますか？',
+      continue_editing: '編集を続ける',
+      confirm_leave: '退出する',
+      warning: '警告',
     },
     // Account
     account: {
@@ -1100,6 +1376,7 @@ const translations = {
       never_synced: '미동기화',
       completed: '완료',
       viewing: '보는 중',
+      loading_project_data: '프로젝트 데이터 로드 중...',
     },
     // Actions
     action: {
@@ -1127,6 +1404,26 @@ const translations = {
       expand: '펼치기',
       collapse: '접기',
       mark_correct: '올바름 표시',
+      apply: '제안 적용',
+      saving: '저장 중...',
+      add: '추가',
+      reopen_edit: '편집 다시 열기',
+      smart_merge: '스마트 병합',
+      overwrite_all: '모두 덮어쓰기',
+      return_to_edit: '편집으로 돌아가기',
+      proceed: '계속',
+      confirm_delete: '삭제 확인',
+      deleting: '삭제 중...',
+      save_failed: '저장 실패',
+      saved: '저장됨',
+      syncing: '동기화 중...',
+      confirm_sync: '동기화 확인',
+      append_recommended: '추가(권장)',
+      overwrite_current_stage: '현재 단계 덮어쓰기',
+      delete_project: '프로젝트 삭제',
+      more_options: '더 많은 옵션',
+      back_to_home: '홈으로 돌아가기',
+      retry: '재시도',
     },
     // Common
     common: {
@@ -1165,6 +1462,13 @@ const translations = {
       type_game: '게임',
       type_script: '유틸리티 스크립트',
       type_other: '기타',
+      blueprint: '프로젝트 블루프린트',
+      agent_cockpit: 'AI 에이전트 조종실',
+      stage_label: '단계',
+      delete_warning: '이 작업은 프로젝트를 목록에서 제거합니다(백엔드에서 소프트 삭제).',
+      confirm_delete_prompt: '다음 프로젝트를 삭제할 것인지 확인하세요:',
+      confirm_delete_label: '삭제를 확인하려면 프로젝트 제목을 입력하세요',
+      edit_title_hint: '클릭하여 프로젝트명 편집',
     },
     // Stages - Vibe/인디 개발자 전용 플로우
     stage: {
@@ -1175,6 +1479,13 @@ const translations = {
       grow: '성장',
       monetize: '수익화',
       stages_completed: '완료된 단계',
+      previous: '완료된 단계',
+      stage_label: '단계',
+      empty_confirm: '현재 단계에 기록된 내용이 없습니다. 완료하고 다음 단계로 진행하시겠습니까?',
+      no_content_status: '내용이 감지되지 않음',
+      warning_empty: '경고: 단계 내용이 비어 있음',
+      no_content_detected: '내용이 감지되지 않음',
+      status_label: '상태',
     },
     // GitHub
     github: {
@@ -1245,6 +1556,24 @@ const translations = {
       recommended_by: '💡 {{pet}} 추천 질문:',
       gap: '격차',
       format_retry_notice: '이번 라운드에서 형식 수정 재시도를 실행했습니다',
+      suggest: 'AI 제안',
+      suggestion_preview: 'AI 제안 미리보기',
+      generating_suggestions: 'AI가 원본 아이디어를 바탕으로 제안을 생성 중…',
+      current_content: '현재 내용',
+      suggestions_generating: 'AI 제안 생성 중…',
+      estimate_time: '예상 소요 시간은 10-15초입니다. 그동안 왼쪽의 기존 내용을 확인해 보세요',
+      suggestion_hint: '왼쪽은 현재 내용, 오른쪽은 AI 제안입니다. 오른쪽에서 제안을 직접 편집할 수 있습니다.',
+      suggestions_editable: 'AI 제안 (편집 가능)',
+      merge_keep_original: '스마트 병합: 이 항목은 원본 내용 유지',
+      merge_description: '플레이스홀더 내용의 포스트잇만 덮어쓰고 편집한 내용은 유지합니다',
+      overwrite_description: 'AI 제안으로 모든 포스트잇 내용을 교체합니다(편집한 내용 포함)',
+      sync_suggestion: 'AI 동기화 제안',
+      sync_summary: 'AI 동기화 요약',
+      sync_preview: '동기화 미리보기',
+      sync_description: '오른쪽 AI 응답을 왼쪽 현재 단계 패널에 동기화합니다.',
+      suggested_plan: 'AI 제안 플랜',
+      sync_source: 'AI 동기화',
+      open_assistant: 'AI 어시스턴트 열기',
     },
     // Create
     create: {
@@ -1270,6 +1599,7 @@ const translations = {
     },
     // Auth
     auth: {
+      session_expired: '로그인 세션이 만료되었습니다. 다시 로그인해 주세요.',
       account_auth: 'ACCOUNT AUTHENTICATION',
       login: 'LOGIN',
       register: 'REGISTER',
@@ -1325,12 +1655,40 @@ const translations = {
     },
     // Placeholders
     placeholder: {
-      describe_pain_point: '고통 지점이나 아이디어를 설명하세요...',
+      describe_pain_point: '해결하고 싶은 핵심 문제를 설명하세요...',
       enter_notes: '여기에 메모를 입력...',
       type_message: '메시지를 입력...',
       content_title: '콘텐츠 제목...',
       note_title: '제목',
       note_content: '내용',
+      drag_sort: '드래그하여 정렬',
+    },
+    // Idea stage
+    idea: {
+      new_dimension: '새 차원',
+      click_to_edit: '클릭하여 편집...',
+      no_notes: '아직 포스트잇이 없습니다. "추가"를 클릭하여 첫 번째 포스트잇을 만드세요',
+      confirm_delete: '이 포스트잇을 삭제하시겠습니까?',
+      core_pain: '핵심 고통',
+      target_user: '타겟 사용자',
+      scenario: '사용 시나리오',
+      solution: '해결책',
+      differentiation: '차별화 가치',
+      placeholder: '플레이스홀더',
+      use_default_template: '기본 템플릿 사용',
+      target_user_example: '누가 이 제품을 사용하나요?\n예: 25-35세 직장인',
+      scenario_example: '사용자는 어떤 상황에서 사용하나요?\n예: 출퇴근길, 업무 중',
+      solution_example: '어떻게 해결할 계획인가요?\n핵심 기능을 간략히 설명...',
+      differentiation_example: '기존 솔루션과 비교했을 때 당신의 장점은 무엇인가요?',
+      drag_hint: '팁: 포스트잇을 드래그하여 정렬하고, 편집 아이콘을 클릭하여 내용을 수정',
+      dimensions_count: '차원',
+    },
+    // Prototype
+    prototype: {
+      default_note_account: '기본 계정 시스템',
+      default_note_business: '핵심 비즈니스 로직',
+      default_note_preference: '사용자 설정',
+      default_note_inherited: '아이디어 단계 솔루션에서 상속됨',
     },
     // Pet
     pet: {
@@ -1362,6 +1720,12 @@ const translations = {
       fetch_repos_failed: '저장소 불러오기 실패',
       github_auth_failed: 'GitHub 인증 시작 실패',
       analyze_repo_failed: '저장소 분석 실패',
+      load_failed_prefix: '불러오기 실패: ',
+      connection_failed_detail: '서버에 연결할 수 없습니다. 백엔드가 실행 중인지 확인하세요.',
+      delete_confirm_mismatch: '삭제하려면 프로젝트 제목과 정확히 일치하는 텍스트를 입력하세요.',
+      delete_failed: '삭제에 실패했습니다. 잠시 후 다시 시도해주세요.',
+      sync_empty: '동기화 내용이 비어 있습니다. 왼쪽 패널에 쓸 수 없습니다.',
+      sync_failed: '동기화에 실패했습니다. 잠시 후 다시 시도해주세요.',
     },
     // Backend
     backend: {
@@ -1409,6 +1773,10 @@ const translations = {
     dialog: {
       stay: '남기',
       leave: '떠나기',
+      unsaved_leave: '저장되지 않은 변경사항이 있습니다. 정말 떠나시겠습니까?',
+      continue_editing: '편집 계속',
+      confirm_leave: '떠나기',
+      warning: '경고',
     },
     // Account
     account: {
@@ -1456,6 +1824,7 @@ const translations = {
       never_synced: 'Nunca sincronizado',
       completed: 'Completado',
       viewing: 'Visualizando',
+      loading_project_data: 'Cargando datos del proyecto...',
     },
     // Actions
     action: {
@@ -1482,7 +1851,27 @@ const translations = {
       back: 'Atrás',
       expand: 'Expandir',
       collapse: 'Contraer',
-      mark_correct: 'Marcar correcto',
+      mark_correct: 'Marcar como correcto',
+      apply: 'Aplicar sugerencias',
+      saving: 'Guardando...',
+      add: 'Agregar',
+      reopen_edit: 'Reabrir para editar',
+      smart_merge: 'Fusión inteligente',
+      overwrite_all: 'Sobrescribir todo',
+      return_to_edit: 'Volver a editar',
+      proceed: 'Continuar',
+      confirm_delete: 'Confirmar eliminación',
+      deleting: 'Eliminando...',
+      save_failed: 'Error al guardar',
+      saved: 'Guardado',
+      syncing: 'Sincronizando...',
+      confirm_sync: 'Confirmar sincronización',
+      append_recommended: 'Agregar (recomendado)',
+      overwrite_current_stage: 'Sobrescribir etapa actual',
+      delete_project: 'Eliminar proyecto',
+      more_options: 'Más opciones',
+      back_to_home: 'Volver al inicio',
+      retry: 'Reintentar',
     },
     // Common
     common: {
@@ -1521,6 +1910,13 @@ const translations = {
       type_game: 'Juego',
       type_script: 'Script de Utilidad',
       type_other: 'Otro',
+      blueprint: 'PLANO DEL PROYECTO',
+      agent_cockpit: 'CABINA DE AGENTE IA',
+      stage_label: 'ETAPA',
+      delete_warning: 'Esto eliminará el proyecto de tu lista (eliminación lógica en backend).',
+      confirm_delete_prompt: 'Por favor confirma que quieres eliminar el proyecto:',
+      confirm_delete_label: 'Ingresa el título del proyecto para confirmar la eliminación',
+      edit_title_hint: 'Clic para editar el nombre del proyecto',
     },
     // Stages - Flujo Vibe/Indie Hacker
     stage: {
@@ -1531,6 +1927,13 @@ const translations = {
       grow: 'Crecer',
       monetize: 'Monetizar',
       stages_completed: 'Etapas completadas',
+      previous: 'Etapas completadas',
+      stage_label: 'Etapa',
+      empty_confirm: 'La etapa actual no tiene contenido registrado. ¿Estás seguro de completarla y pasar a la siguiente?',
+      no_content_status: 'No se detectó contenido',
+      warning_empty: 'ADVERTENCIA: CONTENIDO DE ETAPA VACÍO',
+      no_content_detected: 'No se detectó contenido',
+      status_label: 'ESTADO',
     },
     // GitHub
     github: {
@@ -1601,6 +2004,24 @@ const translations = {
       recommended_by: '💡 {{pet}} recomienda:',
       gap: 'Brecha',
       format_retry_notice: 'Se ejecutó reintento de corrección de formato en esta ronda',
+      suggest: 'Sugerencia de IA',
+      suggestion_preview: 'Vista previa de sugerencias de IA',
+      generating_suggestions: 'La IA está generando sugerencias basadas en tu idea original...',
+      current_content: 'Contenido actual',
+      suggestions_generating: 'Generando sugerencias de IA...',
+      estimate_time: 'Tiempo estimado 10-15 segundos; puedes revisar el contenido existente a la izquierda',
+      suggestion_hint: 'El lado izquierdo muestra el contenido actual, el derecho las sugerencias de IA. Puedes editar las sugerencias directamente a la derecha.',
+      suggestions_editable: 'SUGERENCIAS DE IA (EDITABLES)',
+      merge_keep_original: 'Fusión inteligente: esta nota conserva el contenido original',
+      merge_description: 'Sobrescribe solo las notas adhesivas con contenido de marcador de posición, manteniendo tu contenido editado',
+      overwrite_description: 'Reemplaza todo el contenido de las notas adhesivas con sugerencias de IA (incluyendo tus ediciones)',
+      sync_suggestion: 'SUGERENCIA DE SINCRONIZACIÓN DE IA',
+      sync_summary: 'RESUMEN DE SINCRONIZACIÓN DE IA',
+      sync_preview: 'VISTA PREVIA DE SINCRONIZACIÓN',
+      sync_description: 'Sincroniza la respuesta de IA de la derecha en el panel de etapa actual de la izquierda.',
+      suggested_plan: 'PLAN SUGERIDO POR IA',
+      sync_source: 'SINCRONIZACIÓN IA',
+      open_assistant: 'Abrir asistente de IA',
     },
     // Create
     create: {
@@ -1626,6 +2047,7 @@ const translations = {
     },
     // Auth
     auth: {
+      session_expired: 'La sesión ha expirado. Por favor inicia sesión de nuevo.',
       account_auth: 'ACCOUNT AUTHENTICATION',
       login: 'LOGIN',
       register: 'REGISTER',
@@ -1681,12 +2103,40 @@ const translations = {
     },
     // Placeholders
     placeholder: {
-      describe_pain_point: 'Describe tu punto de dolor o idea...',
+      describe_pain_point: 'Describe el problema principal que quieres resolver...',
       enter_notes: 'Ingresa tus notas aquí...',
       type_message: 'Escribe tu mensaje...',
       content_title: 'Título del contenido...',
       note_title: 'Título',
       note_content: 'Contenido',
+      drag_sort: 'Arrastra para ordenar',
+    },
+    // Idea stage
+    idea: {
+      new_dimension: 'Nueva dimensión',
+      click_to_edit: 'Clic para editar...',
+      no_notes: 'Aún no hay notas adhesivas. Haz clic en AGREGAR para crear la primera.',
+      confirm_delete: '¿Estás seguro de que quieres eliminar esta nota adhesiva?',
+      core_pain: 'Dolor central',
+      target_user: 'Usuario objetivo',
+      scenario: 'Escenario de uso',
+      solution: 'Solución',
+      differentiation: 'Valor diferencial',
+      placeholder: 'Marcador de posición',
+      use_default_template: 'Usar plantilla predeterminada',
+      target_user_example: '¿Quién usará este producto?\nEj. profesionales de 25-35 años',
+      scenario_example: '¿En qué situación lo usarán?\nEj. durante el viaje, en el trabajo',
+      solution_example: '¿Cómo lo resolverás?\nDescribe brevemente las funciones principales...',
+      differentiation_example: '¿Cuál es tu ventaja frente a las soluciones existentes?',
+      drag_hint: 'Consejo: arrastra las notas adhesivas para reordenar, haz clic en el icono de editar para modificar el contenido',
+      dimensions_count: 'dimensiones',
+    },
+    // Prototype
+    prototype: {
+      default_note_account: 'Sistema de cuentas básico',
+      default_note_business: 'Lógica de negocio principal',
+      default_note_preference: 'Configuración de preferencias',
+      default_note_inherited: 'Heredado de la solución de la etapa de idea',
     },
     // Pet
     pet: {
@@ -1718,6 +2168,12 @@ const translations = {
       fetch_repos_failed: 'Error al obtener repositorios',
       github_auth_failed: 'Error al iniciar autorización de GitHub',
       analyze_repo_failed: 'Error al analizar el repositorio',
+      load_failed_prefix: 'Error al cargar: ',
+      connection_failed_detail: 'No se puede conectar al servidor. Verifica que el backend esté ejecutándose.',
+      delete_confirm_mismatch: 'Ingresa un texto que coincida exactamente con el título del proyecto antes de eliminar.',
+      delete_failed: 'Error al eliminar. Por favor inténtalo de nuevo más tarde.',
+      sync_empty: 'El contenido de sincronización está vacío. No se puede escribir en el panel izquierdo.',
+      sync_failed: 'Error al sincronizar. Por favor inténtalo de nuevo más tarde.',
     },
     // Backend
     backend: {
@@ -1765,6 +2221,10 @@ const translations = {
     dialog: {
       stay: 'Quedarse',
       leave: 'Salir',
+      unsaved_leave: 'Tienes cambios no guardados. ¿Estás seguro de que quieres salir?',
+      continue_editing: 'Continuar editando',
+      confirm_leave: 'Salir',
+      warning: 'ADVERTENCIA',
     },
     // Account
     account: {
@@ -1812,6 +2272,7 @@ const translations = {
       never_synced: 'Jamais synchronisé',
       completed: 'Terminé',
       viewing: 'Visualisation',
+      loading_project_data: 'Chargement des données du projet...',
     },
     // Actions
     action: {
@@ -1838,7 +2299,27 @@ const translations = {
       back: 'Retour',
       expand: 'Développer',
       collapse: 'Réduire',
-      mark_correct: 'Marquer correct',
+      mark_correct: 'Marquer comme correct',
+      apply: 'Appliquer les suggestions',
+      saving: 'Enregistrement...',
+      add: 'Ajouter',
+      reopen_edit: 'Rouvrir l\'édition',
+      smart_merge: 'Fusion intelligente',
+      overwrite_all: 'Tout écraser',
+      return_to_edit: 'Retour à l\'édition',
+      proceed: 'Continuer',
+      confirm_delete: 'Confirmer la suppression',
+      deleting: 'Suppression...',
+      save_failed: 'Échec de l\'enregistrement',
+      saved: 'Enregistré',
+      syncing: 'Synchronisation...',
+      confirm_sync: 'Confirmer la synchronisation',
+      append_recommended: 'Ajouter (recommandé)',
+      overwrite_current_stage: 'Écraser l\'étape actuelle',
+      delete_project: 'Supprimer le projet',
+      more_options: 'Plus d\'options',
+      back_to_home: 'Retour à l\'accueil',
+      retry: 'Réessayer',
     },
     // Common
     common: {
@@ -1877,6 +2358,13 @@ const translations = {
       type_game: 'Jeu',
       type_script: 'Script Utilitaire',
       type_other: 'Autre',
+      blueprint: 'BLUEPRINT DU PROJET',
+      agent_cockpit: 'COCKPIT AGENT IA',
+      stage_label: 'ÉTAPE',
+      delete_warning: 'Cela retirera le projet de votre liste (suppression logique côté backend).',
+      confirm_delete_prompt: 'Veuillez confirmer que vous voulez supprimer le projet :',
+      confirm_delete_label: 'Saisissez le titre du projet pour confirmer la suppression',
+      edit_title_hint: 'Cliquez pour modifier le nom du projet',
     },
     // Stages - Flux Vibe/Indie Hacker
     stage: {
@@ -1887,6 +2375,13 @@ const translations = {
       grow: 'Croître',
       monetize: 'Monétiser',
       stages_completed: 'Étapes terminées',
+      previous: 'Étapes terminées',
+      stage_label: 'Étape',
+      empty_confirm: 'L\'étape actuelle n\'a aucun contenu enregistré. Êtes-vous sûr de vouloir la terminer et passer à la suivante ?',
+      no_content_status: 'Aucun contenu détecté',
+      warning_empty: 'AVERTISSEMENT : CONTENU DE L\'ÉTAPE VIDE',
+      no_content_detected: 'Aucun contenu détecté',
+      status_label: 'STATUT',
     },
     // GitHub
     github: {
@@ -1957,6 +2452,24 @@ const translations = {
       recommended_by: '💡 {{pet}} recommande :',
       gap: 'Écart',
       format_retry_notice: 'Réexécution de correction de format effectuée ce tour',
+      suggest: 'Suggestion IA',
+      suggestion_preview: 'Aperçu des suggestions IA',
+      generating_suggestions: 'L\'IA génère des suggestions basées sur votre idée originale...',
+      current_content: 'Contenu actuel',
+      suggestions_generating: 'Génération des suggestions IA...',
+      estimate_time: 'Estimé à 10-15 secondes ; vous pouvez consulter le contenu existant à gauche',
+      suggestion_hint: 'La gauche montre le contenu actuel, la droite les suggestions IA. Vous pouvez modifier les suggestions directement à droite.',
+      suggestions_editable: 'SUGGESTIONS IA (MODIFIABLES)',
+      merge_keep_original: 'Fusion intelligente : ce post-it conserve son contenu original',
+      merge_description: 'N\'écrase que les post-its avec du contenu d\'espace réservé, en conservant votre contenu modifié',
+      overwrite_description: 'Remplace tout le contenu des post-its par les suggestions IA (y compris vos modifications)',
+      sync_suggestion: 'SUGGESTION DE SYNCHRONISATION IA',
+      sync_summary: 'RÉSUMÉ DE SYNCHRONISATION IA',
+      sync_preview: 'APERÇU DE SYNCHRONISATION',
+      sync_description: 'Synchronise la réponse IA de droite dans le panneau de l\'étape actuelle de gauche.',
+      suggested_plan: 'PLAN SUGGÉRÉ PAR L\'IA',
+      sync_source: 'SYNC IA',
+      open_assistant: 'Ouvrir l\'assistant IA',
     },
     // Create
     create: {
@@ -1982,6 +2495,7 @@ const translations = {
     },
     // Auth
     auth: {
+      session_expired: 'La session a expiré. Veuillez vous reconnecter.',
       account_auth: 'ACCOUNT AUTHENTICATION',
       login: 'LOGIN',
       register: 'REGISTER',
@@ -2037,12 +2551,40 @@ const translations = {
     },
     // Placeholders
     placeholder: {
-      describe_pain_point: 'Décrivez votre point de douleur ou idée...',
+      describe_pain_point: 'Décrivez le problème central que vous voulez résoudre...',
       enter_notes: 'Entrez vos notes ici...',
       type_message: 'Tapez votre message...',
       content_title: 'Titre du contenu...',
       note_title: 'Titre',
       note_content: 'Contenu',
+      drag_sort: 'Glisser pour trier',
+    },
+    // Idea stage
+    idea: {
+      new_dimension: 'Nouvelle dimension',
+      click_to_edit: 'Cliquez pour modifier...',
+      no_notes: 'Pas encore de post-its. Cliquez sur AJOUTER pour créer le premier.',
+      confirm_delete: 'Êtes-vous sûr de vouloir supprimer ce post-it ?',
+      core_pain: 'Douleur centrale',
+      target_user: 'Utilisateur cible',
+      scenario: 'Scénario d\'utilisation',
+      solution: 'Solution',
+      differentiation: 'Valeur différenciante',
+      placeholder: 'Espace réservé',
+      use_default_template: 'Utiliser le modèle par défaut',
+      target_user_example: 'Qui utilisera ce produit ?\nEx. : professionnels de 25 à 35 ans',
+      scenario_example: 'Dans quelle situation l\'utilisateur l\'utilisera ?\nEx. : en transports, au travail',
+      solution_example: 'Comment comptez-vous le résoudre ?\nDécrivez brièvement les fonctionnalités principales...',
+      differentiation_example: 'Quel est votre avantage par rapport aux solutions existantes ?',
+      drag_hint: 'Astuce : glissez les post-its pour les réorganiser, cliquez sur l\'icône de modification pour changer le contenu',
+      dimensions_count: 'dimensions',
+    },
+    // Prototype
+    prototype: {
+      default_note_account: 'Système de compte de base',
+      default_note_business: 'Logique métier principale',
+      default_note_preference: 'Préférences utilisateur',
+      default_note_inherited: 'Hérité de la solution de l\'étape idée',
     },
     // Pet
     pet: {
@@ -2074,6 +2616,12 @@ const translations = {
       fetch_repos_failed: 'Échec de la récupération des dépôts',
       github_auth_failed: 'Échec du démarrage de l\'autorisation GitHub',
       analyze_repo_failed: 'Échec de l\'analyse du dépôt',
+      load_failed_prefix: 'Échec du chargement : ',
+      connection_failed_detail: 'Impossible de se connecter au serveur. Veuillez vérifier que le backend est démarré.',
+      delete_confirm_mismatch: 'Veuillez saisir un texte correspondant exactement au titre du projet avant de supprimer.',
+      delete_failed: 'Échec de la suppression. Veuillez réessayer plus tard.',
+      sync_empty: 'Le contenu de synchronisation est vide. Impossible d\'écrire dans le panneau de gauche.',
+      sync_failed: 'Échec de la synchronisation. Veuillez réessayer plus tard.',
     },
     // Backend
     backend: {
@@ -2121,6 +2669,10 @@ const translations = {
     dialog: {
       stay: 'Rester',
       leave: 'Partir',
+      unsaved_leave: 'Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir partir ?',
+      continue_editing: 'Continuer à modifier',
+      confirm_leave: 'Partir',
+      warning: 'ATTENTION',
     },
     // Account
     account: {
@@ -2168,6 +2720,7 @@ const translations = {
       never_synced: 'Nie synchronisiert',
       completed: 'Abgeschlossen',
       viewing: 'Anzeigen',
+      loading_project_data: 'Projektdaten werden geladen...',
     },
     // Actions
     action: {
@@ -2195,6 +2748,26 @@ const translations = {
       expand: 'Erweitern',
       collapse: 'Einklappen',
       mark_correct: 'Als korrekt markieren',
+      apply: 'Vorschläge anwenden',
+      saving: 'Speichern...',
+      add: 'Hinzufügen',
+      reopen_edit: 'Bearbeitung wieder öffnen',
+      smart_merge: 'Intelligentes Zusammenführen',
+      overwrite_all: 'Alle überschreiben',
+      return_to_edit: 'Zurück zur Bearbeitung',
+      proceed: 'Fortfahren',
+      confirm_delete: 'Löschung bestätigen',
+      deleting: 'Löschen...',
+      save_failed: 'Speichern fehlgeschlagen',
+      saved: 'Gespeichert',
+      syncing: 'Synchronisieren...',
+      confirm_sync: 'Synchronisation bestätigen',
+      append_recommended: 'Anhängen (empfohlen)',
+      overwrite_current_stage: 'Aktuelle Phase überschreiben',
+      delete_project: 'Projekt löschen',
+      more_options: 'Weitere Optionen',
+      back_to_home: 'Zurück zur Startseite',
+      retry: 'Wiederholen',
     },
     // Common
     common: {
@@ -2233,6 +2806,13 @@ const translations = {
       type_game: 'Spiel',
       type_script: 'Hilfsskript',
       type_other: 'Sonstiges',
+      blueprint: 'PROJEKT-BLUEPRINT',
+      agent_cockpit: 'AI-AGENT-COCKPIT',
+      stage_label: 'PHASE',
+      delete_warning: 'Dies entfernt das Projekt aus Ihrer Liste (Soft-Delete im Backend).',
+      confirm_delete_prompt: 'Bitte bestätigen Sie, dass Sie das Projekt löschen möchten:',
+      confirm_delete_label: 'Geben Sie den Projekttitel zur Bestätigung ein',
+      edit_title_hint: 'Klicken zum Bearbeiten des Projektnamens',
     },
     // Stages - Vibe/Indie Hacker-Fluss
     stage: {
@@ -2243,6 +2823,13 @@ const translations = {
       grow: 'Wachsen',
       monetize: 'Monetarisieren',
       stages_completed: 'Abgeschlossene Phasen',
+      previous: 'Abgeschlossene Phasen',
+      stage_label: 'Phase',
+      empty_confirm: 'Die aktuelle Phase hat keinen aufgezeichneten Inhalt. Möchten Sie sie wirklich abschließen und zur nächsten Phase wechseln?',
+      no_content_status: 'Kein Inhalt erkannt',
+      warning_empty: 'WARNUNG: LEERE PHASENINHALTE',
+      no_content_detected: 'Kein Inhalt erkannt',
+      status_label: 'STATUS',
     },
     // GitHub
     github: {
@@ -2313,6 +2900,24 @@ const translations = {
       recommended_by: '💡 {{pet}} empfiehlt:',
       gap: 'Lücke',
       format_retry_notice: 'Formatierungskorrektur in dieser Runde erneut ausgeführt',
+      suggest: 'AI-Vorschlag',
+      suggestion_preview: 'AI-Vorschau',
+      generating_suggestions: 'Die KI generiert Vorschläge basierend auf Ihrer Originalidee...',
+      current_content: 'Aktueller Inhalt',
+      suggestions_generating: 'KI-Vorschläge werden generiert...',
+      estimate_time: 'Geschätzt 10-15 Sekunden; Sie können bestehende Inhalte links überprüfen',
+      suggestion_hint: 'Links wird der aktuelle Inhalt angezeigt, rechts die KI-Vorschläge. Sie können Vorschläge rechts direkt bearbeiten.',
+      suggestions_editable: 'KI-VORSCHLÄGE (BEARBEITBAR)',
+      merge_keep_original: 'Intelligentes Zusammenführen: Diese Haftnotiz behält den Originalinhalt',
+      merge_description: 'Nur Haftnotizen mit Platzhalterinhalt überschreiben, Ihre bearbeiteten Inhalte behalten',
+      overwrite_description: 'Alle Haftnotizinhalte durch KI-Vorschläge ersetzen (einschließlich Ihrer Bearbeitungen)',
+      sync_suggestion: 'KI-SYNCHRONISATIONSVORSCHLAG',
+      sync_summary: 'KI-SYNCHRONISIERUNGSZUSAMMENFASSUNG',
+      sync_preview: 'SYNCHRONISIERUNGSVORSCHAU',
+      sync_description: 'Synchronisiert die KI-Antwort rechts in das aktuelle Phase-Panel links.',
+      suggested_plan: 'KI-VORGESCHLAGENER PLAN',
+      sync_source: 'KI-SYNC',
+      open_assistant: 'KI-Assistent öffnen',
     },
     // Create
     create: {
@@ -2338,6 +2943,7 @@ const translations = {
     },
     // Auth
     auth: {
+      session_expired: 'Sitzung abgelaufen. Bitte melden Sie sich erneut an.',
       account_auth: 'ACCOUNT AUTHENTICATION',
       login: 'LOGIN',
       register: 'REGISTER',
@@ -2393,12 +2999,40 @@ const translations = {
     },
     // Placeholders
     placeholder: {
-      describe_pain_point: 'Beschreiben Sie Ihren Schmerzpunkt oder Ihre Idee...',
+      describe_pain_point: 'Beschreiben Sie das zentrale Problem, das Sie lösen möchten...',
       enter_notes: 'Geben Sie hier Ihre Notizen ein...',
       type_message: 'Nachricht eingeben...',
       content_title: 'Inhaltstitel...',
       note_title: 'Titel',
       note_content: 'Inhalt',
+      drag_sort: 'Zum Sortieren ziehen',
+    },
+    // Idea stage
+    idea: {
+      new_dimension: 'Neue Dimension',
+      click_to_edit: 'Klicken zum Bearbeiten...',
+      no_notes: 'Noch keine Haftnotizen. Klicken Sie auf HINZUFÜGEN, um die erste zu erstellen.',
+      confirm_delete: 'Möchten Sie diese Haftnotiz wirklich löschen?',
+      core_pain: 'Kernschmerz',
+      target_user: 'Zielnutzer',
+      scenario: 'Nutzungsszenario',
+      solution: 'Lösung',
+      differentiation: 'Differenzierungswert',
+      placeholder: 'Platzhalter',
+      use_default_template: 'Standardvorlage verwenden',
+      target_user_example: 'Wer wird dieses Produkt nutzen?\nZ.B. Berufstätige zwischen 25 und 35',
+      scenario_example: 'In welcher Situation wird es genutzt?\nZ.B. auf dem Weg zur Arbeit, bei der Arbeit',
+      solution_example: 'Wie werden Sie es lösen?\nBeschreiben Sie kurz die Kernfunktionen...',
+      differentiation_example: 'Was ist Ihr Vorteil gegenüber bestehenden Lösungen?',
+      drag_hint: 'Tipp: Haftnotizen zum Sortieren ziehen, auf das Bearbeiten-Symbol klicken, um Inhalt zu ändern',
+      dimensions_count: 'Dimensionen',
+    },
+    // Prototype
+    prototype: {
+      default_note_account: 'Grundlegendes Kontosystem',
+      default_note_business: 'Kern-Geschäftslogik',
+      default_note_preference: 'Benutzereinstellungen',
+      default_note_inherited: 'Von der Ideen-Phasen-Lösung übernommen',
     },
     // Pet
     pet: {
@@ -2430,6 +3064,12 @@ const translations = {
       fetch_repos_failed: 'Repositories konnten nicht abgerufen werden',
       github_auth_failed: 'GitHub-Autorisierung konnte nicht gestartet werden',
       analyze_repo_failed: 'Repository konnte nicht analysiert werden',
+      load_failed_prefix: 'Laden fehlgeschlagen: ',
+      connection_failed_detail: 'Verbindung zum Server nicht möglich. Bitte prüfen Sie, ob das Backend läuft.',
+      delete_confirm_mismatch: 'Bitte geben Sie zum Löschen einen Text ein, der genau dem Projekttitel entspricht.',
+      delete_failed: 'Löschen fehlgeschlagen. Bitte versuchen Sie es später erneut.',
+      sync_empty: 'Synchronisierungsinhalt ist leer. Kann nicht in das linke Panel schreiben.',
+      sync_failed: 'Synchronisierung fehlgeschlagen. Bitte versuchen Sie es später erneut.',
     },
     // Backend
     backend: {
@@ -2477,6 +3117,10 @@ const translations = {
     dialog: {
       stay: 'Bleiben',
       leave: 'Verlassen',
+      unsaved_leave: 'Sie haben ungespeicherte Änderungen. Möchten Sie wirklich verlassen?',
+      continue_editing: 'Bearbeitung fortsetzen',
+      confirm_leave: 'Verlassen',
+      warning: 'WARNUNG',
     },
     // Account
     account: {
