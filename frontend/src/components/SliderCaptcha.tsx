@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { useI18n } from '../i18n/hooks';
 
 interface SliderCaptchaProps {
   token: string;
@@ -22,6 +23,7 @@ export function SliderCaptcha({
   onVerify,
   onRefresh,
 }: SliderCaptchaProps) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [sliderPercent, setSliderPercent] = useState(0);
@@ -128,7 +130,7 @@ export function SliderCaptcha({
           draggable={false}
         />
 
-        {/* 拖动时的视觉反馈 */}
+        {/* Drag visual feedback */}
         {isDragging && (
           <div className="absolute inset-0 bg-brutal-accent/5 pointer-events-none" />
         )}
@@ -144,7 +146,7 @@ export function SliderCaptcha({
 
         {/* 提示文字 */}
         <span className="absolute inset-0 flex items-center justify-center text-xs font-mono text-brutal-muted pointer-events-none">
-          拖动滑块完成拼图
+          {t('auth.slider_hint')}
         </span>
 
         {/* 滑块按钮 */}
@@ -160,7 +162,7 @@ export function SliderCaptcha({
         </div>
       </div>
 
-      {/* 刷新按钮 */}
+      {/* Refresh button */}
       <div className="flex justify-end max-w-[300px] mx-auto">
         <button
           type="button"
@@ -168,7 +170,7 @@ export function SliderCaptcha({
           className="flex items-center gap-1 px-2 py-1 text-xs font-mono text-brutal-muted hover:text-brutal-accent transition-colors"
         >
           <RefreshCw className="w-3 h-3" />
-          刷新验证
+          {t('auth.refresh_captcha')}
         </button>
       </div>
     </div>
