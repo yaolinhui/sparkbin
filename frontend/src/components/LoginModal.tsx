@@ -277,7 +277,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     try {
       const res: BaseResponse = await authApi.forgotPassword({ email: forgotEmail });
       if (res.success === false) {
-        setError(res.message || '{t('auth.send_failed')}');
+        setError(res.message || t('auth.send_failed'));
       } else {
         setForgotSent(true);
       }
@@ -429,9 +429,9 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                     token={captchaData.token}
                     background={captchaData.background}
                     slider={captchaData.slider}
-                    slider_width={captchaData.slider_width}
-                    slider_height={captchaData.slider_height}
-                    slider_y={captchaData.slider_y}
+                    sliderWidth={captchaData.slider_width}
+                    sliderHeight={captchaData.slider_height}
+                    sliderY={captchaData.slider_y}
                     onVerify={(token, x) => {
                       setCaptchaToken(token);
                       setCaptchaX(x);
@@ -479,7 +479,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                     {t('auth.logging_in')}
                   </>
                 ) : (
-                  {t('auth.login')}
+                  t('auth.login')
                 )}
               </button>
             </form>
@@ -678,7 +678,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                   {t('auth.registering')}
                 </>
               ) : (
-                {t('auth.register')}
+                t('auth.register')
               )}
             </button>
           </form>
@@ -739,7 +739,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                       {t('auth.sending')}
                     </>
                   ) : (
-                    {t('auth.send_reset_email')}
+                    t('auth.send_reset_email')
                   )}
                 </button>
 
