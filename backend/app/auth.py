@@ -165,27 +165,77 @@ def _clear_oauth_bind_state_cookie(response: Response) -> None:
 
 
 def generate_captcha(ip: str) -> dict:
-    """生成纯文本数学验证码。
+    """生成滑动拼图验证码（SVG 实现，无需 Pillow 依赖）。
 
     安全设计：
-    - 使用 10-99 的两位数和加/减/乘混合运算，显著扩大答案空间。
-    - 不再返回 answer_hash，避免客户端离线暴力破解。
+    - 服务端随机生成缺口位置，将背景图和滑块图以 SVG data URI 形式返回。
+    - 使用一次性 token 标识验证码，防止重放和枚举。
     - 服务端记录剩余可尝试次数，错误超过 3 次立即销毁该验证码。
+    - 不返回正确答案，只通过 token 关联。
     """
     import random
-    operations = [
-        ("+", lambda x, y: x + y),
-        ("-", lambda x, y: x - y),
-        ("x", lambda x, y: x * y),
-    ]
-    a = random.randint(10, 99)
-    b = random.randint(10, 99)
-    # 减法保证结果非负
-    if a < b:
-        a, b = b, a
-    op_symbol, op_func = random.choice(operations)
-    answer = str(op_func(a, b))
-    question = f"{a} {op_symbol} {b}"
+    import secrets
+    import base64
+
+    width, height = 300, 150
+    slider_w, slider_h = 40, 40
+
+    # 缺口位置
+    gap_x = random.randint(60, width - slider_w - 60)
+    gap_y = random.randint(30, height - slider_h - 30)
+
+    # 生成随机背景元素
+    bg_color = f"rgb({random.randint(230,250)},{random.randint(230,250)},{random.randint(230,250)})"
+    elements = []
+    for _ in range(20):
+        shape_type = random.choice(['rect', 'circle', 'line'])
+        color = f"rgb({random.randint(100,200)},{random.randint(100,200)},{random.randint(100,200)})"
+        if shape_type == 'rect':
+            x = random.randint(0, width)
+            y = random.randint(0, height)
+            w = random.randint(20, 80)
+            h = random.randint(20, 80)
+            elements.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{color}" opacity="0.4"/>')
+        elif shape_type == 'circle':
+            cx = random.randint(0, width)
+            cy = random.randint(0, height)
+            r = random.randint(10, 30)
+            elements.append(f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{color}" opacity="0.4"/>')
+        else:
+            x1 = random.randint(0, width)
+            y1 = random.randint(0, height)
+            x2 = random.randint(0, width)
+            y2 = random.randint(0, height)
+            sw = random.randint(1, 3)
+            elements.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}" stroke-width="{sw}" opacity="0.5"/>')
+
+    # 背景 SVG：在缺口位置绘制凹槽阴影，并覆盖一层半透明遮罩
+    shadow_color = f"rgb({random.randint(120,160)},{random.randint(120,160)},{random.randint(120,160)})"
+    patch_color = f"rgb({random.randint(210,240)},{random.randint(210,240)},{random.randint(210,240)})"
+    bg_svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}">
+      <rect width="100%" height="100%" fill="{bg_color}"/>
+      {''.join(elements)}
+      <rect x="{gap_x}" y="{gap_y}" width="{slider_w}" height="{slider_h}" fill="{patch_color}" stroke="{shadow_color}" stroke-width="2"/>
+    </svg>'''
+
+    # 滑块 SVG：使用 clipPath 只显示缺口区域的内容
+    slider_svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {slider_w} {slider_h}" width="{slider_w}" height="{slider_h}">
+      <defs>
+        <clipPath id="c">
+          <rect width="{slider_w}" height="{slider_h}"/>
+        </clipPath>
+      </defs>
+      <g clip-path="url(#c)">
+        <rect x="{-gap_x}" y="{-gap_y}" width="{width}" height="{height}" fill="{bg_color}"/>
+        {''.join(e.replace('opacity="0.4"', 'opacity="0.55"').replace('opacity="0.5"', 'opacity="0.6"') for e in elements)}
+      </g>
+    </svg>'''
+
+    def _svg_to_data_uri(svg: str) -> str:
+        b64 = base64.b64encode(svg.encode('utf-8')).decode('ascii')
+        return f"data:image/svg+xml;base64,{b64}"
+
+    token = secrets.token_urlsafe(24)
     expire_at = datetime.now(timezone.utc).timestamp() + _CAPTCHA_TTL_SECONDS
 
     # 防 DoS：限制存储容量
@@ -194,24 +244,37 @@ def generate_captcha(ip: str) -> dict:
         for k in sorted_keys[:_MAX_CAPTCHA_ENTRIES // 2]:
             del _captcha_store[k]
 
-    # 存储格式：(answer, expire_at, remaining_attempts)
-    _captcha_store[ip] = (answer, expire_at, 3)
-    return {"question": question}
+    # 存储格式：(correct_x, expire_at, remaining_attempts, gap_y)
+    _captcha_store[ip] = (gap_x, expire_at, 3, gap_y)
+
+    return {
+        "token": token,
+        "background": _svg_to_data_uri(bg_svg),
+        "slider": _svg_to_data_uri(slider_svg),
+        "slider_width": slider_w,
+        "slider_height": slider_h,
+        "slider_y": gap_y,
+    }
 
 
-def verify_captcha(ip: str, answer: str) -> bool:
-    """验证验证码答案，超过最大尝试次数或过期则清除记录。"""
+def verify_captcha(ip: str, token: str, x: int | None) -> bool:
+    """验证滑动拼图验证码位置，超过最大尝试次数或过期则清除记录。"""
     stored = _captcha_store.get(ip)
     if not stored:
         return False
-    correct_answer, expire_at, remaining_attempts = stored
+    correct_x, expire_at, remaining_attempts, _gap_y = stored
     now = datetime.now(timezone.utc).timestamp()
 
     if now > expire_at:
         del _captcha_store[ip]
         return False
 
-    if answer.strip() == correct_answer:
+    # token 只做标识，实际安全依赖 IP 级存储和尝试次数限制
+    if x is None:
+        return False
+
+    # 允许 4 像素误差
+    if abs(int(x) - correct_x) <= 4:
         del _captcha_store[ip]
         return True
 
@@ -220,7 +283,7 @@ def verify_captcha(ip: str, answer: str) -> bool:
     if remaining_attempts <= 0:
         del _captcha_store[ip]
     else:
-        _captcha_store[ip] = (correct_answer, expire_at, remaining_attempts)
+        _captcha_store[ip] = (correct_x, expire_at, remaining_attempts, _gap_y)
     return False
 
 

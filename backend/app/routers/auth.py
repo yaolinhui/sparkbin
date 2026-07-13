@@ -66,7 +66,7 @@ def _record_audit_log(
 
 @router.get("/captcha")
 def get_captcha(req: Request):
-    """获取数学验证码"""
+    """获取滑动拼图验证码"""
     client_ip = _get_client_ip(req)
     # 限制单个 IP 频繁获取验证码（5 次 / 5 分钟）
     check_rate_limit(req, "captcha")
@@ -90,13 +90,14 @@ def login(
 
     # 验证码校验：当同一 IP 近期失败次数 >= 2 时强制要求
     if req and is_captcha_required(req):
-        if not request.captcha_answer:
+        has_captcha = request.captcha_token is not None and request.captcha_x is not None
+        if not has_captcha:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="需要验证码",
                 headers={"X-Require-Captcha": "1"},
             )
-        if not verify_captcha(client_ip, request.captcha_answer):
+        if not verify_captcha(client_ip, request.captcha_token, request.captcha_x):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="验证码错误",

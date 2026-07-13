@@ -16,7 +16,9 @@ class BaseResponse(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str = Field(..., min_length=1, max_length=128)
-    captcha_answer: Optional[str] = None
+    captcha_token: Optional[str] = None
+    captcha_x: Optional[int] = None
+    captcha_answer: Optional[str] = None  # 兼容旧字段，已弃用
 
 
 class LoginResponse(BaseModel):

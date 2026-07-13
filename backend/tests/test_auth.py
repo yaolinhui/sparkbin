@@ -598,32 +598,53 @@ class TestAgentRunIdor:
 
 
 class TestCaptcha:
-    def test_captcha_does_not_expose_answer_hash(self):
+    def test_captcha_returns_slider_puzzle(self):
         result = generate_captcha("127.0.0.1")
-        assert "question" in result
-        assert "answer_hash" not in result
+        assert "token" in result
+        assert "background" in result
+        assert "slider" in result
+        assert "slider_width" in result
+        assert "slider_height" in result
+        assert "slider_y" in result
+        assert result["background"].startswith("data:image/svg+xml;base64,")
+        assert result["slider"].startswith("data:image/svg+xml;base64,")
+        # 不应暴露正确答案
+        assert "correct_x" not in result
 
-    def test_captcha_verifies_correct_answer(self):
-        # 通过解析题目获取答案（测试专用）
+    def test_captcha_verifies_correct_position(self):
+        from app import auth as auth_module
         result = generate_captcha("127.0.0.2")
-        question = result["question"]
-        parts = question.split()
-        a, op, b = int(parts[0]), parts[1], int(parts[2])
-        if op == "+":
-            answer = str(a + b)
-        elif op == "-":
-            answer = str(a - b)
-        else:
-            answer = str(a * b)
-        assert verify_captcha("127.0.0.2", answer) is True
+        token = result["token"]
+        # 测试通过内部存储获取正确位置（仅用于验证 verify_captcha 行为）
+        stored = auth_module._captcha_store.get("127.0.0.2")
+        assert stored is not None
+        correct_x = stored[0]
+        assert verify_captcha("127.0.0.2", token, correct_x) is True
+
+    def test_captcha_verifies_near_position(self):
+        from app import auth as auth_module
+        # 正向误差
+        result = generate_captcha("127.0.0.3")
+        token = result["token"]
+        stored = auth_module._captcha_store.get("127.0.0.3")
+        correct_x = stored[0]
+        assert verify_captcha("127.0.0.3", token, correct_x + 3) is True
+
+        # 负向误差：重新生成，避免上一次成功已销毁验证码
+        result = generate_captcha("127.0.0.3")
+        token = result["token"]
+        stored = auth_module._captcha_store.get("127.0.0.3")
+        correct_x = stored[0]
+        assert verify_captcha("127.0.0.3", token, correct_x - 3) is True
 
     def test_captcha_invalidates_after_max_attempts(self):
-        generate_captcha("127.0.0.3")
-        assert verify_captcha("127.0.0.3", "wrong") is False
-        assert verify_captcha("127.0.0.3", "wrong") is False
-        assert verify_captcha("127.0.0.3", "wrong") is False
-        # 超过 3 次错误后，验证码已被销毁，任何答案都失败
-        assert verify_captcha("127.0.0.3", "still_wrong") is False
+        from app import auth as auth_module
+        generate_captcha("127.0.0.4")
+        assert verify_captcha("127.0.0.4", "wrong-token", 0) is False
+        assert verify_captcha("127.0.0.4", "wrong-token", 1) is False
+        assert verify_captcha("127.0.0.4", "wrong-token", 2) is False
+        # 超过 3 次错误后，验证码已被销毁，任何位置都失败
+        assert verify_captcha("127.0.0.4", "wrong-token", 3) is False
 
 
 class TestRefreshTokenRotation:

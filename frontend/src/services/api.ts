@@ -287,10 +287,20 @@ async function request<T>(
 }
 
 // ===== 认证 API =====
+export interface CaptchaResponse {
+  token: string;
+  background: string;
+  slider: string;
+  slider_width: number;
+  slider_height: number;
+  slider_y: number;
+}
+
 export interface LoginRequest {
   username: string;
   password: string;
-  captcha_answer?: string;
+  captcha_token?: string;
+  captcha_x?: number;
 }
 
 export interface LoginResponse {
@@ -402,7 +412,7 @@ export const authApi = {
     `${API_BASE_URL}/auth/oauth/${provider}`,
 
   getCaptcha: () =>
-    request<{ question: string; answer_hash: string }>('/auth/captcha'),
+    request<CaptchaResponse>('/auth/captcha'),
 
   getGitHubConnectUrl: async () => {
     const data = await request<{ url: string }>('/auth/oauth/github/connect', {

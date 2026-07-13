@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Lock, User, AlertCircle, Loader2, X, Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
-import { authApi, setAuthToken, ApiError, type BaseResponse } from '../services/api';
+import { authApi, setAuthToken, ApiError, type BaseResponse, type CaptchaResponse } from '../services/api';
 import { DotGridBackground } from './DotGridBackground';
+import { SliderCaptcha } from './SliderCaptcha';
 import type { DotGridBackgroundRef } from './DotGridBackground';
 
 interface LoginModalProps {
@@ -59,8 +60,9 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
   const [rememberMe, setRememberMe] = useState(false);
 
   // Captcha & lockout states
-  const [captchaQuestion, setCaptchaQuestion] = useState<string | null>(null);
-  const [captchaAnswer, setCaptchaAnswer] = useState('');
+  const [captchaData, setCaptchaData] = useState<CaptchaResponse | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaX, setCaptchaX] = useState<number | null>(null);
   const [lockoutSeconds, setLockoutSeconds] = useState<number | null>(null);
   const [isLocked, setIsLocked] = useState(false);
 
@@ -113,8 +115,9 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
       setForgotSent(false);
       setPassword('');
       setTab('login');
-      setCaptchaQuestion(null);
-      setCaptchaAnswer('');
+      setCaptchaData(null);
+      setCaptchaToken(null);
+      setCaptchaX(null);
       setLockoutSeconds(null);
       setIsLocked(false);
       if (!rememberMe) {
@@ -154,10 +157,13 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
   const fetchCaptcha = async () => {
     try {
       const data = await authApi.getCaptcha();
-      setCaptchaQuestion(data.question);
-      setCaptchaAnswer('');
+      setCaptchaData(data);
+      setCaptchaToken(null);
+      setCaptchaX(null);
     } catch {
-      setCaptchaQuestion(null);
+      setCaptchaData(null);
+      setCaptchaToken(null);
+      setCaptchaX(null);
     }
   };
 
@@ -177,7 +183,8 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
       await authApi.login({
         username,
         password,
-        captcha_answer: captchaAnswer || undefined,
+        captcha_token: captchaToken ?? undefined,
+        captcha_x: captchaX ?? undefined,
       });
       // token 已由后端写入 HttpOnly Cookie，JS 不持有真实 token
       setAuthToken('ok');
@@ -186,8 +193,9 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
       } else {
         localStorage.removeItem('sparkbin_remembered_username');
       }
-      setCaptchaQuestion(null);
-      setCaptchaAnswer('');
+      setCaptchaData(null);
+      setCaptchaToken(null);
+      setCaptchaX(null);
       onLogin();
     } catch (err) {
       if (err instanceof ApiError) {
@@ -412,38 +420,22 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                 </div>
               </div>
 
-              {/* 验证码输入 */}
-              {captchaQuestion && (
-                <div>
-                  <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
-                    验证码
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-mono text-brutal-text whitespace-nowrap">
-                      {captchaQuestion} =
-                    </span>
-                    <input
-                      type="text"
-                      value={captchaAnswer}
-                      onChange={(e) => setCaptchaAnswer(e.target.value)}
-                      onFocus={handleInputFocus}
-                      className="flex-1 px-3 py-2 border border-brutal-border bg-brutal-bg
-                                 focus:border-brutal-accent focus:outline-none
-                                 font-mono text-sm transition-colors"
-                      placeholder="?"
-                      disabled={isLoading}
-                      autoComplete="off"
-                    />
-                    <button
-                      type="button"
-                      onClick={fetchCaptcha}
-                      className="px-3 py-2 text-xs font-mono border border-brutal-border
-                                 hover:border-brutal-accent hover:text-brutal-accent transition-colors"
-                      disabled={isLoading}
-                    >
-                      刷新
-                    </button>
-                  </div>
+              {/* 滑动拼图验证码 */}
+              {captchaData && (
+                <div className="animate-fade-in-slide">
+                  <SliderCaptcha
+                    token={captchaData.token}
+                    background={captchaData.background}
+                    slider={captchaData.slider}
+                    slider_width={captchaData.slider_width}
+                    slider_height={captchaData.slider_height}
+                    slider_y={captchaData.slider_y}
+                    onVerify={(token, x) => {
+                      setCaptchaToken(token);
+                      setCaptchaX(x);
+                    }}
+                    onRefresh={fetchCaptcha}
+                  />
                 </div>
               )}
 
