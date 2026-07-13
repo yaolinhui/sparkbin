@@ -255,6 +255,8 @@ const translations = {
     // Common
     common: {
       or: 'OR',
+      bind: 'BIND',
+      unbind: 'UNBIND',
     },
     // Project
     project: {
@@ -1427,7 +1429,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   }, [language, setLanguageWithStorage]);
 
   const t = useCallback(
-    (key: string): string => {
+    (key: string, vars?: Record<string, string | number>): string => {
       const keys = key.split('.');
       let value: unknown = translations[language];
 
@@ -1439,7 +1441,15 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      return typeof value === 'string' ? value : key;
+      let result = typeof value === 'string' ? value : key;
+
+      if (vars) {
+        Object.entries(vars).forEach(([varKey, varValue]) => {
+          result = result.replace(new RegExp(`\\{\\{${varKey}\\}\\}`, 'g'), String(varValue));
+        });
+      }
+
+      return result;
     },
     [language]
   );
