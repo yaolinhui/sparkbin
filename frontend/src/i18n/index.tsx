@@ -55,6 +55,10 @@ const translations = {
       generate_with_ai: 'AI 优化',
       manual_input: '手动输入',
       confirm_create: '确认创建',
+      back: '返回',
+      expand: '展开',
+      collapse: '收起',
+      mark_correct: '标记正确',
     },
     // Common
     common: {
@@ -80,6 +84,10 @@ const translations = {
       awaiting_input: '等待输入...',
       ready_to_commit: '准备提交...',
       add_new: '添加项目',
+      original_idea: '原始想法',
+      suggested_stage: '建议阶段',
+      unnamed: '未命名项目',
+      type: '项目类型',
     },
     // Stages - Vibe/独立开发专用流程
     stage: {
@@ -117,6 +125,9 @@ const translations = {
       model: '模型版本',
       processing: '处理中...',
       thinking: '思考中...',
+      analyzing: 'AI 正在分析...',
+      understanding_idea: '让我理解一下你的想法...',
+      generating: '生成中...',
       error_prefix: '[错误]',
       ok_prefix: '[成功]',
       api_error: 'API 调用失败',
@@ -135,6 +146,18 @@ const translations = {
       providers_count: '个可用模型',
       credits: 'AI 额度',
     },
+    // Create
+    create: {
+      confirm_ai_understanding: '确认 AI 理解是否正确...',
+      skip_manual: '跳过 — 手动输入',
+      your_description: '你描述的是：',
+      analyzed_dimensions: '我分析了你的描述，生成了 {{count}} 个理解维度',
+      understanding_dimensions: '我理解的核心问题（{{count}} 个维度）：',
+      dimension_hint: '点击 ✓ 标记为正确，或点击 ✎ 编辑',
+      back_to_edit: '返回修改描述',
+      confirm_understanding: '理解正确，生成标题',
+      original_idea_saved: '原始想法已保存到数据库',
+    },
     // Modal
     modal: {
       init_project: '初始化项目',
@@ -143,6 +166,7 @@ const translations = {
       project_title: '项目名称',
       select_model: '选择模型',
       manual_input: '手动输入项目信息',
+      ai_confirm: 'AI 导师理解确认',
     },
     // Auth
     auth: {
@@ -211,6 +235,10 @@ const translations = {
       stage_not_found: '阶段数据缺失',
       connection_failed: '连接失败',
       optimize_failed: '优化失败',
+      create_failed: '创建项目失败',
+      fetch_repos_failed: '获取仓库失败',
+      github_auth_failed: '启动 GitHub 授权失败',
+      analyze_repo_failed: '分析仓库失败',
     },
     // Backend
     backend: {
@@ -328,6 +356,10 @@ const translations = {
       generate_with_ai: 'OPTIMIZE_WITH_AI',
       manual_input: 'MANUAL_INPUT',
       confirm_create: 'CONFIRM_CREATE',
+      back: 'BACK',
+      expand: 'EXPAND',
+      collapse: 'COLLAPSE',
+      mark_correct: 'MARK CORRECT',
     },
     // Common
     common: {
@@ -353,6 +385,10 @@ const translations = {
       awaiting_input: 'AWAITING_INPUT...',
       ready_to_commit: 'READY_TO_COMMIT...',
       add_new: 'ADD PROJECT',
+      original_idea: 'ORIGINAL IDEA',
+      suggested_stage: 'SUGGESTED STAGE',
+      unnamed: 'UNNAMED PROJECT',
+      type: 'PROJECT TYPE',
     },
     // Stages - Vibe/Indie Hacker flow
     stage: {
@@ -390,6 +426,9 @@ const translations = {
       model: 'MODEL_VERSION',
       processing: 'PROCESSING...',
       thinking: 'THINKING...',
+      analyzing: 'AI ANALYZING...',
+      understanding_idea: 'Let me understand your idea...',
+      generating: 'GENERATING...',
       error_prefix: '[ERROR]',
       ok_prefix: '[OK]',
       api_error: 'API_ERROR',
@@ -408,6 +447,18 @@ const translations = {
       providers_count: 'available models',
       credits: 'AI CREDITS',
     },
+    // Create
+    create: {
+      confirm_ai_understanding: 'Confirm if AI understanding is correct...',
+      skip_manual: 'Skip — Manual Input',
+      your_description: 'Your description:',
+      analyzed_dimensions: 'I analyzed your description and generated {{count}} understanding dimensions',
+      understanding_dimensions: 'Core problems I understand ({{count}} dimensions):',
+      dimension_hint: 'Click ✓ to mark correct, or click ✎ to edit',
+      back_to_edit: 'Back to Edit Description',
+      confirm_understanding: 'Understanding correct, generate title',
+      original_idea_saved: 'Original idea saved to database',
+    },
     // Modal
     modal: {
       init_project: 'INIT_PROJECT',
@@ -416,6 +467,7 @@ const translations = {
       project_title: 'Project_Title',
       select_model: 'SELECT_MODEL',
       manual_input: 'MANUAL_INPUT',
+      ai_confirm: 'AI TUTOR CONFIRMATION',
     },
     // Auth
     auth: {
@@ -484,6 +536,10 @@ const translations = {
       stage_not_found: 'STAGE_DATA_MISSING',
       connection_failed: 'CONNECTION_FAILED',
       optimize_failed: 'OPTIMIZE_FAILED',
+      create_failed: 'Failed to create project',
+      fetch_repos_failed: 'Failed to fetch repositories',
+      github_auth_failed: 'Failed to start GitHub authorization',
+      analyze_repo_failed: 'Failed to analyze repository',
     },
     // Backend
     backend: {
@@ -601,6 +657,10 @@ const translations = {
       generate_with_ai: 'AIで最適化',
       manual_input: '手動入力',
       confirm_create: '作成を確認',
+      back: '戻る',
+      expand: '展開',
+      collapse: '折りたたむ',
+      mark_correct: '正しいとマーク',
     },
     // Common
     common: {
@@ -626,6 +686,10 @@ const translations = {
       awaiting_input: '入力待ち...',
       ready_to_commit: '確定準備完了...',
       add_new: 'プロジェクトを追加',
+      original_idea: '元のアイデア',
+      suggested_stage: '推奨ステージ',
+      unnamed: '名前未設定プロジェクト',
+      type: 'プロジェクトタイプ',
     },
     // Stages - Vibe/独立開発専用フロー
     stage: {
@@ -663,6 +727,9 @@ const translations = {
       model: 'モデルバージョン',
       processing: '処理中...',
       thinking: '思考中...',
+      analyzing: 'AIが分析中...',
+      understanding_idea: 'あなたのアイデアを理解させてください...',
+      generating: '生成中...',
       error_prefix: '[エラー]',
       ok_prefix: '[成功]',
       api_error: 'API呼び出しに失敗しました',
@@ -681,6 +748,18 @@ const translations = {
       providers_count: '個の利用可能モデル',
       credits: 'AI クレジット',
     },
+    // Create
+    create: {
+      confirm_ai_understanding: 'AIの理解が正しいか確認...',
+      skip_manual: 'スキップ — 手動入力',
+      your_description: 'あなたの説明：',
+      analyzed_dimensions: 'あなたの説明を分析し、{{count}}の理解次元を生成しました',
+      understanding_dimensions: '私が理解した核心問題（{{count}}の次元）：',
+      dimension_hint: '✓をクリックして正しいとマークするか、✎をクリックして編集',
+      back_to_edit: '説明を修正に戻る',
+      confirm_understanding: '理解は正しい、タイトルを生成',
+      original_idea_saved: '元のアイデアをデータベースに保存しました',
+    },
     // Modal
     modal: {
       init_project: 'プロジェクトを初期化',
@@ -689,6 +768,7 @@ const translations = {
       project_title: 'プロジェクト名',
       select_model: 'モデルを選択',
       manual_input: 'プロジェクト情報を手動入力',
+      ai_confirm: 'AIチューター理解確認',
     },
     // Auth
     auth: {
@@ -757,6 +837,10 @@ const translations = {
       stage_not_found: 'ステージデータが見つかりません',
       connection_failed: '接続に失敗しました',
       optimize_failed: '最適化に失敗しました',
+      create_failed: 'プロジェクトの作成に失敗しました',
+      fetch_repos_failed: 'リポジトリの取得に失敗しました',
+      github_auth_failed: 'GitHub認可の開始に失敗しました',
+      analyze_repo_failed: 'リポジトリの分析に失敗しました',
     },
     // Backend
     backend: {
@@ -874,6 +958,10 @@ const translations = {
       generate_with_ai: 'AI 최적화',
       manual_input: '수동 입력',
       confirm_create: '생성 확인',
+      back: '뒤로',
+      expand: '펼치기',
+      collapse: '접기',
+      mark_correct: '올바름 표시',
     },
     // Common
     common: {
@@ -899,6 +987,10 @@ const translations = {
       awaiting_input: '입력 대기 중...',
       ready_to_commit: '확정 준비 완료...',
       add_new: '프로젝트 추가',
+      original_idea: '원본 아이디어',
+      suggested_stage: '추천 단계',
+      unnamed: '이름 없는 프로젝트',
+      type: '프로젝트 유형',
     },
     // Stages - Vibe/인디 개발자 전용 플로우
     stage: {
@@ -936,6 +1028,9 @@ const translations = {
       model: '모델 버전',
       processing: '처리 중...',
       thinking: '생각 중...',
+      analyzing: 'AI 분석 중...',
+      understanding_idea: '당신의 아이디어를 이해핼보겠습니다...',
+      generating: '생성 중...',
       error_prefix: '[오류]',
       ok_prefix: '[성공]',
       api_error: 'API 호출 실패',
@@ -954,6 +1049,18 @@ const translations = {
       providers_count: '개 사용 가능 모델',
       credits: 'AI 크레딧',
     },
+    // Create
+    create: {
+      confirm_ai_understanding: 'AI 이해가 올바른지 확인...',
+      skip_manual: '걸너뛰기 — 수동 입력',
+      your_description: '설명하신 내용:',
+      analyzed_dimensions: '설명을 분석하여 {{count}}개의 이해 차원을 생성했습니다',
+      understanding_dimensions: '제가 이해한 핵심 문제({{count}}개 차원):',
+      dimension_hint: '✓ 클릭하여 올바름 표시 또는 ✎ 클릭하여 편집',
+      back_to_edit: '설명 수정으로 돌아가기',
+      confirm_understanding: '이해가 맞습니다, 제목 생성',
+      original_idea_saved: '원본 아이디어가 데이터베이스에 저장되었습니다',
+    },
     // Modal
     modal: {
       init_project: '프로젝트 초기화',
@@ -962,6 +1069,7 @@ const translations = {
       project_title: '프로젝트명',
       select_model: '모델 선택',
       manual_input: '수동으로 프로젝트 정보 입력',
+      ai_confirm: 'AI 튜터 이해 확인',
     },
     // Auth
     auth: {
@@ -1030,6 +1138,10 @@ const translations = {
       stage_not_found: '단계 데이터를 찾을 수 없습니다',
       connection_failed: '연결 실패',
       optimize_failed: '최적화 실패',
+      create_failed: '프로젝트 생성 실패',
+      fetch_repos_failed: '저장소 불러오기 실패',
+      github_auth_failed: 'GitHub 인증 시작 실패',
+      analyze_repo_failed: '저장소 분석 실패',
     },
     // Backend
     backend: {
@@ -1147,6 +1259,10 @@ const translations = {
       generate_with_ai: 'Optimizar con IA',
       manual_input: 'Entrada manual',
       confirm_create: 'Confirmar creación',
+      back: 'Atrás',
+      expand: 'Expandir',
+      collapse: 'Contraer',
+      mark_correct: 'Marcar correcto',
     },
     // Common
     common: {
@@ -1172,6 +1288,10 @@ const translations = {
       awaiting_input: 'Esperando entrada...',
       ready_to_commit: 'Listo para confirmar...',
       add_new: 'Agregar proyecto',
+      original_idea: 'Idea original',
+      suggested_stage: 'Etapa sugerida',
+      unnamed: 'Proyecto sin nombre',
+      type: 'Tipo de proyecto',
     },
     // Stages - Flujo Vibe/Indie Hacker
     stage: {
@@ -1209,6 +1329,9 @@ const translations = {
       model: 'Versión del modelo',
       processing: 'Procesando...',
       thinking: 'Pensando...',
+      analyzing: 'IA analizando...',
+      understanding_idea: 'Déjame entender tu idea...',
+      generating: 'Generando...',
       error_prefix: '[ERROR]',
       ok_prefix: '[OK]',
       api_error: 'Error en la llamada a la API',
@@ -1227,6 +1350,18 @@ const translations = {
       providers_count: 'modelos disponibles',
       credits: 'Créditos IA',
     },
+    // Create
+    create: {
+      confirm_ai_understanding: 'Confirma si el entendimiento de la IA es correcto...',
+      skip_manual: 'Saltar — Entrada manual',
+      your_description: 'Tu descripción:',
+      analyzed_dimensions: 'Analicé tu descripción y generé {{count}} dimensiones de comprensión',
+      understanding_dimensions: 'Problemas centrales que entiendo ({{count}} dimensiones):',
+      dimension_hint: 'Haz clic en ✓ para marcar correcto, o en ✎ para editar',
+      back_to_edit: 'Volver a editar descripción',
+      confirm_understanding: 'Entendimiento correcto, generar título',
+      original_idea_saved: 'Idea original guardada en la base de datos',
+    },
     // Modal
     modal: {
       init_project: 'Inicializar proyecto',
@@ -1235,6 +1370,7 @@ const translations = {
       project_title: 'Título del proyecto',
       select_model: 'Seleccionar modelo',
       manual_input: 'Ingresar información manualmente',
+      ai_confirm: 'Confirmación del tutor de IA',
     },
     // Auth
     auth: {
@@ -1303,6 +1439,10 @@ const translations = {
       stage_not_found: 'Faltan datos de la etapa',
       connection_failed: 'Conexión fallida',
       optimize_failed: 'Optimización fallida',
+      create_failed: 'Error al crear el proyecto',
+      fetch_repos_failed: 'Error al obtener repositorios',
+      github_auth_failed: 'Error al iniciar autorización de GitHub',
+      analyze_repo_failed: 'Error al analizar el repositorio',
     },
     // Backend
     backend: {
@@ -1420,6 +1560,10 @@ const translations = {
       generate_with_ai: 'Optimiser avec l\'IA',
       manual_input: 'Saisie manuelle',
       confirm_create: 'Confirmer la création',
+      back: 'Retour',
+      expand: 'Développer',
+      collapse: 'Réduire',
+      mark_correct: 'Marquer correct',
     },
     // Common
     common: {
@@ -1445,6 +1589,10 @@ const translations = {
       awaiting_input: 'En attente de saisie...',
       ready_to_commit: 'Prêt à valider...',
       add_new: 'Ajouter un projet',
+      original_idea: 'Idée originale',
+      suggested_stage: 'Étape suggérée',
+      unnamed: 'Projet sans nom',
+      type: 'Type de projet',
     },
     // Stages - Flux Vibe/Indie Hacker
     stage: {
@@ -1482,6 +1630,9 @@ const translations = {
       model: 'Version du modèle',
       processing: 'Traitement...',
       thinking: 'Réflexion...',
+      analyzing: 'IA en analyse...',
+      understanding_idea: 'Laissez-moi comprendre votre idée...',
+      generating: 'Génération...',
       error_prefix: '[ERREUR]',
       ok_prefix: '[OK]',
       api_error: 'Échec de l\'appel API',
@@ -1500,6 +1651,18 @@ const translations = {
       providers_count: 'modèles disponibles',
       credits: 'Crédits IA',
     },
+    // Create
+    create: {
+      confirm_ai_understanding: 'Confirmez si la compréhension de l\'IA est correcte...',
+      skip_manual: 'Passer — Saisie manuelle',
+      your_description: 'Votre description :',
+      analyzed_dimensions: 'J\'ai analysé votre description et généré {{count}} dimensions de compréhension',
+      understanding_dimensions: 'Problèmes centraux que je comprends ({{count}} dimensions) :',
+      dimension_hint: 'Cliquez sur ✓ pour marquer correct, ou sur ✎ pour modifier',
+      back_to_edit: 'Retour modifier la description',
+      confirm_understanding: 'Compréhension correcte, générer le titre',
+      original_idea_saved: 'Idée originale enregistrée dans la base de données',
+    },
     // Modal
     modal: {
       init_project: 'Initialiser le projet',
@@ -1508,6 +1671,7 @@ const translations = {
       project_title: 'Titre du projet',
       select_model: 'Sélectionner le modèle',
       manual_input: 'Saisir manuellement les informations',
+      ai_confirm: 'Confirmation du tuteur IA',
     },
     // Auth
     auth: {
@@ -1576,6 +1740,10 @@ const translations = {
       stage_not_found: 'Données d\'étape manquantes',
       connection_failed: 'Échec de connexion',
       optimize_failed: 'Échec de l\'optimisation',
+      create_failed: 'Échec de la création du projet',
+      fetch_repos_failed: 'Échec de la récupération des dépôts',
+      github_auth_failed: 'Échec du démarrage de l\'autorisation GitHub',
+      analyze_repo_failed: 'Échec de l\'analyse du dépôt',
     },
     // Backend
     backend: {
@@ -1693,6 +1861,10 @@ const translations = {
       generate_with_ai: 'Mit KI optimieren',
       manual_input: 'Manuelle Eingabe',
       confirm_create: 'Erstellung bestätigen',
+      back: 'Zurück',
+      expand: 'Erweitern',
+      collapse: 'Einklappen',
+      mark_correct: 'Als korrekt markieren',
     },
     // Common
     common: {
@@ -1718,6 +1890,10 @@ const translations = {
       awaiting_input: 'Warte auf Eingabe...',
       ready_to_commit: 'Bereit zur Bestätigung...',
       add_new: 'Projekt hinzufügen',
+      original_idea: 'Originalidee',
+      suggested_stage: 'Vorgeschlagene Phase',
+      unnamed: 'Unbenanntes Projekt',
+      type: 'Projekttyp',
     },
     // Stages - Vibe/Indie Hacker-Fluss
     stage: {
@@ -1755,6 +1931,9 @@ const translations = {
       model: 'Modellversion',
       processing: 'Verarbeitung...',
       thinking: 'Denke nach...',
+      analyzing: 'KI analysiert...',
+      understanding_idea: 'Lassen Sie mich Ihre Idee verstehen...',
+      generating: 'Generiere...',
       error_prefix: '[FEHLER]',
       ok_prefix: '[OK]',
       api_error: 'API-Aufruf fehlgeschlagen',
@@ -1773,6 +1952,18 @@ const translations = {
       providers_count: 'verfügbare Modelle',
       credits: 'AI-Credits',
     },
+    // Create
+    create: {
+      confirm_ai_understanding: 'Bestätigen, ob das KI-Verständnis korrekt ist...',
+      skip_manual: 'Überspringen — Manuelle Eingabe',
+      your_description: 'Ihre Beschreibung:',
+      analyzed_dimensions: 'Ich habe Ihre Beschreibung analysiert und {{count}} Verständnisdimensionen generiert',
+      understanding_dimensions: 'Kernprobleme, die ich verstehe ({{count}} Dimensionen):',
+      dimension_hint: 'Klicken Sie auf ✓, um als korrekt zu markieren, oder auf ✎, um zu bearbeiten',
+      back_to_edit: 'Zurück zur Beschreibungsbearbeitung',
+      confirm_understanding: 'Verständnis korrekt, Titel generieren',
+      original_idea_saved: 'Originalidee in Datenbank gespeichert',
+    },
     // Modal
     modal: {
       init_project: 'Projekt initialisieren',
@@ -1781,6 +1972,7 @@ const translations = {
       project_title: 'Projekttitel',
       select_model: 'Modell auswählen',
       manual_input: 'Projektinformationen manuell eingeben',
+      ai_confirm: 'KI-Tutor-Bestätigung',
     },
     // Auth
     auth: {
@@ -1849,6 +2041,10 @@ const translations = {
       stage_not_found: 'Phasendaten fehlen',
       connection_failed: 'Verbindung fehlgeschlagen',
       optimize_failed: 'Optimierung fehlgeschlagen',
+      create_failed: 'Projekt konnte nicht erstellt werden',
+      fetch_repos_failed: 'Repositories konnten nicht abgerufen werden',
+      github_auth_failed: 'GitHub-Autorisierung konnte nicht gestartet werden',
+      analyze_repo_failed: 'Repository konnte nicht analysiert werden',
     },
     // Backend
     backend: {

@@ -55,7 +55,7 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
       if (message.includes('not connected') || message.includes('not configured')) {
         setIsConnected(false);
       } else {
-        setError(message || 'Failed to fetch repositories');
+        setError(message || t('error.fetch_repos_failed'));
       }
     } finally {
       setIsLoading(false);
@@ -69,7 +69,7 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
       window.location.href = url;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setError(message || 'Failed to start GitHub authorization');
+      setError(message || t('error.github_auth_failed'));
     }
   };
 
@@ -83,7 +83,7 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
       const data = await githubApi.previewImport(owner, repoName);
       setPreview(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err) || 'Failed to analyze repository');
+      setError(err instanceof Error ? err.message : String(err) || t('error.analyze_repo_failed'));
       setStep('repos');
     } finally {
       setIsLoading(false);
@@ -108,7 +108,7 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
       await fetchProjects();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err) || 'Failed to create project');
+      setError(err instanceof Error ? err.message : String(err) || t('error.create_failed'));
       setStep('preview');
     }
   };
@@ -122,7 +122,7 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
         <div className="flex items-center justify-between p-4 border-b border-brutal-border flex-shrink-0">
           <div className="flex items-center gap-2">
             <Github className="w-4 h-4 text-brutal-accent" />
-            <span className="text-sm font-mono font-bold">{t('github.import_title') || '从 GitHub 导入'}</span>
+            <span className="text-sm font-mono font-bold">{t('github.import_title')}</span>
           </div>
           <button
             onClick={onClose}
@@ -148,14 +148,14 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
                 <div className="text-center py-12">
                   <Github className="w-12 h-12 text-brutal-muted mx-auto mb-4" />
                   <p className="text-sm font-mono text-brutal-muted mb-6">
-                    {t('github.connect_prompt') || '需要授权访问你的 GitHub 公开仓库'}
+                    {t('github.connect_prompt')}
                   </p>
                   <button
                     onClick={handleConnect}
                     className="btn-brutal-primary h-10 flex items-center gap-2 mx-auto"
                   >
                     <Github className="w-4 h-4" />
-                    <span className="text-xs font-mono">{t('github.connect') || '连接 GitHub'}</span>
+                    <span className="text-xs font-mono">{t('github.connect')}</span>
                   </button>
                 </div>
               )}
@@ -163,7 +163,7 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
               {isConnected === true && repos.length === 0 && !isLoading && (
                 <div className="text-center py-12">
                   <p className="text-sm font-mono text-brutal-muted">
-                    {t('github.no_repos') || '未找到公开仓库'}
+                    {t('github.no_repos')}
                   </p>
                 </div>
               )}
@@ -171,7 +171,7 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
               {isConnected === true && repos.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-mono text-brutal-muted mb-3">
-                    {t('github.select_repo') || '选择要导入的仓库'}
+                    {t('github.select_repo')}
                   </p>
                   {repos.map((repo) => (
                     <button
@@ -218,7 +218,7 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-6 h-6 animate-spin text-brutal-accent" />
                   <span className="ml-3 text-sm font-mono text-brutal-muted">
-                    {t('github.loading_repos') || '加载仓库中...'}
+                    {t('github.loading_repos')}
                   </span>
                 </div>
               )}
@@ -249,7 +249,7 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
               <div className="border border-brutal-border bg-brutal-bg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-mono text-brutal-muted uppercase">
-                    {t('github.ai_analysis') || 'AI 分析结果'}
+                    {t('github.ai_analysis')}
                   </span>
                   <span className={`text-xs font-mono px-2 py-0.5 border ${
                     preview.confidence >= 7
@@ -258,35 +258,35 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
                         ? 'border-brutal-warning text-brutal-warning'
                         : 'border-brutal-muted text-brutal-muted'
                   }`}>
-                    {t('github.confidence') || '置信度'}: {preview.confidence}/10
+                    {t('github.confidence')}: {preview.confidence}/10
                   </span>
                 </div>
 
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-mono text-brutal-muted mb-1">
-                      {t('project.title') || '项目标题'}
+                      {t('project.title')}
                     </label>
                     <div className="text-sm font-mono text-brutal-text">{preview.title}</div>
                   </div>
 
                   <div>
                     <label className="block text-xs font-mono text-brutal-muted mb-1">
-                      {t('project.pain_point') || '核心痛点'}
+                      {t('project.pain_point')}
                     </label>
                     <div className="text-sm font-mono text-brutal-text">{preview.pain_point}</div>
                   </div>
 
                   <div>
                     <label className="block text-xs font-mono text-brutal-muted mb-1">
-                      {t('project.original_idea') || '原始想法'}
+                      {t('project.original_idea')}
                     </label>
                     <div className="text-sm font-mono text-brutal-text">{preview.original_idea}</div>
                   </div>
 
                   <div>
                     <label className="block text-xs font-mono text-brutal-muted mb-1">
-                      {t('project.suggested_stage') || '建议阶段'}
+                      {t('project.suggested_stage')}
                     </label>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-mono text-brutal-accent font-bold uppercase">
@@ -320,14 +320,14 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
                   onClick={() => { setStep('repos'); setSelectedRepo(null); setPreview(null); }}
                   className="btn-brutal h-10 flex-1"
                 >
-                  {t('action.back') || '返回'}
+                  {t('action.back')}
                 </button>
                 <button
                   onClick={handleCreateProject}
                   className="btn-brutal-primary h-10 flex-1 flex items-center justify-center gap-2"
                 >
                   <Check className="w-4 h-4" />
-                  {t('action.confirm_create') || '确认创建'}
+                  {t('action.confirm_create')}
                 </button>
               </div>
             </div>
@@ -338,7 +338,7 @@ export function GitHubImportModal({ isOpen, onClose }: GitHubImportModalProps) {
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-brutal-accent mb-4" />
               <p className="text-sm font-mono text-brutal-muted">
-                {t('github.creating_project') || '正在创建项目...'}
+                {t('github.creating_project')}
               </p>
             </div>
           )}
