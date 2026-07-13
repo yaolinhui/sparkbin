@@ -489,7 +489,7 @@ export function AIChat({
         return prevMessages;
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      const errorMessage = err instanceof Error ? err.message : t('ai.unknown_error');
       const isConfigError = errorMessage.includes('not configured') ||
                            errorMessage.includes('inactive') ||
                            errorMessage.includes('未配置') ||
@@ -499,7 +499,7 @@ export function AIChat({
                                 errorMessage.includes('402');
       if (isCreditExhausted) {
         setShowUpgradeModal(true);
-        setError(`${t('ai.error_prefix')} AI 额度已用完，请购买额度包继续`);
+        setError(`${t('ai.error_prefix')} ${t('ai.credit_exhausted')}`);
       } else {
         // 非额度错误：恢复乐观扣减的额度（因为实际未消费）
         setAiCredits((prev) => (prev !== null ? prev + 1 : prev));
@@ -558,7 +558,7 @@ export function AIChat({
           onClick={handleToggleCollapse}
           className="flex flex-col items-center gap-2 px-2 py-4 bg-brutal-surface border border-brutal-border
                      hover:border-brutal-accent transition-colors duration-300 h-full max-h-40"
-          title={`展开${petName}`}
+          title={t('ai.expand_pet', { pet: petName })}
         >
           <ChevronLeft className="w-4 h-4" />
           <div className="flex flex-col items-center gap-1">
@@ -593,11 +593,11 @@ export function AIChat({
                   <div className="font-mono text-sm font-bold">{petName}</div>
                   {aiCredits !== null && (
                     <span className={`text-[10px] font-mono px-1 py-0.5 border ${aiCredits <= 3 ? 'text-brutal-warning border-brutal-warning/30' : 'text-brutal-muted border-brutal-border'}`}>
-                      AI: {aiCredits}
+                      {t('quota.ai_label', { credits: aiCredits })}
                     </span>
                   )}
                 </div>
-                <div className="text-[10px] text-brutal-muted font-mono">{projectTitle || '未命名项目'} · {stage}</div>
+                <div className="text-[10px] text-brutal-muted font-mono">{projectTitle || t('ai.unnamed_project')} · {stage}</div>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -615,7 +615,7 @@ export function AIChat({
               <button
                 onClick={() => setIsFullscreen(false)}
                 className="w-8 h-8 border border-brutal-border flex items-center justify-center hover:bg-brutal-accent hover:text-brutal-bg transition-colors"
-                title="退出全屏 (ESC)"
+                title={t('ai.exit_fullscreen')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -648,7 +648,7 @@ export function AIChat({
                     <div className="space-y-2 min-w-0">
                       {!message.content.trim() && message.id !== 'welcome' ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-brutal-accent">{petName}正在思考</span>
+                          <span className="text-brutal-accent">{t('ai.pet_thinking', { pet: petName })}</span>
                           <span className="flex gap-1">
                             <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce" />
                             <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce delay-75" />
@@ -674,12 +674,12 @@ export function AIChat({
           {showCreditWarning && (
             <div className="mx-6 mb-2 p-2 border border-brutal-warning/60 bg-brutal-warning/10 text-brutal-warning text-xs font-mono flex items-center gap-2 flex-shrink-0">
               <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>AI 额度仅剩 {aiCredits} 次，建议及时补充</span>
+              <span>{t('ai.credit_warning', { credits: aiCredits })}</span>
               <button
                 onClick={() => setShowUpgradeModal(true)}
                 className="ml-auto underline hover:text-brutal-accent transition-colors"
               >
-                购买额度
+                {t('ai.buy_credits')}
               </button>
             </div>
           )}
@@ -699,7 +699,7 @@ export function AIChat({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={`和${petName}聊天...`}
+                placeholder={t('ai.chat_placeholder', { pet: petName })}
                 className="flex-1 p-3 bg-brutal-bg border border-brutal-border resize-none
                            focus:border-brutal-accent transition-colors min-h-[60px] text-sm font-mono rounded"
               />
@@ -722,14 +722,14 @@ export function AIChat({
         <div className="w-80 border-l border-brutal-border bg-brutal-surface flex flex-col flex-shrink-0">
           {/* 面板头部 */}
           <div className="px-4 py-3 border-b border-brutal-border">
-            <span className="text-xs font-mono font-bold">对话上下文</span>
+            <span className="text-xs font-mono font-bold">{t('ai.context_panel')}</span>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {/* 阶段快照 */}
             {stageSnapshot && (
               <div className="border border-brutal-border bg-brutal-bg p-3">
-                <div className="text-[10px] text-brutal-muted font-mono uppercase mb-2">阶段完成度</div>
+                <div className="text-[10px] text-brutal-muted font-mono uppercase mb-2">{t('ai.stage_completion')}</div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-mono">{stageSnapshot.project_title}</span>
                   <span className="text-xs font-mono text-brutal-accent">{stageSnapshot.completion.score}%</span>
@@ -753,7 +753,7 @@ export function AIChat({
             {/* 最新可同步内容 */}
             {lastAiMessage?.syncPayload && (
               <div className="border border-brutal-border bg-brutal-bg p-3">
-                <div className="text-[10px] text-brutal-muted font-mono uppercase mb-2">可同步内容</div>
+                <div className="text-[10px] text-brutal-muted font-mono uppercase mb-2">{t('ai.syncable_content')}</div>
                 <pre className="text-[10px] font-mono text-brutal-text whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
                   {lastAiMessage.syncPayload}
                 </pre>
@@ -761,7 +761,7 @@ export function AIChat({
                   onClick={() => handleSyncMessage(lastAiMessage.syncPayload || lastAiMessage.content)}
                   className="mt-2 w-full text-xs px-2 py-1.5 border border-brutal-accent text-brutal-accent hover:bg-brutal-accent/10 transition-colors"
                 >
-                  同步到项目
+                  {t('ai.sync_to_project')}
                 </button>
               </div>
             )}
@@ -769,14 +769,14 @@ export function AIChat({
             {/* 下一轮问题 */}
             {lastAiMessage?.nextQuestion && (
               <div className="border border-brutal-border bg-brutal-bg p-3">
-                <div className="text-[10px] text-brutal-muted font-mono uppercase mb-2">下一轮问题</div>
+                <div className="text-[10px] text-brutal-muted font-mono uppercase mb-2">{t('ai.next_question')}</div>
                 <p className="text-xs font-mono text-brutal-text mb-2">{lastAiMessage.nextQuestion}</p>
                 <button
                   onClick={() => void handleUseNextQuestion(lastAiMessage.nextQuestion || '')}
                   disabled={isThinking}
                   className="w-full text-xs px-2 py-1.5 bg-brutal-accent text-brutal-bg hover:bg-brutal-accent/90 transition-colors disabled:opacity-50"
                 >
-                  采用并发送
+                  {t('ai.adopt_and_send')}
                 </button>
               </div>
             )}
@@ -784,7 +784,7 @@ export function AIChat({
             {/* 快捷操作 */}
             {quickActions.length > 0 && (
               <div>
-                <div className="text-[10px] text-brutal-muted font-mono uppercase mb-2">快捷提问</div>
+                <div className="text-[10px] text-brutal-muted font-mono uppercase mb-2">{t('ai.quick_questions')}</div>
                 <div className="space-y-1.5">
                   {quickActions.map((action) => (
                     <button
@@ -816,7 +816,7 @@ export function AIChat({
         onClick={handleToggleCollapse}
         className="absolute -left-6 top-4 w-6 h-10 bg-brutal-surface border border-r-0 border-brutal-border
                    flex items-center justify-center hover:bg-brutal-accent hover:text-brutal-bg transition-colors z-10"
-        title={`收起${petName}`}
+        title={t('ai.collapse_pet', { pet: petName })}
       >
         <ChevronRight className="w-4 h-4" />
       </button>
@@ -867,7 +867,7 @@ export function AIChat({
         <button
           onClick={() => setIsFullscreen(true)}
           className="w-7 h-7 border border-brutal-border flex items-center justify-center hover:bg-brutal-accent hover:text-brutal-bg transition-colors flex-shrink-0"
-          title="全屏对话"
+          title={t('ai.fullscreen')}
         >
           <Maximize2 className="w-3.5 h-3.5" />
         </button>
@@ -875,11 +875,11 @@ export function AIChat({
       {stageSnapshot && stageSnapshot.completion.missing_items.length > 0 && (
         <div className="px-3 py-1 border-b border-brutal-border bg-brutal-surface flex-shrink-0">
           <div className="text-[10px] text-brutal-muted font-mono truncate">
-            缺口: {stageSnapshot.completion.missing_items.slice(0, 2).join(' / ')}
+            {t('ai.gap')}: {stageSnapshot.completion.missing_items.slice(0, 2).join(' / ')}
           </div>
           {retryUsed && (
             <div className="text-[10px] text-brutal-warning font-mono">
-              本轮已执行格式修复重试
+              {t('ai.format_retry_notice')}
             </div>
           )}
         </div>
@@ -911,7 +911,7 @@ export function AIChat({
                 <div className="space-y-2 min-w-0">
                   {!message.content.trim() && message.id !== 'welcome' ? (
                     <div className="flex items-center gap-2">
-                      <span className="text-brutal-accent">{petName}正在思考</span>
+                      <span className="text-brutal-accent">{t('ai.pet_thinking', { pet: petName })}</span>
                       <span className="flex gap-1">
                         <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce" />
                         <span className="w-1.5 h-1.5 bg-brutal-accent rounded-full animate-bounce delay-75" />
@@ -929,7 +929,7 @@ export function AIChat({
                         onClick={() => handleSyncMessage(message.syncPayload || message.content)}
                         className="text-xs px-2 py-1 border border-brutal-border hover:border-brutal-accent hover:text-brutal-accent transition-colors rounded"
                       >
-                        同步到左侧
+                        {t('ai.sync_to_left')}
                       </button>
                       {message.nextQuestion && (
                         <button
@@ -937,7 +937,7 @@ export function AIChat({
                           disabled={isThinking}
                           className="text-xs px-2 py-1 border border-brutal-accent text-brutal-accent hover:bg-brutal-accent/10 transition-colors rounded disabled:opacity-50"
                         >
-                          采用下一轮问题
+                          {t('ai.adopt_next_question')}
                         </button>
                       )}
                     </div>
@@ -956,12 +956,12 @@ export function AIChat({
       {showCreditWarning && (
         <div className="mx-4 mb-2 p-2 border border-brutal-warning/60 bg-brutal-warning/10 text-brutal-warning text-xs font-mono flex items-center gap-2 flex-shrink-0">
           <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-          <span>AI 额度仅剩 {aiCredits} 次，建议及时补充</span>
+          <span>{t('ai.credit_warning', { credits: aiCredits })}</span>
           <button
             onClick={() => setShowUpgradeModal(true)}
             className="ml-auto underline hover:text-brutal-accent transition-colors"
           >
-            购买额度
+            {t('ai.buy_credits')}
           </button>
         </div>
       )}
@@ -977,7 +977,7 @@ export function AIChat({
       {quickActions.length > 0 && (
         <div className="px-4 py-2 border-t border-brutal-border bg-brutal-bg flex-shrink-0">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs text-brutal-muted font-mono">💡 {petName}推荐问：</span>
+            <span className="text-xs text-brutal-muted font-mono">{t('ai.recommended_by', { pet: petName })}</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {quickActions.map((action) => (
@@ -1008,7 +1008,7 @@ export function AIChat({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={`和${petName}聊天...`}
+            placeholder={t('ai.chat_placeholder', { pet: petName })}
             className="flex-1 p-2 bg-brutal-bg border border-brutal-border resize-none
                        focus:border-brutal-accent transition-colors min-h-[60px] text-sm font-mono rounded"
           />

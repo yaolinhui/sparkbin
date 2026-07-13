@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { PixelPet } from './PixelPet';
 import type { PixelPetFrames } from './PixelPet.frames';
 import { PERSONALITY_OPTIONS } from './AIPetConfig.constants';
+import { useI18n } from '../i18n/hooks';
 
 interface PetHabitatProps {
   petFrames: PixelPetFrames;
@@ -22,6 +23,7 @@ export function PetHabitat({
   onPetDoubleClick,
   isBouncing = false,
 }: PetHabitatProps) {
+  const { t } = useI18n();
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const typingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -172,8 +174,8 @@ export function PetHabitat({
           onClick={onPetClick}
           onDoubleClick={onPetDoubleClick}
           className="absolute inset-0 cursor-pointer bg-transparent"
-          title={`${petName} - 单击互动 / 双击配置`}
-          aria-label={`${petName} - 单击互动 / 双击配置`}
+          title={`${petName} - ${t('pet.interact_single')} / ${t('pet.configure_double')}`}
+          aria-label={t('pet.habitat')}
         />
       </div>
     </div>

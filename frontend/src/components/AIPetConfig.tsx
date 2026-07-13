@@ -4,6 +4,7 @@ import type { AIPetConfig as Config } from '../types';
 import { PET_OPTIONS, PERSONALITY_OPTIONS, VERBOSITY_OPTIONS } from './AIPetConfig.constants';
 import { PixelPet } from './PixelPet';
 import { PIXEL_PET_CATALOG } from './PixelPet.frames';
+import { useI18n } from '../i18n/hooks';
 
 interface AIPetConfigProps {
   config: Config | null;
@@ -12,6 +13,7 @@ interface AIPetConfigProps {
 }
 
 export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
+  const { t } = useI18n();
   const [form, setForm] = useState<Config>({
     type: config?.type || 'cat',
     name: config?.name || PET_OPTIONS[0].name,
@@ -42,7 +44,7 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
         <div className="flex items-center justify-between p-4 border-b border-brutal-border bg-brutal-bg">
           <div className="flex items-center gap-2">
             <span className="text-xs text-brutal-muted font-mono">//</span>
-            <span className="text-sm font-mono font-bold">领养你的 AI 小伙伴</span>
+            <span className="text-sm font-mono font-bold">{t('pet.config_title')}</span>
           </div>
           <button onClick={onClose} className="w-8 h-8 border border-brutal-border flex items-center justify-center hover:bg-brutal-text hover:text-brutal-bg transition-colors">
             <X className="w-4 h-4" />
@@ -80,12 +82,12 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
             </div>
 
             <p className="mt-6 text-xs text-brutal-muted font-mono text-center">
-              点击宠物和它互动！
+              {t('pet.interact_hint')}
             </p>
 
             {/* 名字输入 */}
             <div className="mt-6 text-center w-full">
-              <label className="text-xs text-brutal-muted font-mono block mb-2">给它起个名字</label>
+              <label className="text-xs text-brutal-muted font-mono block mb-2">{t('pet.name')}</label>
               <input
                 type="text"
                 value={form.name}
@@ -99,7 +101,7 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
                   className="mt-2 text-[10px] text-brutal-muted hover:text-brutal-accent font-mono flex items-center gap-1 mx-auto transition-colors"
                 >
                   <RotateCcw className="w-3 h-3" />
-                  恢复默认名「{selectedPet?.name}」
+                  {t('pet.reset_default_name', { name: selectedPet?.name || '' })}
                 </button>
               )}
             </div>
@@ -107,7 +109,7 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
             {/* 宠物特点 */}
             <div className="mt-4 text-center">
               <span className="text-xs text-brutal-muted font-mono">
-                特点: {selectedPet?.traits}
+                {t('pet.traits', { traits: selectedPet?.traits || '' })}
               </span>
             </div>
           </div>
@@ -116,7 +118,7 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
           <div className="md:w-3/5 p-6 space-y-6">
             {/* Pet Selection */}
             <div>
-              <label className="block text-xs font-mono text-brutal-muted mb-3 uppercase">选择小伙伴</label>
+              <label className="block text-xs font-mono text-brutal-muted mb-3 uppercase">{t('pet.choose_pet')}</label>
               <div className="grid grid-cols-5 gap-2">
                 {PET_OPTIONS.map((pet) => (
                   <button
@@ -154,7 +156,7 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
 
             {/* Personality Selection */}
             <div>
-              <label className="block text-xs font-mono text-brutal-muted mb-3 uppercase">性格风格</label>
+              <label className="block text-xs font-mono text-brutal-muted mb-3 uppercase">{t('pet.personality')}</label>
               <div className="grid grid-cols-2 gap-2">
                 {PERSONALITY_OPTIONS.map((p) => (
                   <button
@@ -178,7 +180,7 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
 
             {/* Verbosity Selection */}
             <div>
-              <label className="block text-xs font-mono text-brutal-muted mb-3 uppercase">话痨程度</label>
+              <label className="block text-xs font-mono text-brutal-muted mb-3 uppercase">{t('pet.verbosity')}</label>
               <div className="grid grid-cols-3 gap-2">
                 {VERBOSITY_OPTIONS.map((v) => (
                   <button
@@ -202,10 +204,10 @@ export function AIPetConfig({ config, onSave, onClose }: AIPetConfigProps) {
         {/* Actions */}
         <div className="flex gap-3 p-4 border-t border-brutal-border bg-brutal-bg">
           <button onClick={onClose} className="flex-1 btn-brutal h-9 py-3">
-            再看看
+            {t('pet.look_again')}
           </button>
           <button onClick={handleSave} className="flex-1 btn-brutal-primary h-9 py-3">
-            领养 {form.name}！
+            {t('pet.adopt_action', { name: form.name })}
           </button>
         </div>
       </div>
