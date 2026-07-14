@@ -254,7 +254,7 @@ class AIChatRequest(BaseModel):
         """限制消息数量、角色与单条长度，防止 Prompt 注入和超大请求"""
         if len(v) > 50:
             raise ValueError("消息数量不能超过 50 条")
-        allowed_roles = {"user", "assistant"}
+        allowed_roles = {"system", "user", "assistant"}
         for idx, msg in enumerate(v):
             if not isinstance(msg, dict):
                 raise ValueError(f"第 {idx + 1} 条消息必须是字典")
