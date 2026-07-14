@@ -1,5 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import type { Language } from './context';
+import { validateKeys } from './validate-keys';
+import { prototypeKeys } from './prototype-keys';
+import { shipKeys } from './ship-keys';
+import { growKeys } from './grow-keys';
+import { monetizeKeys } from './monetize-keys';
 
 export { type Language, type I18nContextType, I18nContext } from './context';
 
@@ -340,12 +345,6 @@ const translations = {
       dimensions_count: '个维度',
     },
     // Prototype
-    prototype: {
-      default_note_account: '基础账户系统',
-      default_note_business: '主要业务逻辑',
-      default_note_preference: '用户偏好设置',
-      default_note_inherited: '继承自想法阶段的解决方案',
-    },
     // Pet
     pet: {
       config_title: 'AI 宠物配置',
@@ -452,6 +451,11 @@ const translations = {
       name_fr: 'Français',
       name_de: 'Deutsch',
     },
+    validate: validateKeys.zh,
+    prototype: prototypeKeys.zh,
+    ship: shipKeys.zh,
+    grow: growKeys.zh,
+    monetize: monetizeKeys.zh,
   },
   en: {
     // App
@@ -789,12 +793,6 @@ const translations = {
       dimensions_count: 'dimensions',
     },
     // Prototype
-    prototype: {
-      default_note_account: 'Basic account system',
-      default_note_business: 'Core business logic',
-      default_note_preference: 'User preference settings',
-      default_note_inherited: 'Inherited from idea stage solution',
-    },
     // Pet
     pet: {
       config_title: 'AI PET CONFIG',
@@ -901,6 +899,11 @@ const translations = {
       name_fr: 'Français',
       name_de: 'Deutsch',
     },
+    validate: validateKeys.en,
+    prototype: prototypeKeys.en,
+    ship: shipKeys.en,
+    grow: growKeys.en,
+    monetize: monetizeKeys.en,
   },
   ja: {
     // App
@@ -1238,12 +1241,6 @@ const translations = {
       dimensions_count: '次元',
     },
     // Prototype
-    prototype: {
-      default_note_account: '基本アカウントシステム',
-      default_note_business: '主要業務ロジック',
-      default_note_preference: 'ユーザー設定',
-      default_note_inherited: 'アイデアステージの解決策から継承',
-    },
     // Pet
     pet: {
       config_title: 'AIペット設定',
@@ -1350,6 +1347,11 @@ const translations = {
       name_fr: 'Français',
       name_de: 'Deutsch',
     },
+    validate: validateKeys.ja,
+    prototype: prototypeKeys.ja,
+    ship: shipKeys.ja,
+    grow: growKeys.ja,
+    monetize: monetizeKeys.ja,
   },
   ko: {
     // App
@@ -1687,12 +1689,6 @@ const translations = {
       dimensions_count: '차원',
     },
     // Prototype
-    prototype: {
-      default_note_account: '기본 계정 시스템',
-      default_note_business: '핵심 비즈니스 로직',
-      default_note_preference: '사용자 설정',
-      default_note_inherited: '아이디어 단계 솔루션에서 상속됨',
-    },
     // Pet
     pet: {
       config_title: 'AI 펫 설정',
@@ -1799,6 +1795,11 @@ const translations = {
       name_fr: 'Français',
       name_de: 'Deutsch',
     },
+    validate: validateKeys.ko,
+    prototype: prototypeKeys.ko,
+    ship: shipKeys.ko,
+    grow: growKeys.ko,
+    monetize: monetizeKeys.ko,
   },
   es: {
     // App
@@ -2136,12 +2137,6 @@ const translations = {
       dimensions_count: 'dimensiones',
     },
     // Prototype
-    prototype: {
-      default_note_account: 'Sistema de cuentas básico',
-      default_note_business: 'Lógica de negocio principal',
-      default_note_preference: 'Configuración de preferencias',
-      default_note_inherited: 'Heredado de la solución de la etapa de idea',
-    },
     // Pet
     pet: {
       config_title: 'Configuración de mascota IA',
@@ -2248,6 +2243,11 @@ const translations = {
       name_fr: 'Français',
       name_de: 'Deutsch',
     },
+    validate: validateKeys.es,
+    prototype: prototypeKeys.es,
+    ship: shipKeys.es,
+    grow: growKeys.es,
+    monetize: monetizeKeys.es,
   },
   fr: {
     // App
@@ -2584,13 +2584,6 @@ const translations = {
       drag_hint: 'Astuce : glissez les post-its pour les réorganiser, cliquez sur l\'icône de modification pour changer le contenu',
       dimensions_count: 'dimensions',
     },
-    // Prototype
-    prototype: {
-      default_note_account: 'Système de compte de base',
-      default_note_business: 'Logique métier principale',
-      default_note_preference: 'Préférences utilisateur',
-      default_note_inherited: 'Hérité de la solution de l\'étape idée',
-    },
     // Pet
     pet: {
       config_title: 'Configuration de l\'animal IA',
@@ -2697,6 +2690,11 @@ const translations = {
       name_fr: 'Français',
       name_de: 'Deutsch',
     },
+    validate: validateKeys.fr,
+    prototype: prototypeKeys.fr,
+    ship: shipKeys.fr,
+    grow: growKeys.fr,
+    monetize: monetizeKeys.fr,
   },
   de: {
     // App
@@ -3034,12 +3032,6 @@ const translations = {
       dimensions_count: 'Dimensionen',
     },
     // Prototype
-    prototype: {
-      default_note_account: 'Grundlegendes Kontosystem',
-      default_note_business: 'Kern-Geschäftslogik',
-      default_note_preference: 'Benutzereinstellungen',
-      default_note_inherited: 'Von der Ideen-Phasen-Lösung übernommen',
-    },
     // Pet
     pet: {
       config_title: 'KI-Haustier-Konfiguration',
@@ -3146,6 +3138,11 @@ const translations = {
       name_fr: 'Français',
       name_de: 'Deutsch',
     },
+    validate: validateKeys.de,
+    prototype: prototypeKeys.de,
+    ship: shipKeys.de,
+    grow: growKeys.de,
+    monetize: monetizeKeys.de,
   },
 };
 
