@@ -242,8 +242,10 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestSizeLimitMiddleware)
 
 # 可信 Host 中间件（防止 Host Header 攻击）
-# 生产环境从 CORS_ORIGINS 中提取域名，同时允许 Render 默认域名
+# 优先使用显式配置的 ALLOWED_HOSTS，同时从 CORS_ORIGINS 中提取域名
 _default_hosts = ["sparkbin.dev", "*.sparkbin.dev", "localhost", "*.onrender.com"]
+if settings.allowed_hosts:
+    _default_hosts.extend([h.strip() for h in settings.allowed_hosts.split(",") if h.strip()])
 if settings.cors_origins:
     import urllib.parse
     _cors_hosts = []
