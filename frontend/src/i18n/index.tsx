@@ -506,7 +506,7 @@ const translations = {
       restore: 'RESTORE',
       return_to_dashboard: 'RETURN_TO_DASHBOARD',
       commit_stage: 'COMMIT_STAGE',
-      generate_with_ai: 'OPTIMIZE_WITH_AI',
+      generate_with_ai: 'OPTIMIZE WITH AI',
       manual_input: 'MANUAL_INPUT',
       confirm_create: 'CONFIRM_CREATE',
       back: 'BACK',
@@ -555,7 +555,7 @@ const translations = {
       previous_stages: 'PREVIOUS_STAGES',
       no_projects: 'NO_PROJECTS_FOUND',
       create_first: 'Initialize your first project using the button below.',
-      awaiting_input: 'AWAITING_INPUT...',
+      awaiting_input: 'AWAITING INPUT...',
       ready_to_commit: 'READY_TO_COMMIT...',
       add_new: 'ADD PROJECT',
       original_idea: 'ORIGINAL IDEA',
@@ -625,7 +625,7 @@ const translations = {
       analyzing: 'AI ANALYZING...',
       understanding_idea: 'Let me understand your idea...',
       generating: 'GENERATING...',
-      error_prefix: '[ERROR]',
+      error_prefix: 'ERROR',
       ok_prefix: '[OK]',
       api_error: 'API_ERROR',
       unknown_error: 'Unknown error',
@@ -698,12 +698,12 @@ const translations = {
     },
     // Modal
     modal: {
-      init_project: 'INIT_PROJECT',
-      confirm_params: 'CONFIRM_PARAMS',
-      input_description: 'Input_Description',
-      project_title: 'Project_Title',
-      select_model: 'SELECT_MODEL',
-      manual_input: 'MANUAL_INPUT',
+      init_project: 'INIT PROJECT',
+      confirm_params: 'CONFIRM PARAMS',
+      input_description: 'DESCRIPTION',
+      project_title: 'PROJECT TITLE',
+      select_model: 'SELECT MODEL',
+      manual_input: 'MANUAL INPUT',
       ai_confirm: 'AI TUTOR CONFIRMATION',
     },
     // Auth
@@ -852,7 +852,7 @@ const translations = {
     // Empty State
     empty_state: {
       prompt: '> _',
-      awaiting_input: 'AWAITING_INPUT...',
+      awaiting_input: 'AWAITING INPUT...',
     },
     // Quota
     quota: {
