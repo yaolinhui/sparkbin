@@ -3,12 +3,13 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .base import BaseAgent, AgentResult
 from .router import RouterAgent
 from ..models import AgentRun, AgentTask, AIProvider, User
 from ..services.ai_proxy import AIProxyService
+from ..database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +27,16 @@ class AgentOrchestrator:
     性能特征：
     - 2-4 个 Agent 并行时，总延迟 ≈ 最慢单个 Agent 的延迟
     - 相比串行执行，节省 40-60% 时间
+    
+    注意：并行 Agent 各自使用独立的 DB Session，避免 SQLAlchemy Session 的并发竞争。
     """
 
     def __init__(self, db: Session, user_id: Optional[str] = None):
         self.db = db
         self.user_id = user_id
         self.ai_service = AIProxyService(db, user_id=user_id)
+        # 用于并行 Agent 的 DB Session 锁，保护主 Session 的写入操作
+        self._db_lock = asyncio.Lock()
 
     async def run(
         self,
@@ -89,7 +94,7 @@ class AgentOrchestrator:
             summary = self._generate_summary(results)
             agent_run.status = "completed"
             agent_run.summary = summary
-            agent_run.completed_at = datetime.utcnow()
+            agent_run.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
             self.db.commit()
 
             return {
@@ -104,7 +109,7 @@ class AgentOrchestrator:
             logger.exception("Agent orchestration failed")
             agent_run.status = "failed"
             agent_run.summary = f"编排失败: {str(e)}"
-            agent_run.completed_at = datetime.utcnow()
+            agent_run.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
             self.db.commit()
             return {
                 "run_id": str(agent_run.id),
@@ -139,7 +144,7 @@ class AgentOrchestrator:
 
         # 更新 router task
         router_task.status = "completed" if router_result.success else "failed"
-        router_task.completed_at = datetime.utcnow()
+        router_task.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
         router_task.provider = preferred_provider or router.default_provider
         router_task.output_result = json.dumps(router_result.data, ensure_ascii=False)[:4000]
         router_task.error_msg = router_result.error[:500]
@@ -258,9 +263,12 @@ class AgentOrchestrator:
         provider: Optional[AIProvider],
         task_record: AgentTask,
     ) -> None:
-        """执行单个 Agent 任务，异常隔离"""
+        """执行单个 Agent 任务，异常隔离。使用独立 DB Session 执行 AI 调用，主 Session 仅用于状态更新。"""
+        # Agent 执行使用独立 Session，避免并行竞争
+        agent_db = SessionLocal()
         try:
-            result = await agent.execute(context, provider=provider, task_record=task_record)
+            independent_agent = agent.__class__(agent_db, user_id=self.user_id)
+            result = await independent_agent.execute(context, provider=provider, task_record=task_record)
             logger.info(
                 f"Agent {agent.agent_type} completed: success={result.success}, "
                 f"tokens={result.prompt_tokens}+{result.completion_tokens}, "
@@ -268,10 +276,14 @@ class AgentOrchestrator:
             )
         except Exception as e:
             logger.exception(f"Agent {agent.agent_type} failed")
-            task_record.status = "failed"
-            task_record.error_msg = str(e)[:500]
-            task_record.completed_at = datetime.utcnow()
-            self.db.commit()
+            # 使用锁保护主 Session 的并发写入
+            async with self._db_lock:
+                task_record.status = "failed"
+                task_record.error_msg = str(e)[:500]
+                task_record.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                self.db.commit()
+        finally:
+            agent_db.close()
 
     def _build_agent_context(
         self,
@@ -377,14 +389,20 @@ class AgentOrchestrator:
         return f"{success}/{total} 个 Agent 成功执行，总消耗 {total_tokens} tokens"
 
     def get_run_status(self, run_id: str) -> Optional[Dict[str, Any]]:
-        """查询运行状态"""
+        """查询运行状态（带 user_id 校验，防止 IDOR）"""
         from uuid import UUID
         try:
             run_uuid = UUID(run_id)
         except ValueError:
             return None
 
-        agent_run = self.db.query(AgentRun).filter(AgentRun.id == run_uuid).first()
+        query = self.db.query(AgentRun).filter(AgentRun.id == run_uuid)
+        if self.user_id:
+            try:
+                query = query.filter(AgentRun.user_id == UUID(self.user_id))
+            except ValueError:
+                return None
+        agent_run = query.first()
         if not agent_run:
             return None
 

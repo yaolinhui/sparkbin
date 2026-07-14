@@ -44,7 +44,7 @@ function SectionCard({
 // Info Row Component
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-brutal-border/50 last:border-0">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-2 border-b border-brutal-border/50 last:border-0 gap-1 sm:gap-0">
       <span className="text-xs font-mono text-brutal-muted uppercase">{label}</span>
       <span className="text-sm font-mono text-brutal-text">{value}</span>
     </div>

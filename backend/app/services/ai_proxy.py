@@ -182,16 +182,12 @@ class AIProxyService:
                     return {"success": False, "message": f"API 错误 (HTTP {response.status_code}): {error_text}"}
 
         except HTTPException as e:
-            import traceback
-            traceback.print_exc()
+            logger.exception("AI proxy config error: %s", e.detail)
             return {"success": False, "message": f"配置错误: {e.detail}"}
         except httpx.TimeoutException:
             return {"success": False, "message": "连接超时，请检查网络或 API 地址"}
         except Exception as e:
-            import sys
-            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
-            import traceback
-            traceback.print_exc()
+            logger.exception("AI proxy request failed")
             return {"success": False, "message": f"验证失败: {str(e)}"}
 
     async def chat_completion(
@@ -252,9 +248,10 @@ class AIProxyService:
                         error_text = await response.aread()
                         status = "error"
                         error_msg = f"HTTP {response.status_code}: {error_text}"
+                        logger.warning(f"AI API error from {provider.value}: {error_msg}")
                         raise HTTPException(
-                            status_code=response.status_code,
-                            detail=f"AI API error: {error_text}"
+                            status_code=502,
+                            detail="AI 服务暂时不可用，请稍后重试",
                         )
 
                     chunk_count = 0
@@ -290,8 +287,7 @@ class AIProxyService:
                                     continue
 
         except HTTPException as e:
-            import traceback
-            traceback.print_exc()
+            logger.exception("HTTP Error in chat_completion")
             status = "error"
             error_msg = e.detail if hasattr(e, 'detail') else str(e)
             logger.error(f"HTTP Error in chat_completion: {error_msg}")
@@ -299,10 +295,7 @@ class AIProxyService:
             yield f"data: {error_data}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as e:
-            import sys
-            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
-            import traceback
-            traceback.print_exc()
+            logger.exception("AI proxy request failed")
             status = "error"
             error_msg = str(e)
             # 某些异常（如 httpx.ConnectError）message 为空，按类型构造友好提示
@@ -319,19 +312,22 @@ class AIProxyService:
             yield f"data: {error_data}\n\n"
             yield "data: [DONE]\n\n"
         finally:
-            log = AICallLog(
-                user_id=self.user_id,
-                provider=provider,
-                model=config.default_model,
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                status=status,
-                error_msg=_redact_error_msg(error_msg)[:500]
-            )
-            if first_chunk_at is not None:
-                logger.info(f"AICallLog TTFT: provider={provider.value}, ttft={first_chunk_at:.3f}s")
-            self.db.add(log)
-            self.db.commit()
+            try:
+                log = AICallLog(
+                    user_id=self.user_id,
+                    provider=provider,
+                    model=config.default_model,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    status=status,
+                    error_msg=_redact_error_msg(error_msg)[:500]
+                )
+                if first_chunk_at is not None:
+                    logger.info(f"AICallLog TTFT: provider={provider.value}, ttft={first_chunk_at:.3f}s")
+                self.db.add(log)
+                self.db.commit()
+            except Exception as log_exc:
+                logger.error(f"Failed to write AI call log: {log_exc}")
 
     async def chat_completion_with_fallback(
         self,
@@ -355,6 +351,7 @@ class AIProxyService:
 
         last_error = ""
         for p in providers_to_try:
+            failed = False
             try:
                 async for chunk in self.chat_completion(
                     provider=p,
@@ -363,8 +360,27 @@ class AIProxyService:
                     max_tokens=max_tokens,
                     temperature=temperature,
                 ):
+                    # 检测 chat_completion 内部 yield 的错误信息
+                    if not failed:
+                        for line in chunk.splitlines():
+                            stripped = line.strip()
+                            if stripped.startswith("data: "):
+                                data = stripped[6:]
+                                if data != "[DONE]":
+                                    try:
+                                        parsed = json.loads(data)
+                                        if parsed.get("error"):
+                                            failed = True
+                                            last_error = parsed["error"]
+                                            logger.warning(f"Provider {p.value} yielded error: {last_error}, trying fallback...")
+                                            break
+                                    except json.JSONDecodeError:
+                                        pass
+                        if failed:
+                            break
                     yield chunk
-                return
+                if not failed:
+                    return
             except HTTPException as e:
                 last_error = e.detail
                 logger.warning(f"Provider {p.value} failed in chat: {e.detail}, trying fallback...")
@@ -436,9 +452,10 @@ class AIProxyService:
                 if response.status_code != 200:
                     status = "error"
                     error_msg = f"HTTP {response.status_code}: {response.text}"
+                    logger.warning(f"AI API error from {provider.value}: {error_msg}")
                     raise HTTPException(
-                        status_code=response.status_code,
-                        detail=f"AI API error: {response.text}"
+                        status_code=502,
+                        detail="AI 服务暂时不可用，请稍后重试",
                     )
 
                 result = response.json()
@@ -463,10 +480,7 @@ class AIProxyService:
                     return {"channels": [], "templates": []}
 
         except Exception as e:
-            import sys
-            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
-            import traceback
-            traceback.print_exc()
+            logger.exception("AI proxy request failed")
             status = "error"
             error_msg = str(e)
             raise
@@ -551,9 +565,10 @@ class AIProxyService:
                 if response.status_code != 200:
                     status = "error"
                     error_msg = f"HTTP {response.status_code}: {response.text}"
+                    logger.warning(f"AI API error from {provider.value}: {error_msg}")
                     raise HTTPException(
-                        status_code=response.status_code,
-                        detail=f"AI API error: {response.text}"
+                        status_code=502,
+                        detail="AI 服务暂时不可用，请稍后重试",
                     )
 
                 result = response.json()
@@ -586,15 +601,12 @@ class AIProxyService:
             logger.error(f"Failed to parse AI response as JSON: {content[:200]}")
             return []
         except Exception as e:
-            import sys
-            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
-            import traceback
-            traceback.print_exc()
+            logger.exception("AI proxy request failed")
             status = "error"
             error_msg = str(e) or f"{provider.value} API 调用失败"
             raise HTTPException(
                 status_code=503,
-                detail=f"AI 服务暂时不可用: {error_msg}"
+                detail="AI 服务暂时不可用，请稍后重试",
             )
         finally:
             log = AICallLog(
@@ -658,7 +670,7 @@ class AIProxyService:
         # 所有 provider 都失败
         raise HTTPException(
             status_code=503,
-            detail=f"AI 服务暂时不可用，已尝试所有模型。最后错误: {last_error}"
+            detail="AI 服务暂时不可用，请稍后重试",
         )
 
 
@@ -748,9 +760,10 @@ class AIProxyService:
                 if response.status_code != 200:
                     status = "error"
                     error_msg = f"HTTP {response.status_code}: {response.text}"
+                    logger.warning(f"AI API error from {provider.value}: {error_msg}")
                     raise HTTPException(
-                        status_code=response.status_code,
-                        detail=f"AI API error: {response.text}"
+                        status_code=502,
+                        detail="AI 服务暂时不可用，请稍后重试",
                     )
 
                 result = response.json()
@@ -774,15 +787,12 @@ class AIProxyService:
             logger.error(f"Failed to parse AI response as JSON: {content[:200]}")
             return {"items": [], "tools": [], "analysis": ""}
         except Exception as e:
-            import sys
-            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
-            import traceback
-            traceback.print_exc()
+            logger.exception("AI proxy request failed")
             status = "error"
             error_msg = str(e) or f"{provider.value} API 调用失败"
             raise HTTPException(
                 status_code=503,
-                detail=f"AI 服务暂时不可用: {error_msg}"
+                detail="AI 服务暂时不可用，请稍后重试",
             )
         finally:
             log = AICallLog(
@@ -915,9 +925,10 @@ class AIProxyService:
                 if response.status_code != 200:
                     status = "error"
                     error_msg = f"HTTP {response.status_code}: {response.text}"
+                    logger.warning(f"AI API error from {provider.value}: {error_msg}")
                     raise HTTPException(
-                        status_code=response.status_code,
-                        detail=f"AI API error: {response.text}"
+                        status_code=502,
+                        detail="AI 服务暂时不可用，请稍后重试",
                     )
 
                 result = response.json()
@@ -937,15 +948,12 @@ class AIProxyService:
             logger.error(f"Failed to parse AI response as JSON: {content[:200]}")
             return {"variants": []}
         except Exception as e:
-            import sys
-            print(f"DEBUG EXCEPTION: {type(e).__name__}: {repr(str(e))}", file=sys.stderr)
-            import traceback
-            traceback.print_exc()
+            logger.exception("AI proxy request failed")
             status = "error"
             error_msg = str(e) or f"{provider.value} API 调用失败"
             raise HTTPException(
                 status_code=503,
-                detail=f"AI 服务暂时不可用: {error_msg}"
+                detail="AI 服务暂时不可用，请稍后重试",
             )
         finally:
             log = AICallLog(
@@ -962,22 +970,65 @@ class AIProxyService:
 
 
 def init_default_ai_configs(db: Session):
-    """初始化默认 AI 配置（空 API Key，需要用户去配置）"""
+    """初始化默认 AI 配置（优先从环境变量读取）"""
+    import os
     encryption = get_encryption_manager()
     empty_key = encryption.encrypt("")  # 加密空字符串
 
+    env_map = {
+        AIProvider.DEEPSEEK: {
+            "api_key": os.environ.get("DEEPSEEK_API_KEY", ""),
+            "base_url": os.environ.get("DEEPSEEK_BASE_URL", ""),
+            "model": os.environ.get("DEEPSEEK_DEFAULT_MODEL", ""),
+        },
+        AIProvider.KIMI: {
+            "api_key": os.environ.get("KIMI_API_KEY", ""),
+            "base_url": os.environ.get("KIMI_BASE_URL", ""),
+            "model": os.environ.get("KIMI_DEFAULT_MODEL", ""),
+        },
+        AIProvider.DOUBAO: {
+            "api_key": os.environ.get("DOUBAO_API_KEY", ""),
+            "base_url": os.environ.get("DOUBAO_BASE_URL", ""),
+            "model": os.environ.get("DOUBAO_DEFAULT_MODEL", ""),
+        },
+        AIProvider.OPENAI: {
+            "api_key": os.environ.get("OPENAI_API_KEY", ""),
+            "base_url": os.environ.get("OPENAI_BASE_URL", ""),
+            "model": os.environ.get("OPENAI_DEFAULT_MODEL", ""),
+        },
+        AIProvider.OLLAMA: {
+            "api_key": os.environ.get("OLLAMA_API_KEY", ""),
+            "base_url": os.environ.get("OLLAMA_BASE_URL", ""),
+            "model": os.environ.get("OLLAMA_DEFAULT_MODEL", ""),
+        },
+    }
+
     for provider in [AIProvider.DEEPSEEK, AIProvider.KIMI, AIProvider.DOUBAO, AIProvider.OPENAI, AIProvider.OLLAMA]:
+        default = DEFAULT_CONFIGS[provider]
+        env_cfg = env_map.get(provider, {})
+        env_api_key = env_cfg.get("api_key", "")
+        env_base_url = env_cfg.get("base_url", "")
+        env_model = env_cfg.get("model", "")
+
         existing = db.query(AIConfig).filter(AIConfig.provider == provider).first()
         if not existing:
-            default = DEFAULT_CONFIGS[provider]
             config = AIConfig(
                 provider=provider,
-                base_url=default["base_url"],
-                api_key_encrypted=empty_key,
-                default_model=default["model"],
-                is_active=False  # 默认不启用，等配置后才启用
+                base_url=env_base_url or default["base_url"],
+                api_key_encrypted=encryption.encrypt(env_api_key) if env_api_key else empty_key,
+                default_model=env_model or default["model"],
+                is_active=bool(env_api_key)
             )
             db.add(config)
+        else:
+            # 环境变量存在时优先覆盖数据库配置，方便运维部署
+            if env_api_key:
+                existing.api_key_encrypted = encryption.encrypt(env_api_key)
+                existing.is_active = True
+            if env_base_url:
+                existing.base_url = env_base_url
+            if env_model:
+                existing.default_model = env_model
 
     db.commit()
-    print("Default AI configs initialized")
+    logger.info("Default AI configs initialized")

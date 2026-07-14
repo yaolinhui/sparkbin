@@ -15,6 +15,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# 可通过构建参数覆盖 PyPI 镜像，例如在中国大陆使用阿里云镜像
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ARG PIP_TRUSTED_HOST=pypi.org
+
+RUN pip config set global.index-url ${PIP_INDEX_URL} \
+    && pip config set install.trusted-host ${PIP_TRUSTED_HOST}
+
 # Install Python dependencies (build context is backend/)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

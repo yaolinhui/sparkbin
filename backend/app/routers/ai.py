@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 from typing import Any, Dict, List, Optional
 import json
 import logging
+import os
 from uuid import UUID
+from collections import deque
 
 from ..database import get_db
 from ..auth import get_current_user, require_admin
@@ -31,7 +33,49 @@ from ..services.logger import OperationLogger
 from ..encryption import get_encryption_manager
 from ..config import get_settings
 from sqlalchemy import func
-from datetime import datetime
+from datetime import datetime, timezone
+
+
+# ========== AI 用户级速率限制 ==========
+# 内存中的按用户调用记录: {"{user_id}:ai": deque([timestamp, ...])}
+_AI_RATE_LIMIT_WINDOW_SECONDS = 60
+_MAX_AI_CALLS_PER_WINDOW = 30  # 每用户每分钟最多 30 次 AI 调用
+_ai_call_attempts: dict[str, deque] = {}
+
+
+def _is_ai_rate_limit_disabled() -> bool:
+    return os.environ.get("SPARKBIN_TESTING") == "1"
+
+
+def check_ai_rate_limit(user_id: str) -> None:
+    """检查当前用户是否超过 AI 调用速率限制"""
+    if _is_ai_rate_limit_disabled():
+        return
+
+    key = f"{user_id}:ai"
+    now = datetime.now(timezone.utc).timestamp()
+    attempts = _ai_call_attempts.get(key)
+    if attempts is not None:
+        while attempts and attempts[0] < now - _AI_RATE_LIMIT_WINDOW_SECONDS:
+            attempts.popleft()
+        if len(attempts) >= _MAX_AI_CALLS_PER_WINDOW:
+            raise HTTPException(
+                status_code=429,
+                detail="AI 调用过于频繁，请稍后再试",
+                headers={"Retry-After": str(_AI_RATE_LIMIT_WINDOW_SECONDS)},
+            )
+
+
+def record_ai_rate_limit(user_id: str) -> None:
+    """记录一次 AI 调用（测试模式下跳过）"""
+    if _is_ai_rate_limit_disabled():
+        return
+
+    key = f"{user_id}:ai"
+    now = datetime.now(timezone.utc).timestamp()
+    if key not in _ai_call_attempts:
+        _ai_call_attempts[key] = deque(maxlen=_MAX_AI_CALLS_PER_WINDOW * 2)
+    _ai_call_attempts[key].append(now)
 
 
 # ========== AI 额度检查与扣费 ==========
@@ -42,7 +86,9 @@ def _check_ai_quota(user: User, db: Session) -> None:
     if user.role.value == "admin":
         return
 
-    if user.ai_credits <= 0:
+    # 使用数据库级别锁防止并发超卖（SELECT FOR UPDATE）
+    locked_user = db.query(User).filter(User.id == user.id).with_for_update().first()
+    if not locked_user or locked_user.ai_credits <= 0:
         raise HTTPException(
             status_code=402,
             detail="AI 调用额度已耗尽。请联系管理员获取更多额度。",
@@ -50,19 +96,24 @@ def _check_ai_quota(user: User, db: Session) -> None:
 
 
 def _deduct_ai_credit(user: User, db: Session, reference_id: str | None = None) -> None:
-    """扣除一次 AI 调用额度并写入流水"""
+    """扣除一次 AI 调用额度并写入流水（必须在 _check_ai_quota 之后同一事务中调用）"""
     # 管理员不扣额度
     if user.role.value == "admin":
         return
 
-    user.ai_credits -= 1
-    user.ai_credits_total_consumed += 1
+    # 重新查询锁定状态的用户（同一事务中 FOR UPDATE 锁仍然有效）
+    locked_user = db.query(User).filter(User.id == user.id).with_for_update().first()
+    if not locked_user:
+        raise HTTPException(status_code=500, detail="用户状态异常")
+
+    locked_user.ai_credits -= 1
+    locked_user.ai_credits_total_consumed += 1
 
     tx = CreditTransaction(
-        user_id=user.id,
+        user_id=locked_user.id,
         type="consume",
         amount=-1,
-        balance_after=user.ai_credits,
+        balance_after=locked_user.ai_credits,
         description="AI 对话消耗",
         reference_id=reference_id,
     )
@@ -99,24 +150,10 @@ def _extract_content_from_sse_chunks(chunks: List[str]) -> str:
     return "".join(content_parts).strip()
 
 
-async def _collect_sse_chunks(
-    ai_service: AIProxyService,
-    provider: AIProvider,
-    messages: List[Dict[str, str]]
-) -> List[str]:
-    chunks: List[str] = []
-    generator = ai_service.chat_completion(provider=provider, messages=messages, stream=True)
-    async for chunk in generator:
-        chunks.append(chunk)
-    return chunks
+# _collect_sse_chunks 已移除：chat_completion 返回 AsyncGenerator，无需先收集再处理
 
 
-@router.get("/ping")
-def ping():
-    return {"message": "pong"}
-
-
-@router.get("/providers", response_model=List[AIProviderInfo])
+@router.get("/providers")
 def list_providers(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -178,7 +215,7 @@ def update_config(
         # 创建新配置
         config = AIConfig(
             provider=provider,
-            base_url=request.base_url,
+            base_url=str(request.base_url),
             api_key_encrypted=encryption.encrypt(api_key_to_store),
             default_model=request.default_model,
             is_active=request.is_active
@@ -193,7 +230,7 @@ def update_config(
             "is_active": config.is_active
         }
 
-        config.base_url = request.base_url
+        config.base_url = str(request.base_url)
         config.api_key_encrypted = encryption.encrypt(api_key_to_store)
         config.default_model = request.default_model
         config.is_active = request.is_active
@@ -219,7 +256,7 @@ async def test_ai_config(
     ai_service = AIProxyService(db)
     result = await ai_service.test_connection(
         provider,
-        base_url=request.base_url if request else None,
+        base_url=str(request.base_url) if request and request.base_url else None,
         api_key=request.api_key if request else None,
         model=request.default_model if request else None,
     )
@@ -236,6 +273,8 @@ async def chat_completion(
     AI 聊天接口，支持流式返回
     返回 SSE 流
     """
+    check_ai_rate_limit(str(current_user.id))
+    record_ai_rate_limit(str(current_user.id))
     _check_ai_quota(current_user, db)
     _deduct_ai_credit(current_user, db, reference_id="chat")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
@@ -333,19 +372,14 @@ async def chat_completion(
 
 @router.get("/stage-context/{project_id}/{stage_key}")
 def get_stage_context(
-    project_id: str,
+    project_id: UUID,
     stage_key: StageKey,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """获取指定项目阶段的上下文快照（完成度+缺口）"""
-    try:
-        project_uuid = UUID(project_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid project id") from exc
-
     project = db.query(Project).filter(
-        Project.id == project_uuid,
+        Project.id == project_id,
         Project.user_id == current_user.id,
         Project.deleted_at.is_(None)
     ).first()
@@ -371,6 +405,8 @@ async def generate_promote_suggestions(
     db: Session = Depends(get_db)
 ):
     """生成推广建议"""
+    check_ai_rate_limit(str(current_user.id))
+    record_ai_rate_limit(str(current_user.id))
     _check_ai_quota(current_user, db)
     _deduct_ai_credit(current_user, db, reference_id="promote-suggest")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
@@ -386,13 +422,9 @@ async def generate_promote_suggestions(
     from ..models import PromoteSuggestion
     import uuid
 
-    suggestion = PromoteSuggestion(
-        project_id=uuid.UUID(str(request.project_id)) if hasattr(request, 'project_id') else None,
-        channels=suggestions["channels"],
-        templates=suggestions["templates"]
-    )
+    suggestion: PromoteSuggestion | None = None
 
-    if hasattr(request, 'project_id') and request.project_id:
+    if request.project_id:
         project = db.query(Project).filter(
             Project.id == request.project_id,
             Project.user_id == current_user.id,
@@ -400,15 +432,20 @@ async def generate_promote_suggestions(
         ).first()
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
-        suggestion.project_id = request.project_id
+        suggestion = PromoteSuggestion(
+            project_id=request.project_id,
+            channels=suggestions["channels"],
+            templates=suggestions["templates"]
+        )
         db.add(suggestion)
         db.commit()
+        db.refresh(suggestion)
 
     return PromoteSuggestionInfo(
-        id=suggestion.id if hasattr(suggestion, 'id') else None,
+        id=suggestion.id if suggestion else uuid.uuid4(),
         channels=suggestions["channels"],
         templates=suggestions["templates"],
-        created_at=suggestion.created_at if hasattr(suggestion, 'created_at') else __import__('datetime').datetime.utcnow()
+        created_at=suggestion.created_at if suggestion else datetime.now(timezone.utc).replace(tzinfo=None)
     )
 
 
@@ -419,6 +456,8 @@ async def generate_idea_suggestions(
     db: Session = Depends(get_db)
 ):
     """生成想法阶段便利贴建议"""
+    check_ai_rate_limit(str(current_user.id))
+    record_ai_rate_limit(str(current_user.id))
     _check_ai_quota(current_user, db)
     _deduct_ai_credit(current_user, db, reference_id="idea-suggest")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
@@ -444,6 +483,8 @@ async def generate_validate_suggestions(
     db: Session = Depends(get_db)
 ):
     """生成验证阶段建议（验证项 + 验证工具 + 分析）"""
+    check_ai_rate_limit(str(current_user.id))
+    record_ai_rate_limit(str(current_user.id))
     _check_ai_quota(current_user, db)
     _deduct_ai_credit(current_user, db, reference_id="validate-suggest")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
@@ -474,6 +515,8 @@ async def generate_smoke_test_suggestions(
     db: Session = Depends(get_db)
 ):
     """生成试水帖（Smoke Test）文案建议——只暴露痛点、不暴露解决方案"""
+    check_ai_rate_limit(str(current_user.id))
+    record_ai_rate_limit(str(current_user.id))
     _check_ai_quota(current_user, db)
     _deduct_ai_credit(current_user, db, reference_id="smoke-test-suggest")
     ai_service = AIProxyService(db, user_id=str(current_user.id))
@@ -550,7 +593,8 @@ async def list_ollama_models(
             else:
                 return {"models": [], "base_url": native_base, "error": f"HTTP {response.status_code}"}
     except Exception as e:
-        return {"models": [], "base_url": native_base, "error": str(e)}
+        logger.exception("Failed to list Ollama models")
+        return {"models": [], "error": "Ollama 服务不可达"}
 
 
 # ========== Agent 驾驶舱接口 ==========
@@ -575,6 +619,8 @@ async def run_agent_cockpit(
     from ..services.stage_context import evaluate_stage_content
 
     # 检查配额并扣费
+    check_ai_rate_limit(str(current_user.id))
+    record_ai_rate_limit(str(current_user.id))
     _check_ai_quota(current_user, db)
     _deduct_ai_credit(current_user, db, reference_id="agent-run")
 

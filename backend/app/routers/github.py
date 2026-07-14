@@ -1,8 +1,9 @@
 import uuid
 import json
 import httpx
+import logging
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -23,6 +24,7 @@ from ..services.ai_proxy import AIProxyService
 from ..models import OperationLog
 
 router = APIRouter(prefix="/github", tags=["github"])
+logger = logging.getLogger(__name__)
 
 
 def _get_user_github_token(user: User) -> Optional[str]:
@@ -42,6 +44,9 @@ async def list_github_repos(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # 校验分页参数范围
+    per_page = max(1, min(per_page, 100))
+    page = max(1, page)
     """获取当前用户绑定的 GitHub 仓库列表"""
     token = _get_user_github_token(current_user)
     if not token:
@@ -64,7 +69,10 @@ async def list_github_repos(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="GitHub token expired. Please reconnect your GitHub account.",
             )
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="GitHub 服务暂时不可用，请稍后重试",
+        )
 
 
 @router.post("/preview", response_model=GitHubImportPreviewResponse)
@@ -89,7 +97,8 @@ async def preview_github_import(
         analysis = await service.analyze_repo(repo_data)
         return GitHubImportPreviewResponse(**analysis)
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+        logger.warning(f"GitHub preview failed for {request.owner}/{request.repo}: {e}")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="GitHub 服务暂时不可用，请稍后重试")
 
 
 @router.post("/import", response_model=ProjectDetail)
@@ -120,7 +129,8 @@ async def create_project_from_github(
         pain_point=request.pain_point,
         original_idea=request.original_idea,
         status=ProjectStatus.ACTIVE,
-        current_stage=StageKey(stage.upper()),
+        current_stage=StageKey(stage),
+        project_type='other',
     )
     db.add(project)
     db.flush()
@@ -131,7 +141,7 @@ async def create_project_from_github(
         stage_obj = Stage(
             id=uuid.uuid4(),
             project_id=project.id,
-            stage_key=StageKey(sk.upper()),
+            stage_key=StageKey(sk),
             content="",
             completed_at=None,
             is_locked=sk != stage,  # 只有当前阶段解锁，前面阶段视为已完成
@@ -139,7 +149,7 @@ async def create_project_from_github(
         # 如果当前阶段在目标阶段之前，标记为已完成
         if idx < stage_keys.index(stage):
             stage_obj.is_locked = False
-            stage_obj.completed_at = datetime.utcnow()
+            stage_obj.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.add(stage_obj)
 
     # 将 README 内容写入 Idea 阶段

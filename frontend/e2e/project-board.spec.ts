@@ -20,6 +20,6 @@ test.describe('项目仪表盘', () => {
 
   test('页面应包含添加项目入口', async ({ page }) => {
     const addProjectText = page.locator('text=/新项目|创建|Add Project|New Project/i');
-    await expect(page.locator('body')).toBeVisible();
+    await expect(addProjectText).toBeVisible();
   });
 });

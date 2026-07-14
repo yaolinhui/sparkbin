@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Lock, User, AlertCircle, Loader2, X, Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
-import { authApi, setAuthToken, setRefreshToken, ApiError } from '../services/api';
+import { authApi, setAuthToken, ApiError, type BaseResponse, type CaptchaResponse } from '../services/api';
+import { useI18n } from '../i18n/hooks';
 import { DotGridBackground } from './DotGridBackground';
+import { SliderCaptcha } from './SliderCaptcha';
 import type { DotGridBackgroundRef } from './DotGridBackground';
 
 interface LoginModalProps {
@@ -12,17 +14,17 @@ interface LoginModalProps {
 
 type Tab = 'login' | 'register' | 'forgot';
 
-function calculatePasswordStrength(password: string): { score: number; label: '弱' | '中' | '强'; colorClass: string } {
+function calculatePasswordStrength(password: string): { score: number; label: 'Weak' | 'Medium' | 'Strong'; colorClass: string } {
   let score = 0;
   if (password.length >= 8) score++;
   if (/[A-Z]/.test(password)) score++;
   if (/[a-z]/.test(password)) score++;
   if (/[0-9]/.test(password)) score++;
-  if (/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) score++;
+  if (/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(password)) score++;
 
-  if (score <= 2) return { score, label: '弱', colorClass: 'bg-[var(--brutal-error)]' };
-  if (score <= 4) return { score, label: '中', colorClass: 'bg-[var(--brutal-warning)]' };
-  return { score, label: '强', colorClass: 'bg-[var(--brutal-success)]' };
+  if (score <= 2) return { score, label: 'Weak', colorClass: 'bg-[var(--brutal-error)]' };
+  if (score <= 4) return { score, label: 'Medium', colorClass: 'bg-[var(--brutal-warning)]' };
+  return { score, label: 'Strong', colorClass: 'bg-[var(--brutal-success)]' };
 }
 
 function validateEmail(email: string): boolean {
@@ -34,6 +36,7 @@ function validateUsername(username: string): boolean {
 }
 
 export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
+  const { t } = useI18n();
   const [tab, setTab] = useState<Tab>('login');
 
   // Login fields
@@ -55,11 +58,13 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
 
   // Captcha & lockout states
-  const [captchaQuestion, setCaptchaQuestion] = useState<string | null>(null);
-  const [captchaAnswer, setCaptchaAnswer] = useState('');
+  const [captchaData, setCaptchaData] = useState<CaptchaResponse | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaX, setCaptchaX] = useState<number | null>(null);
   const [lockoutSeconds, setLockoutSeconds] = useState<number | null>(null);
   const [isLocked, setIsLocked] = useState(false);
 
@@ -75,7 +80,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     gridRef.current?.addPulse(x, y, 3.5);
   };
 
-  // 弹窗打开时加载记住的用户名
+  // Load remembered username when modal opens
   useEffect(() => {
     if (isOpen) {
       const remembered = localStorage.getItem('sparkbin_remembered_username');
@@ -86,7 +91,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     }
   }, [isOpen]);
 
-  // 全局键盘监听：Esc 关闭弹窗
+  // Global keyboard listener: Esc closes modal
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -98,7 +103,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // 弹窗关闭时重置状态（保留用户名若勾选了记住我）
+  // Reset state when modal closes (keep username if remember me is checked)
   useEffect(() => {
     if (!isOpen) {
       setError(null);
@@ -112,8 +117,9 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
       setForgotSent(false);
       setPassword('');
       setTab('login');
-      setCaptchaQuestion(null);
-      setCaptchaAnswer('');
+      setCaptchaData(null);
+      setCaptchaToken(null);
+      setCaptchaX(null);
       setLockoutSeconds(null);
       setIsLocked(false);
       if (!rememberMe) {
@@ -122,7 +128,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     }
   }, [isOpen, rememberMe]);
 
-  // 锁定倒计时
+  // Lockout countdown
   useEffect(() => {
     if (lockoutSeconds === null || lockoutSeconds <= 0) {
       setIsLocked(false);
@@ -144,23 +150,29 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
 
   if (!isOpen) return null;
 
-  const resetErrors = () => setError(null);
+  const resetErrors = () => {
+    setError(null);
+    setRegisterSuccess(null);
+  };
 
-  // 获取验证码
+  // Fetch captcha
   const fetchCaptcha = async () => {
     try {
       const data = await authApi.getCaptcha();
-      setCaptchaQuestion(data.question);
-      setCaptchaAnswer('');
+      setCaptchaData(data);
+      setCaptchaToken(null);
+      setCaptchaX(null);
     } catch {
-      setCaptchaQuestion(null);
+      setCaptchaData(null);
+      setCaptchaToken(null);
+      setCaptchaX(null);
     }
   };
 
   const formatCountdown = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
-    return `${m}分${s.toString().padStart(2, '0')}秒`;
+    return `${m}m ${s.toString().padStart(2, '0')}s`;
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -170,35 +182,37 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     setIsLoading(true);
 
     try {
-      const response = await authApi.login({
+      await authApi.login({
         username,
         password,
-        captcha_answer: captchaAnswer || undefined,
+        captcha_token: captchaToken ?? undefined,
+        captcha_x: captchaX ?? undefined,
       });
-      setAuthToken(response.access_token);
-      setRefreshToken(response.refresh_token);
+      // Token is written to HttpOnly Cookie by backend, JS does not hold real token
+      setAuthToken('ok');
       if (rememberMe) {
         localStorage.setItem('sparkbin_remembered_username', username);
       } else {
         localStorage.removeItem('sparkbin_remembered_username');
       }
-      setCaptchaQuestion(null);
-      setCaptchaAnswer('');
+      setCaptchaData(null);
+      setCaptchaToken(null);
+      setCaptchaX(null);
       onLogin();
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
-        // 需要验证码
-        if (err.status === 400 && (err.message.includes('需要验证码') || err.message.includes('验证码错误'))) {
+        // Captcha required
+        if (err.status === 400 && (err.message.includes('Captcha required') || err.message.includes('Captcha incorrect'))) {
           fetchCaptcha();
         }
-        // 速率限制：解析 Retry-After
+        // Rate limit: parse Retry-After
         if (err.status === 429) {
           const retryAfter = parseInt(err.headers['retry-after'] || err.headers['Retry-After'] || '300', 10);
           setLockoutSeconds(retryAfter);
         }
       } else {
-        setError(err instanceof Error ? err.message : '登录失败');
+        setError(err instanceof Error ? err.message : t('auth.login_failed'));
       }
     } finally {
       setIsLoading(false);
@@ -209,27 +223,27 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     e.preventDefault();
     resetErrors();
 
-    // Honeypot 防御：如果隐藏字段被填写，静默丢弃（不暴露是 honeypot）
+    // Honeypot defense: silently drop if hidden field is filled
     if (honeypot.trim()) {
-      setError('注册失败，请刷新页面后重试');
+      setError('Registration failed. Please refresh and try again.');
       return;
     }
 
-    // 前端校验链
+    // Frontend validation chain
     if (!validateUsername(regUsername)) {
-      setError('用户名长度需在 3-50 个字符之间');
+      setError('Username must be 3-50 characters.');
       return;
     }
     if (!validateEmail(regEmail)) {
-      setError('请输入有效的邮箱地址');
+      setError('Please enter a valid email address.');
       return;
     }
     if (regPassword.length < 8) {
-      setError('密码至少需要 8 个字符');
+      setError('Password must be at least 8 characters.');
       return;
     }
     if (regPassword !== regConfirm) {
-      setError('两次输入的密码不一致');
+      setError('Passwords do not match.');
       return;
     }
 
@@ -242,11 +256,14 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
         honeypot,
         form_start_time: formStartTime > 0 ? formStartTime / 1000 : 0,
       });
-      setAuthToken(response.access_token);
-      setRefreshToken(response.refresh_token);
-      onLogin();
+      setRegisterSuccess(response.message || 'Registration successful. Please check your email to verify.');
+      // Clear registration form to avoid duplicate submission
+      setRegUsername('');
+      setRegEmail('');
+      setRegPassword('');
+      setRegConfirm('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '注册失败');
+      setError(err instanceof Error ? err.message : t('auth.register_failed'));
     } finally {
       setIsLoading(false);
     }
@@ -258,10 +275,14 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
     setIsLoading(true);
 
     try {
-      await authApi.forgotPassword({ email: forgotEmail });
-      setForgotSent(true);
+      const res: BaseResponse = await authApi.forgotPassword({ email: forgotEmail });
+      if (res.success === false) {
+        setError(res.message || t('auth.send_failed'));
+      } else {
+        setForgotSent(true);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '发送失败');
+      setError(err instanceof Error ? err.message : t('auth.send_failed'));
     } finally {
       setIsLoading(false);
     }
@@ -309,7 +330,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
               onClick={onClose}
               className="absolute right-4 top-4 w-8 h-8 bg-brutal-bg flex items-center justify-center
                          hover:bg-brutal-accent transition-colors"
-              aria-label="关闭"
+              aria-label="Close"
             >
               <X className="w-4 h-4 text-brutal-text" />
             </button>
@@ -320,16 +341,16 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
             </div>
             <div>
               <h1 className="text-xl font-mono font-bold text-brutal-bg">SPARKBIN</h1>
-              <p className="text-xs font-mono text-brutal-bg/70">账户认证</p>
+              <p className="text-xs font-mono text-brutal-bg/70">{t('auth.account_auth')}</p>
             </div>
           </div>
         </div>
 
         {/* Tabs */}
         <div className="flex border-b border-brutal-border">
-          {tabButton('login', '登录')}
-          {tabButton('register', '注册')}
-          {tabButton('forgot', '找回密码')}
+          {tabButton('login', t('auth.login'))}
+          {tabButton('register', t('auth.register'))}
+          {tabButton('forgot', t('auth.forgot_password'))}
         </div>
 
         {/* Error */}
@@ -348,7 +369,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
             <form onSubmit={handleLogin} className="p-6 space-y-4 animate-fade-in-slide">
               <div>
                 <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
-                  用户名
+                  {t('auth.username')}
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brutal-muted" />
@@ -360,7 +381,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                     className="w-full pl-10 pr-3 py-3 border border-brutal-border bg-brutal-bg
                                focus:border-brutal-accent focus:outline-none
                                font-mono text-sm transition-colors"
-                    placeholder="用户名"
+                    placeholder={t('auth.username')}
                     autoComplete="username"
                     disabled={isLoading || isLocked}
                   />
@@ -369,7 +390,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
 
               <div>
                 <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
-                  密码
+                  {t('auth.password')}
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brutal-muted" />
@@ -381,7 +402,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                     className="w-full pl-10 pr-10 py-3 border border-brutal-border bg-brutal-bg
                                focus:border-brutal-accent focus:outline-none
                                font-mono text-sm transition-colors"
-                    placeholder="输入密码"
+                    placeholder={t('auth.password')}
                     autoComplete="current-password"
                     disabled={isLoading || isLocked}
                   />
@@ -390,7 +411,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                     onClick={() => setShowPassword((v) => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-brutal-muted hover:text-brutal-text"
                     tabIndex={-1}
-                    aria-label={showPassword ? '隐藏密码' : '显示密码'}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4" />
@@ -401,47 +422,31 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                 </div>
               </div>
 
-              {/* 验证码输入 */}
-              {captchaQuestion && (
-                <div>
-                  <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
-                    验证码
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-mono text-brutal-text whitespace-nowrap">
-                      {captchaQuestion} =
-                    </span>
-                    <input
-                      type="text"
-                      value={captchaAnswer}
-                      onChange={(e) => setCaptchaAnswer(e.target.value)}
-                      onFocus={handleInputFocus}
-                      className="flex-1 px-3 py-2 border border-brutal-border bg-brutal-bg
-                                 focus:border-brutal-accent focus:outline-none
-                                 font-mono text-sm transition-colors"
-                      placeholder="?"
-                      disabled={isLoading}
-                      autoComplete="off"
-                    />
-                    <button
-                      type="button"
-                      onClick={fetchCaptcha}
-                      className="px-3 py-2 text-xs font-mono border border-brutal-border
-                                 hover:border-brutal-accent hover:text-brutal-accent transition-colors"
-                      disabled={isLoading}
-                    >
-                      刷新
-                    </button>
-                  </div>
+              {/* Slider captcha */}
+              {captchaData && (
+                <div className="animate-fade-in-slide">
+                  <SliderCaptcha
+                    token={captchaData.token}
+                    background={captchaData.background}
+                    slider={captchaData.slider}
+                    sliderWidth={captchaData.slider_width}
+                    sliderHeight={captchaData.slider_height}
+                    sliderY={captchaData.slider_y}
+                    onVerify={(token, x) => {
+                      setCaptchaToken(token);
+                      setCaptchaX(x);
+                    }}
+                    onRefresh={fetchCaptcha}
+                  />
                 </div>
               )}
 
-              {/* 锁定倒计时 */}
+              {/* Lockout countdown */}
               {isLocked && lockoutSeconds !== null && (
                 <div className="p-3 border-2 border-brutal-error bg-brutal-error/10 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-brutal-error flex-shrink-0" />
                   <span className="text-sm font-mono text-brutal-error">
-                    尝试次数过多，请等待 {formatCountdown(lockoutSeconds)} 后重试
+                    Too many attempts. Please retry after {formatCountdown(lockoutSeconds)}.
                   </span>
                 </div>
               )}
@@ -455,7 +460,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                              checked:bg-brutal-accent checked:border-brutal-accent
                              focus:outline-none focus:ring-1 focus:ring-brutal-accent"
                 />
-                <span className="text-xs font-mono text-brutal-muted">记住我</span>
+                <span className="text-xs font-mono text-brutal-muted">{t('auth.remember_me')}</span>
               </label>
 
               <button
@@ -471,10 +476,10 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    登录中...
+                    {t('auth.logging_in')}
                   </>
                 ) : (
-                  '登录'
+                  t('auth.login')
                 )}
               </button>
             </form>
@@ -483,7 +488,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
             <div className="px-6 pb-2">
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-brutal-border" />
-                <span className="text-xs font-mono text-brutal-muted">或通过以下方式登录</span>
+                <span className="text-xs font-mono text-brutal-muted">{t('auth.or_login_with')}</span>
                 <div className="flex-1 h-px bg-brutal-border" />
               </div>
             </div>
@@ -527,8 +532,24 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
 
         {/* Register Tab */}
         {tab === 'register' && (
-          <form onSubmit={handleRegister} className="p-6 space-y-4 animate-fade-in-slide">
-            {/* Honeypot: 隐藏字段，机器人会填，人类看不到 */}
+          registerSuccess ? (
+            <div className="p-6 space-y-4 animate-fade-in-slide text-center">
+              <p className="text-sm font-mono text-brutal-success mb-4">
+                {registerSuccess}
+              </p>
+              <button
+                type="button"
+                onClick={() => { switchTab('login'); }}
+                className="px-6 py-2 bg-brutal-accent text-brutal-bg font-mono font-bold
+                           border-2 border-brutal-accent hover:bg-brutal-bg hover:text-brutal-accent transition-colors
+                           active:translate-x-[2px] active:translate-y-[2px]"
+              >
+                {t('auth.login')}
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleRegister} className="p-6 space-y-4 animate-fade-in-slide">
+            {/* Honeypot: hidden field, bots fill it, humans don't */}
             <input
               type="text"
               name="website"
@@ -543,7 +564,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
               data-bwignore="true"
             />
             <div>
-              <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">用户名</label>
+              <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">{t('auth.username')}</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brutal-muted" />
                 <input
@@ -553,7 +574,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                   onFocus={handleInputFocus}
                   className="w-full pl-10 pr-3 py-3 border border-brutal-border bg-brutal-bg
                              focus:border-brutal-accent focus:outline-none font-mono text-sm"
-                  placeholder="3-50 个字符"
+                  placeholder="3-50 chars"
                   autoComplete="username"
                   disabled={isLoading}
                 />
@@ -561,7 +582,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">邮箱</label>
+              <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">{t('auth.email')}</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brutal-muted" />
                 <input
@@ -579,7 +600,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">密码</label>
+              <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">{t('auth.password')}</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brutal-muted" />
                 <input
@@ -589,7 +610,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                   onFocus={handleInputFocus}
                   className="w-full pl-10 pr-10 py-3 border border-brutal-border bg-brutal-bg
                              focus:border-brutal-accent focus:outline-none font-mono text-sm"
-                  placeholder="输入密码"
+                  placeholder="Enter password"
                   autoComplete="new-password"
                   disabled={isLoading}
                 />
@@ -603,7 +624,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                 </button>
               </div>
               <p className="text-[10px] font-mono text-brutal-muted mt-1.5">
-                至少 8 位，含大写、小写、数字和特殊符号
+                {t('auth.password_requirements')}
               </p>
               {/* Password Strength Bar */}
               {regPassword && (
@@ -615,19 +636,19 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                         style={{ width: `${(regStrength.score / 5) * 100}%` }}
                       />
                     </div>
-                    <span className={`text-xs font-mono ${regStrength.label === '弱' ? 'text-[var(--brutal-error)]' : regStrength.label === '中' ? 'text-[var(--brutal-warning)]' : 'text-[var(--brutal-success)]'}`}>
+                    <span className={`text-xs font-mono ${regStrength.label === 'Weak' ? 'text-[var(--brutal-error)]' : regStrength.label === 'Medium' ? 'text-[var(--brutal-warning)]' : 'text-[var(--brutal-success)]'}`}>
                       {regStrength.label}
                     </span>
                   </div>
                   <p className="text-[10px] font-mono text-brutal-muted">
-                    长度/大写/小写/数字/特殊符号 — 满足 {regStrength.score}/5 项
+                    {t('auth.password_requirements')}
                   </p>
                 </div>
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">确认密码</label>
+              <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">{t('auth.confirm_password')}</label>
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={regConfirm}
@@ -635,7 +656,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                 onFocus={handleInputFocus}
                 className="w-full px-3 py-3 border border-brutal-border bg-brutal-bg
                            focus:border-brutal-accent focus:outline-none font-mono text-sm"
-                placeholder="再次输入密码"
+                placeholder="Confirm password"
                 autoComplete="new-password"
                 disabled={isLoading}
               />
@@ -654,13 +675,14 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  注册中...
+                  {t('auth.registering')}
                 </>
               ) : (
-                '注册账号'
+                t('auth.register')
               )}
             </button>
           </form>
+          )
         )}
 
         {/* Forgot Password Tab */}
@@ -669,7 +691,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
             {forgotSent ? (
               <div className="text-center py-4">
                 <p className="text-sm font-mono text-brutal-success mb-4">
-                  如果该邮箱已注册，重置邮件已发送，请查收。
+                  If this email is registered, a reset email has been sent.
                 </p>
                 <button
                   type="button"
@@ -678,13 +700,13 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                              border-2 border-brutal-accent hover:bg-brutal-bg hover:text-brutal-accent transition-colors
                              active:translate-x-[2px] active:translate-y-[2px]"
                 >
-                  返回登录
+                  {t('auth.back_to_login')}
                 </button>
               </div>
             ) : (
               <form onSubmit={handleForgot} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">注册邮箱</label>
+                  <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">{t('auth.email')}</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brutal-muted" />
                     <input
@@ -714,10 +736,10 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      发送中...
+                      {t('auth.sending')}
                     </>
                   ) : (
-                    '发送重置邮件'
+                    t('auth.send_reset_email')
                   )}
                 </button>
 
@@ -728,7 +750,7 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
                              flex items-center justify-center gap-1 transition-colors"
                 >
                   <ArrowLeft className="w-3 h-3" />
-                  返回登录
+                  {t('auth.back_to_login')}
                 </button>
               </form>
             )}
@@ -738,10 +760,10 @@ export function LoginModal({ isOpen, onLogin, onClose }: LoginModalProps) {
         {/* Footer */}
         <div className="px-6 py-4 border-t border-brutal-border bg-brutal-bg">
           <div className="flex items-center justify-between text-xs font-mono text-brutal-muted">
-            <span>后端模式</span>
+            <span>Backend Mode</span>
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 bg-brutal-success rounded-full animate-pulse" />
-              在线
+              Online
             </span>
           </div>
         </div>

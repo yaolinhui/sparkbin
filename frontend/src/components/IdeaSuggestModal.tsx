@@ -18,20 +18,30 @@ interface IdeaSuggestModalProps {
   onOverwrite: () => Promise<void>;
 }
 
-const DEFAULT_PLACEHOLDERS = [
-  '描述你想解决的核心问题...',
-  '谁会使用这个产品？',
-  '用户在什么情况下会用？',
-  '简述核心功能...',
-  '与现有方案相比，你的优势是什么？',
-  '点击编辑...',
-];
-
-function isPlaceholder(content: string): boolean {
-  return DEFAULT_PLACEHOLDERS.some((p) => content.includes(p));
+function getDefaultPlaceholders(t: (key: string) => string): string[] {
+  return [
+    t('placeholder.describe_pain_point'),
+    t('idea.target_user_example'),
+    t('idea.scenario_example'),
+    t('idea.solution_example'),
+    t('idea.differentiation_example'),
+    t('idea.click_to_edit'),
+  ];
 }
 
-const SKELETON_TITLES = ['核心痛点', '目标用户', '使用场景', '解决方案', '差异化价值'];
+function isPlaceholder(content: string, t: (key: string) => string): boolean {
+  return getDefaultPlaceholders(t).some((p) => content.includes(p));
+}
+
+function getSkeletonTitles(t: (key: string) => string): string[] {
+  return [
+    t('idea.core_pain'),
+    t('idea.target_user'),
+    t('idea.scenario'),
+    t('idea.solution'),
+    t('idea.differentiation'),
+  ];
+}
 
 function SkeletonCard({ title }: { title: string }) {
   return (
@@ -117,16 +127,16 @@ export function IdeaSuggestModal({
         currentContent: current.content,
         suggestedContent: current.content,
         willReplace: false,
-        isPlaceholder: isPlaceholder(current.content),
+        isPlaceholder: isPlaceholder(current.content, t),
       };
     }
-    const willReplace = selectedMode === 'overwrite' || (selectedMode === 'merge' && isPlaceholder(current.content));
+    const willReplace = selectedMode === 'overwrite' || (selectedMode === 'merge' && isPlaceholder(current.content, t));
     return {
       title: current.title,
       currentContent: current.content,
       suggestedContent: suggestion.content,
       willReplace,
-      isPlaceholder: isPlaceholder(current.content),
+      isPlaceholder: isPlaceholder(current.content, t),
     };
   });
 
@@ -137,7 +147,7 @@ export function IdeaSuggestModal({
         <div className="flex items-center justify-between p-4 border-b border-brutal-border flex-shrink-0">
           <div>
             <span className="text-xs text-brutal-muted font-mono">// </span>
-            <span className="text-sm font-mono font-bold">AI 建议预览</span>
+            <span className="text-sm font-mono font-bold">{t('ai.suggestion_preview')}</span>
           </div>
           <button
             onClick={onClose}
@@ -158,15 +168,15 @@ export function IdeaSuggestModal({
           {isLoading && (
             <div className="space-y-4">
               <div className="p-3 border border-brutal-border bg-brutal-bg text-xs font-mono text-brutal-muted">
-                <span className="text-brutal-accent">&gt;</span> AI 正在根据你的原始想法生成建议…
+                <span className="text-brutal-accent">&gt;</span> {t('ai.generating_suggestions')}
               </div>
 
               {/* 加载时也显示当前已有内容，方便用户对照 */}
               <div className="border border-brutal-border">
                 {/* 表头 */}
                 <div className="grid grid-cols-2 border-b border-brutal-border bg-brutal-bg">
-                  <div className="p-2 text-xs font-mono text-brutal-muted border-r border-brutal-border">当前内容</div>
-                  <div className="p-2 text-xs font-mono text-brutal-accent">AI 建议生成中…</div>
+                  <div className="p-2 text-xs font-mono text-brutal-muted border-r border-brutal-border">{t('ai.current_content')}</div>
+                  <div className="p-2 text-xs font-mono text-brutal-accent">{t('ai.suggestions_generating')}</div>
                 </div>
 
                 {currentNotes.map((note, index) => (
@@ -176,12 +186,12 @@ export function IdeaSuggestModal({
                   >
                     <div className="p-3 border-r border-brutal-border">
                       <div className="text-xs font-mono text-brutal-muted mb-1">{note.title}</div>
-                      <p className={`text-sm font-mono ${isPlaceholder(note.content) ? 'text-brutal-muted' : 'text-brutal-text'}`}>
+                      <p className={`text-sm font-mono ${isPlaceholder(note.content, t) ? 'text-brutal-muted' : 'text-brutal-text'}`}>
                         {note.content}
                       </p>
-                      {isPlaceholder(note.content) && (
+                      {isPlaceholder(note.content, t) && (
                         <span className="inline-block mt-1 text-[10px] px-1 border border-brutal-warning text-brutal-warning font-mono">
-                          占位符
+                          {t('idea.placeholder')}
                         </span>
                       )}
                     </div>
@@ -195,14 +205,14 @@ export function IdeaSuggestModal({
 
                 {/* 如果 currentNotes 不足 5 条，补全骨架行 */}
                 {currentNotes.length < 5 &&
-                  SKELETON_TITLES.slice(currentNotes.length).map((title) => (
+                  getSkeletonTitles(t).slice(currentNotes.length).map((title) => (
                     <SkeletonCard key={`skeleton-${title}`} title={title} />
                   ))}
               </div>
 
               <div className="flex items-center gap-2 text-xs font-mono text-brutal-muted">
                 <div className="w-3 h-3 border border-brutal-accent border-t-transparent animate-spin" />
-                预计需要 10-15 秒，可以先看看左侧现有内容
+                {t('ai.estimate_time')}
               </div>
             </div>
           )}
@@ -211,15 +221,15 @@ export function IdeaSuggestModal({
             <div className="space-y-4">
               {/* 预览说明 */}
               <div className="p-3 border border-brutal-border bg-brutal-bg text-xs font-mono text-brutal-muted">
-                <span className="text-brutal-accent">&gt;</span> 左侧为当前内容，右侧为 AI 建议。你可以在右侧直接编辑建议内容。
+                <span className="text-brutal-accent">&gt;</span> {t('ai.suggestion_hint')}
               </div>
 
               {/* 对比表格 */}
               <div className="border border-brutal-border">
                 {/* 表头 */}
                 <div className="grid grid-cols-2 border-b border-brutal-border bg-brutal-bg">
-                  <div className="p-2 text-xs font-mono text-brutal-muted border-r border-brutal-border">当前内容</div>
-                  <div className="p-2 text-xs font-mono text-brutal-accent">AI 建议（可编辑）</div>
+                  <div className="p-2 text-xs font-mono text-brutal-muted border-r border-brutal-border">{t('ai.current_content')}</div>
+                  <div className="p-2 text-xs font-mono text-brutal-accent">{t('ai.suggestions_editable')}</div>
                 </div>
 
                 {/* 行 */}
@@ -237,7 +247,7 @@ export function IdeaSuggestModal({
                       </p>
                       {row.isPlaceholder && (
                         <span className="inline-block mt-1 text-[10px] px-1 border border-brutal-warning text-brutal-warning font-mono">
-                          占位符
+                          {t('idea.placeholder')}
                         </span>
                       )}
                     </div>
@@ -252,7 +262,7 @@ export function IdeaSuggestModal({
                       {selectedMode === 'merge' && !row.isPlaceholder && (
                         <div className="flex items-center gap-1 mt-1 text-[10px] text-brutal-warning font-mono">
                           <AlertTriangle className="w-3 h-3" />
-                          智能合并：此条保留原内容
+                          {t('ai.merge_keep_original')}
                         </div>
                       )}
                     </div>
@@ -284,10 +294,10 @@ export function IdeaSuggestModal({
                         </svg>
                       )}
                     </div>
-                    <span className={`text-sm font-mono font-bold ${selectedMode === 'merge' ? 'text-brutal-accent' : ''}`}>智能合并</span>
+                    <span className={`text-sm font-mono font-bold ${selectedMode === 'merge' ? 'text-brutal-accent' : ''}`}>{t('action.smart_merge')}</span>
                   </div>
                   <p className="text-xs font-mono text-brutal-muted">
-                    只覆盖内容为占位符的便利贴，保留你已编辑的内容
+                    {t('ai.merge_description')}
                   </p>
                 </button>
 
@@ -313,10 +323,10 @@ export function IdeaSuggestModal({
                         </svg>
                       )}
                     </div>
-                    <span className={`text-sm font-mono font-bold ${selectedMode === 'overwrite' ? 'text-brutal-accent' : ''}`}>全部覆盖</span>
+                    <span className={`text-sm font-mono font-bold ${selectedMode === 'overwrite' ? 'text-brutal-accent' : ''}`}>{t('action.overwrite_all')}</span>
                   </div>
                   <p className="text-xs font-mono text-brutal-muted">
-                    用 AI 建议替换所有便利贴内容（包括你已编辑的）
+                    {t('ai.overwrite_description')}
                   </p>
                 </button>
               </div>
@@ -327,7 +337,7 @@ export function IdeaSuggestModal({
         {/* Footer */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-brutal-border bg-brutal-bg flex-shrink-0">
           <button onClick={onClose} className="btn-brutal h-9 px-4 text-xs">
-            取消
+            {t('action.cancel')}
           </button>
 
           {!isLoading && suggestedNotes && (
@@ -343,7 +353,7 @@ export function IdeaSuggestModal({
               ) : (
                 <Check className="w-3 h-3" />
               )}
-              {isApplying ? '保存中...' : '应用建议'}
+              {isApplying ? t('action.saving') : t('action.apply')}
               {!isApplying && <ArrowRight className="w-3 h-3" />}
             </button>
           )}

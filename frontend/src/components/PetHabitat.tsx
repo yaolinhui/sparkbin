@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { PixelPet } from './PixelPet';
 import type { PixelPetFrames } from './PixelPet.frames';
 import { PERSONALITY_OPTIONS } from './AIPetConfig.constants';
+import { useI18n } from '../i18n/hooks';
 
 interface PetHabitatProps {
   petFrames: PixelPetFrames;
@@ -22,6 +23,7 @@ export function PetHabitat({
   onPetDoubleClick,
   isBouncing = false,
 }: PetHabitatProps) {
+  const { t } = useI18n();
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const typingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -68,6 +70,8 @@ export function PetHabitat({
         typingRef.current = null;
       }
     };
+    // displayedText 仅被写入，不依赖其当前值；加入依赖会导致无限重渲染
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dialogue]);
 
   const personalityOption = PERSONALITY_OPTIONS.find((p) => p.id === personality);
@@ -170,8 +174,8 @@ export function PetHabitat({
           onClick={onPetClick}
           onDoubleClick={onPetDoubleClick}
           className="absolute inset-0 cursor-pointer bg-transparent"
-          title={`${petName} - 单击互动 / 双击配置`}
-          aria-label={`${petName} - 单击互动 / 双击配置`}
+          title={`${petName} - ${t('pet.interact_single')} / ${t('pet.configure_double')}`}
+          aria-label={t('pet.habitat')}
         />
       </div>
     </div>

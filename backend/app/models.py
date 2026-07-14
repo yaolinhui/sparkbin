@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, Text, Boolean, ForeignKey, Enum, Integer, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -8,11 +8,28 @@ import enum
 from .database import Base
 
 
+def _utc_now() -> datetime:
+    """返回不带时区信息的 UTC 当前时间（与 SQLAlchemy DateTime 默认 naive 语义兼容）。"""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 class ProjectStatus(str, enum.Enum):
     ACTIVE = "active"
     PAUSED = "paused"
     ARCHIVED = "archived"
     RESEARCH = "research"  # 兼容旧数据
+
+
+class ProjectType(str, enum.Enum):
+    WEB = "web"
+    APP = "app"
+    PLUGIN = "plugin"
+    API = "api"
+    DESKTOP = "desktop"
+    AI_AGENT = "ai_agent"
+    GAME = "game"
+    SCRIPT = "script"
+    OTHER = "other"
 
 
 class StageKey(str, enum.Enum):
@@ -64,6 +81,11 @@ class User(Base):
     oauth_id = Column(String(255), nullable=True, index=True)
     avatar_url = Column(String(500), nullable=True)
 
+    # 微信小程序登录
+    wechat_openid = Column(String(100), nullable=True, index=True, unique=True)
+    wechat_unionid = Column(String(100), nullable=True)
+    wechat_session_key = Column(String(100), nullable=True)
+
     # 订阅/支付状态（Stripe Test Mode）
     subscription_status = Column(String(20), default="inactive", nullable=False)  # inactive / active / past_due / canceled
     stripe_customer_id = Column(String(255), nullable=True)
@@ -83,14 +105,18 @@ class User(Base):
     # 安全字段
     require_password_change = Column(Boolean, default=False, nullable=False)
     token_version = Column(Integer, default=0, nullable=False)  # 用于使旧 token 失效
+    password_reset_token_id = Column(String(64), nullable=True)  # 密码重置 token 单次使用校验
+    email_verification_token_id = Column(String(64), nullable=True)  # 邮箱验证 token 单次使用校验
+    oauth_bind_token_id = Column(String(64), nullable=True)  # OAuth 绑定 state 单次使用校验
+    oauth_connect_token_id = Column(String(64), nullable=True)  # GitHub 增量授权 state 单次使用校验
 
     # GitHub 仓库导入（分步授权 token 加密存储）
     github_access_token_encrypted = Column(Text, nullable=True)
     github_token_scope = Column(String(50), nullable=True)
     github_token_updated_at = Column(DateTime, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
+    updated_at = Column(DateTime, default=_utc_now, onupdate=_utc_now, nullable=False)
 
     projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
     operation_logs = relationship("OperationLog", back_populates="user", cascade="all, delete-orphan")
@@ -107,8 +133,9 @@ class Project(Base):
     original_idea = Column(Text, default="", nullable=False)
     status = Column(Enum(ProjectStatus), default=ProjectStatus.ACTIVE, nullable=False)
     current_stage = Column(Enum(StageKey), default=StageKey.IDEA, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    project_type = Column(String(20), default="other", nullable=False)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
+    updated_at = Column(DateTime, default=_utc_now, onupdate=_utc_now, nullable=False)
     deleted_at = Column(DateTime, nullable=True)  # 软删除
 
     user = relationship("User", back_populates="projects")
@@ -152,7 +179,7 @@ class PromoteSuggestion(Base):
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
     channels = Column(JSON, default=list)
     templates = Column(JSON, default=list)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
 
     project = relationship("Project", back_populates="promote_suggestions")
 
@@ -167,8 +194,8 @@ class AIConfig(Base):
     api_key_encrypted = Column(Text, nullable=False)  # 加密的 API Key
     default_model = Column(String(100), nullable=False)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
+    updated_at = Column(DateTime, default=_utc_now, onupdate=_utc_now, nullable=False)
 
 
 # AI 调用日志表
@@ -183,7 +210,7 @@ class AICallLog(Base):
     completion_tokens = Column(Integer, default=0)
     status = Column(String(20), default="success")  # success / error
     error_msg = Column(Text, default="")
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
 
     user = relationship("User")
 
@@ -199,7 +226,7 @@ class LoginAuditLog(Base):
     user_agent = Column(String(500), nullable=False, default="")
     action = Column(String(30), nullable=False)  # login_success / login_failure / logout / password_change
     detail = Column(Text, default="")  # 失败原因等额外信息
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at = Column(DateTime, default=_utc_now, nullable=False, index=True)
 
     user = relationship("User")
 
@@ -215,7 +242,7 @@ class AgentRun(Base):
     trigger = Column(String(50), default="manual", nullable=False)  # manual / auto / scheduled
     strategy = Column(String(50), default="parallel", nullable=False)  # parallel / sequential / router
     summary = Column(Text, default="")  # 运行总结
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
     completed_at = Column(DateTime, nullable=True)
 
     user = relationship("User")
@@ -240,7 +267,7 @@ class AgentTask(Base):
     error_msg = Column(Text, default="")
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
 
     run = relationship("AgentRun", back_populates="tasks")
 
@@ -256,7 +283,7 @@ class CreditTransaction(Base):
     balance_after = Column(Integer, nullable=False)  # 变动后的余额
     description = Column(String(255), nullable=True)
     reference_id = Column(String(255), nullable=True)  # Stripe session_id 或 AI call log id
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
 
     user = relationship("User")
 
@@ -272,6 +299,6 @@ class OperationLog(Base):
     entity_id = Column(UUID(as_uuid=True), nullable=True)
     old_values = Column(Text, default="")  # JSON 字符串
     new_values = Column(Text, default="")  # JSON 字符串
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
 
     user = relationship("User", back_populates="operation_logs")

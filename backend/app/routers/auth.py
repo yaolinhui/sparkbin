@@ -1,37 +1,43 @@
 import httpx
+import logging
 import os
 import secrets
 from typing import Optional
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..auth import (
     verify_password, create_access_token, create_refresh_token, decode_token,
-    get_current_user, hash_password,
+    get_current_user, get_current_user_from_query_or_header, hash_password,
+    _get_client_ip,
     check_login_rate_limit, record_login_failure, validate_password_complexity,
-    check_rate_limit, record_rate_limit_failure,
+    check_rate_limit, record_rate_limit_failure, record_rate_limit_attempt,
     create_email_verification_token, create_password_reset_token, decode_email_token,
     generate_captcha, verify_captcha, is_captcha_required, get_login_attempts_remaining,
+    _set_token_cookies, _clear_token_cookies,
+    _set_oauth_state_cookie, _clear_oauth_state_cookie, _OAUTH_STATE_COOKIE_NAME,
+    _set_oauth_bind_state_cookie, _clear_oauth_bind_state_cookie, _OAUTH_BIND_STATE_COOKIE_NAME,
 )
 from ..models import User, LoginAuditLog, Project, AICallLog, UserRole, CreditTransaction
 from ..schemas import (
     LoginRequest, LoginResponse, ChangePasswordRequest, BaseResponse,
     PreferredModelUpdate, PetConfigUpdate, ThemePreferenceUpdate,
     TokenPairResponse, RefreshTokenRequest, OAuthUnbindRequest,
-    RegisterRequest, ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailResponse,
+    RegisterRequest, ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailRequest, VerifyEmailResponse,
 )
 from ..models import AIProvider
 from ..config import get_settings
 from ..encryption import get_encryption_manager
 from ..email import send_verification_email, send_password_reset_email
-from sqlalchemy import func
-from datetime import datetime, timedelta
+from sqlalchemy import func, update
+from datetime import datetime, timedelta, timezone
 from uuid import UUID as UuidType
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -60,19 +66,23 @@ def _record_audit_log(
 
 @router.get("/captcha")
 def get_captcha(req: Request):
-    """获取数学验证码"""
-    client_ip = req.client.host if req and req.client else "unknown"
+    """获取滑动拼图验证码"""
+    client_ip = _get_client_ip(req)
+    # 限制单个 IP 频繁获取验证码（5 次 / 5 分钟）
+    check_rate_limit(req, "captcha")
+    record_rate_limit_attempt(req, "captcha")
     return generate_captcha(client_ip)
 
 
 @router.post("/login", response_model=TokenPairResponse)
 def login(
     request: LoginRequest,
+    response: Response,
     db: Session = Depends(get_db),
     req: Request = None,
 ):
-    """用户登录（返回 Access Token + Refresh Token）"""
-    client_ip = req.client.host if req and req.client else "unknown"
+    """用户登录（返回 Access Token + Refresh Token，同时写入 HttpOnly Cookie）"""
+    client_ip = _get_client_ip(req) if req else "unknown"
     user_agent = req.headers.get("user-agent", "") if req else ""
 
     if req:
@@ -80,13 +90,14 @@ def login(
 
     # 验证码校验：当同一 IP 近期失败次数 >= 2 时强制要求
     if req and is_captcha_required(req):
-        if not request.captcha_answer:
+        has_captcha = request.captcha_token is not None and request.captcha_x is not None
+        if not has_captcha:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="需要验证码",
                 headers={"X-Require-Captcha": "1"},
             )
-        if not verify_captcha(client_ip, request.captcha_answer):
+        if not verify_captcha(client_ip, request.captcha_token, request.captcha_x):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="验证码错误",
@@ -111,9 +122,19 @@ def login(
             headers={"X-Login-Attempts-Remaining": str(remaining)},
         )
 
+    # 若账号设置了邮箱且未验证，则禁止登录（默认管理员无邮箱，允许登录）
+    if user.email and not user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="邮箱未验证，请查收邮件完成验证后再登录",
+        )
+
     token_data = {"sub": user.username, "role": user.role.value}
     access_token = create_access_token(data=token_data, token_version=user.token_version)
     refresh_token = create_refresh_token(data=token_data, token_version=user.token_version)
+
+    # 通过 HttpOnly Cookie 下发 token（前端优先使用 Cookie）
+    _set_token_cookies(response, req, access_token, refresh_token)
 
     # 记录成功审计日志
     _record_audit_log(
@@ -130,11 +151,26 @@ def login(
 
 @router.post("/refresh", response_model=TokenPairResponse)
 def refresh_token(
-    request: RefreshTokenRequest,
+    request: Request,
+    response: Response,
+    body: RefreshTokenRequest | None = None,
     db: Session = Depends(get_db),
 ):
-    """使用 Refresh Token 换取新的 Token Pair（Refresh Token Rotation）"""
-    payload = decode_token(request.refresh_token, expected_type="refresh")
+    """使用 Refresh Token 换取新的 Token Pair（Refresh Token Rotation）。
+
+    优先从 HttpOnly Cookie 读取 refresh_token；若请求体显式提供（旧客户端兼容），则使用请求体中的 token。
+    刷新成功后，新的 token 会同时通过 Set-Cookie 写回浏览器。
+    """
+    refresh_token_value = request.cookies.get("refresh_token")
+    if not refresh_token_value and body is not None:
+        refresh_token_value = body.refresh_token
+    if not refresh_token_value:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token 不存在",
+        )
+
+    payload = decode_token(refresh_token_value, expected_type="refresh")
 
     if payload is None:
         raise HTTPException(
@@ -156,17 +192,30 @@ def refresh_token(
             detail="用户不存在",
         )
 
-    # 校验 refresh token 的 version
+    # 校验 refresh token 的 version，并原子化递增。
+    # 使用 UPDATE ... WHERE token_version = ? 的乐观锁，确保并发请求中只有一条能成功刷新，
+    # 避免同一条旧 refresh token 被多次使用。
     token_ver = payload.get("ver", 0)
-    if token_ver != user.token_version:
+    result = db.execute(
+        update(User)
+        .where(User.id == user.id, User.token_version == token_ver)
+        .values(token_version=User.token_version + 1)
+    )
+    db.commit()
+    if result.rowcount == 0:
+        # 已被其他并发请求刷新过，当前 token 视为已撤销
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has been revoked",
         )
 
+    new_version = token_ver + 1
     token_data = {"sub": user.username, "role": user.role.value}
-    new_access_token = create_access_token(data=token_data, token_version=user.token_version)
-    new_refresh_token = create_refresh_token(data=token_data, token_version=user.token_version)
+    new_access_token = create_access_token(data=token_data, token_version=new_version)
+    new_refresh_token = create_refresh_token(data=token_data, token_version=new_version)
+
+    # 刷新后的 token 重新写入 Cookie
+    _set_token_cookies(response, request, new_access_token, new_refresh_token)
 
     return TokenPairResponse(
         access_token=new_access_token,
@@ -177,15 +226,20 @@ def refresh_token(
 @router.post("/logout", response_model=BaseResponse)
 def logout(
     current_user: User = Depends(get_current_user),
+    response: Response = None,
     db: Session = Depends(get_db),
     req: Request = None,
 ):
-    """用户登出（记录审计日志）"""
-    client_ip = req.client.host if req and req.client else "unknown"
+    """用户登出（记录审计日志并清除 Cookie）"""
+    client_ip = _get_client_ip(req) if req else "unknown"
     user_agent = req.headers.get("user-agent", "") if req else ""
 
     current_user.token_version += 1  # 使所有旧 token 失效
     db.commit()
+
+    # 清除浏览器 Cookie
+    if response and req:
+        _clear_token_cookies(response, req)
 
     _record_audit_log(
         db, username=current_user.username, action="logout",
@@ -203,7 +257,7 @@ def change_password(
     req: Request = None,
 ):
     """修改密码（含复杂度校验）"""
-    client_ip = req.client.host if req and req.client else "unknown"
+    client_ip = _get_client_ip(req) if req else "unknown"
     user_agent = req.headers.get("user-agent", "") if req else ""
 
     # 校验原密码
@@ -235,6 +289,7 @@ def change_password(
 
     current_user.password_hash = hash_password(request.new_password)
     current_user.require_password_change = False
+    current_user.password_reset_token_id = None  # 旧密码重置链接立即失效
     current_user.token_version += 1  # 使所有旧 token 失效
     db.commit()
 
@@ -367,7 +422,7 @@ def update_theme_preference(
 
 # ========== 注册 / 邮箱验证 / 密码重置 ==========
 
-@router.post("/register", response_model=TokenPairResponse)
+@router.post("/register", response_model=BaseResponse)
 def register(
     request: RegisterRequest,
     db: Session = Depends(get_db),
@@ -382,33 +437,27 @@ def register(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请求异常，请重试",
         )
-    # 表单提交时间校验：小于 2 秒视为机器人
+    # 表单提交时间校验：小于 2 秒视为机器人，大于 5 分钟视为篡改
     if not request.form_start_time:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请求异常，请重试",
         )
-    elapsed = datetime.utcnow().timestamp() - request.form_start_time
-    if elapsed < 2.0:
+    elapsed = datetime.now(timezone.utc).timestamp() - request.form_start_time
+    if elapsed < 2.0 or elapsed > 300.0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请求异常，请重试",
         )
 
-    # 检查用户名唯一性
-    if db.query(User).filter(User.username == request.username).first():
+    # 检查用户名和邮箱唯一性（使用统一错误消息，防止账号枚举攻击）
+    username_exists = db.query(User).filter(User.username == request.username).first() is not None
+    email_exists = db.query(User).filter(User.email == request.email).first() is not None
+    if username_exists or email_exists:
         record_rate_limit_failure(req, "注册")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用户名已被使用"
-        )
-
-    # 检查邮箱唯一性
-    if db.query(User).filter(User.email == request.email).first():
-        record_rate_limit_failure(req, "注册")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="邮箱已被注册"
+            detail="用户名或邮箱已被使用"
         )
 
     # 密码复杂度校验
@@ -424,7 +473,7 @@ def register(
     settings = get_settings()
     new_user = User(
         username=request.username,
-        email=request.email,
+        email=request.email.lower().strip(),
         email_verified=False,
         password_hash=hash_password(request.password),
         role=UserRole.USER,
@@ -447,41 +496,82 @@ def register(
         db.add(tx)
         db.commit()
 
-    # 发送验证邮件（异步，失败不阻断注册）
+    # 发送验证邮件（失败不阻断注册，但记录错误）
     settings = get_settings()
     try:
-        token = create_email_verification_token(str(new_user.id), new_user.email)
+        token_id = secrets.token_urlsafe(16)
+        new_user.email_verification_token_id = token_id
+        db.commit()
+        token = create_email_verification_token(str(new_user.id), new_user.email, token_id=token_id)
         verify_url = f"{settings.frontend_url}/verify-email?token={token}"
-        send_verification_email(new_user.email, new_user.username, verify_url)
-    except Exception:
-        pass
+        success, error = send_verification_email(new_user.email, new_user.username, verify_url)
+        if not success:
+            logging.getLogger(__name__).error(f"验证邮件发送失败: {error}")
+    except Exception as e:
+        logging.getLogger(__name__).exception("验证邮件发送异常")
 
-    # 自动登录
-    token_data = {"sub": new_user.username, "role": new_user.role.value}
-    access_token = create_access_token(data=token_data, token_version=new_user.token_version)
-    refresh_token = create_refresh_token(data=token_data, token_version=new_user.token_version)
-
-    return TokenPairResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
+    # 注册成功后不再自动签发 token，防止未验证邮箱被抢注后直接使用账号。
+    # 用户需点击验证邮件中的链接完成验证，再手动登录。
+    return BaseResponse(
+        success=True,
+        message="注册成功，请查收验证邮件完成验证。",
     )
 
 
 @router.get("/verify-email", response_model=VerifyEmailResponse)
-def verify_email(token: str, db: Session = Depends(get_db)):
-    """邮箱验证回调"""
+def verify_email_status(token: str, db: Session = Depends(get_db)):
+    """邮箱验证链接状态检查（GET 不消耗 token，防止邮件客户端预取导致链接失效）"""
     payload = decode_email_token(token, "email_verify")
     if not payload:
         return VerifyEmailResponse(success=False, message="验证链接无效或已过期")
 
     user_id = payload.get("sub")
     email = payload.get("email")
+    token_id = payload.get("jti")
 
-    user = db.query(User).filter(User.id == user_id).first()
+    from uuid import UUID
+    try:
+        user_uuid = UUID(user_id)
+    except (ValueError, TypeError):
+        return VerifyEmailResponse(success=False, message="验证链接无效或已过期")
+
+    user = db.query(User).filter(User.id == user_uuid).first()
     if not user or user.email != email:
         return VerifyEmailResponse(success=False, message="用户不存在")
 
+    if not token_id or user.email_verification_token_id != token_id:
+        return VerifyEmailResponse(success=False, message="验证链接无效或已使用")
+
+    return VerifyEmailResponse(success=True, message="验证链接有效，请点击确认完成验证")
+
+
+@router.post("/verify-email", response_model=VerifyEmailResponse)
+def verify_email(request: VerifyEmailRequest, db: Session = Depends(get_db)):
+    """确认完成邮箱验证（POST 实际消耗 token）"""
+    payload = decode_email_token(request.token, "email_verify")
+    if not payload:
+        return VerifyEmailResponse(success=False, message="验证链接无效或已过期")
+
+    user_id = payload.get("sub")
+    email = payload.get("email")
+    token_id = payload.get("jti")
+
+    from uuid import UUID
+    try:
+        user_uuid = UUID(user_id)
+    except (ValueError, TypeError):
+        return VerifyEmailResponse(success=False, message="验证链接无效或已过期")
+
+    user = db.query(User).filter(User.id == user_uuid).first()
+    if not user or user.email != email:
+        return VerifyEmailResponse(success=False, message="用户不存在")
+
+    # 单次使用校验：防止验证链接被重放
+    if not token_id or user.email_verification_token_id != token_id:
+        return VerifyEmailResponse(success=False, message="验证链接无效或已使用")
+
     user.email_verified = True
+    user.email_verification_token_id = None
     db.commit()
 
     return VerifyEmailResponse(success=True, message="邮箱验证成功")
@@ -491,19 +581,36 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 def forgot_password(
     request: ForgotPasswordRequest,
     db: Session = Depends(get_db),
+    req: Request = None,
 ):
     """忘记密码：发送重置邮件"""
-    user = db.query(User).filter(User.email == request.email).first()
+    if req:
+        check_rate_limit(req, "forgot_password")
+        # 无论邮箱是否存在，均记录本次调用，防止端点被滥用滥发邮件
+        record_rate_limit_attempt(req, "forgot_password")
 
-    # 无论是否找到用户，都返回成功（防止枚举攻击）
-    if user and user.password_hash:
-        settings = get_settings()
-        try:
-            token = create_password_reset_token(str(user.id), user.email)
-            reset_url = f"{settings.frontend_url}/reset-password?token={token}"
-            send_password_reset_email(user.email, user.username or user.email, reset_url)
-        except Exception:
-            pass
+    user = db.query(User).filter(func.lower(User.email) == request.email.lower().strip()).first()
+
+    # 用户不存在时返回模糊成功消息，防止邮箱枚举攻击
+    if not user or not user.password_hash:
+        return BaseResponse(message="如果该邮箱已注册，重置邮件已发送")
+
+    # 用户存在，尝试发送邮件
+    settings = get_settings()
+    try:
+        token_id = secrets.token_urlsafe(16)
+        user.password_reset_token_id = token_id
+        db.commit()
+        token = create_password_reset_token(str(user.id), user.email, token_id=token_id)
+        reset_url = f"{settings.frontend_url}/reset-password?token={token}"
+        success, error = send_password_reset_email(user.email, user.username or user.email, reset_url)
+        if not success:
+            # 邮件发送失败，记录原因但返回模糊提示，避免泄露 SMTP/Resend 细节
+            logger.error(f"Password reset email failed: {error}")
+            return BaseResponse(success=False, message="邮件发送失败，请稍后重试")
+    except Exception as e:
+        logger.exception("Failed to send password reset email")
+        return BaseResponse(success=False, message="邮件发送失败，请稍后重试")
 
     return BaseResponse(message="如果该邮箱已注册，重置邮件已发送")
 
@@ -523,12 +630,29 @@ def reset_password(
 
     user_id = payload.get("sub")
     email = payload.get("email")
+    token_id = payload.get("jti")
 
-    user = db.query(User).filter(User.id == user_id).first()
+    from uuid import UUID
+    try:
+        user_uuid = UUID(user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="重置链接无效或已过期"
+        )
+
+    user = db.query(User).filter(User.id == user_uuid).first()
     if not user or user.email != email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="用户不存在"
+        )
+
+    # 单次使用校验：防止重置链接被重放
+    if not token_id or user.password_reset_token_id != token_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="重置链接无效或已使用"
         )
 
     is_valid, error_msg = validate_password_complexity(request.new_password)
@@ -539,6 +663,8 @@ def reset_password(
         )
 
     user.password_hash = hash_password(request.new_password)
+    user.require_password_change = False
+    user.password_reset_token_id = None
     user.token_version += 1  # 使所有旧 token 失效
     db.commit()
 
@@ -569,8 +695,21 @@ def _get_http_client() -> httpx.Client:
             proxies["http://"] = http_proxy
         if https_proxy:
             proxies["https://"] = https_proxy
-        import logging
-        logging.info(f"[httpx] init client with proxies: {proxies}")
+
+        def _redact_proxy_url(url: str | None) -> str | None:
+            """脱敏代理 URL 中的用户凭据"""
+            if not url:
+                return url
+            parsed = urlparse(url)
+            if parsed.username or parsed.password:
+                netloc = parsed.hostname or ""
+                if parsed.port:
+                    netloc += f":{parsed.port}"
+                return f"{parsed.scheme}://***@{netloc}{parsed.path}"
+            return url
+
+        safe_proxies = {k: _redact_proxy_url(v) for k, v in proxies.items()}
+        logging.info(f"[httpx] init client with proxies: {safe_proxies}")
         _http_client = httpx.Client(
             proxies=proxies if proxies else None,
             timeout=10.0,
@@ -578,32 +717,62 @@ def _get_http_client() -> httpx.Client:
     return _http_client
 
 
+def _close_http_client() -> None:
+    """关闭全局 HTTP Client，防止连接泄漏"""
+    global _http_client
+    if _http_client is not None:
+        _http_client.close()
+        _http_client = None
+
+
 # ========== OAuth 2.0（Google / GitHub）==========
 
 def _get_oauth_redirect_url(provider: str) -> str:
-    """构建 OAuth 回调地址（供 Google/GitHub 重定向回后端）"""
+    """构建 OAuth 回调地址（供 Google/GitHub 重定向回后端）。
+
+    使用 settings.api_url（对应环境变量 API_URL），确保生产/开发环境一致，
+    不再裸读 os.environ，避免环境变量未注入时回退到 127.0.0.1:8000。
+    """
     settings = get_settings()
-    return f"http://127.0.0.1:{settings.api_port}/auth/oauth/{provider}/callback"
+    return f"{settings.api_url}/auth/oauth/{provider}/callback"
 
 
-def _create_oauth_state() -> str:
-    """生成 OAuth state 参数（JWT，10分钟有效）"""
-    return create_access_token(
-        data={"oauth": True},
+def _get_oauth_connect_redirect_url() -> str:
+    """构建 GitHub 增量授权（仓库导入）回调地址。"""
+    settings = get_settings()
+    return f"{settings.api_url}/auth/oauth/github/connect/callback"
+
+
+def _create_oauth_state(response: Response, request: Request) -> str:
+    """生成绑定到当前会话的 OAuth state 参数（JWT，10分钟有效）。"""
+    nonce = secrets.token_urlsafe(32)
+    state = create_access_token(
+        data={"oauth": True, "nonce": nonce},
         expires_delta=timedelta(minutes=10)
     )
+    _set_oauth_state_cookie(response, request, nonce)
+    return state
 
 
-def _verify_oauth_state(state: str) -> bool:
-    """验证 OAuth state 参数（校验签名和过期时间即可防止 CSRF）"""
+def _verify_oauth_state(state: str, request: Request) -> bool:
+    """验证 OAuth state 参数：校验签名、过期时间，并校验与 cookie 中的 nonce 一致。"""
     payload = decode_token(state, expected_type="access")
-    return payload is not None and payload.get("oauth") is True
+    if not payload or payload.get("oauth") is not True:
+        return False
+    nonce = payload.get("nonce")
+    cookie_nonce = request.cookies.get(_OAUTH_STATE_COOKIE_NAME)
+    if not nonce or not cookie_nonce:
+        return False
+    return secrets.compare_digest(nonce, cookie_nonce)
 
 
-def _create_connect_state(user_id: str) -> str:
+def _create_connect_state(user_id: str, token_id: str | None = None) -> str:
     """生成 GitHub 增量授权 state 参数（包含 user_id，10分钟有效）"""
+    data = {"oauth": "connect", "user_id": user_id}
+    if token_id:
+        data["jti"] = token_id
     return create_access_token(
-        data={"oauth": "connect", "user_id": user_id},
+        data=data,
         expires_delta=timedelta(minutes=10)
     )
 
@@ -616,20 +785,29 @@ def _verify_connect_state(state: str) -> Optional[dict]:
     return None
 
 
-def _create_bind_state(user_id: str) -> str:
-    """生成 OAuth 绑定 state 参数（包含 user_id，10分钟有效）"""
+def _create_bind_state(user_id: str, nonce: str, token_id: str | None = None) -> str:
+    """生成 OAuth 绑定 state 参数（包含 user_id 与 nonce，10分钟有效）"""
+    data = {"oauth": "bind", "user_id": user_id, "nonce": nonce}
+    if token_id:
+        data["jti"] = token_id
     return create_access_token(
-        data={"oauth": "bind", "user_id": user_id},
+        data=data,
         expires_delta=timedelta(minutes=10)
     )
 
 
-def _verify_bind_state(state: str) -> Optional[dict]:
-    """验证 OAuth 绑定 state 参数，返回 payload"""
+def _verify_bind_state(state: str, request: Request) -> Optional[dict]:
+    """验证 OAuth 绑定 state 参数，同时校验 URL state 中的 nonce 与 Cookie 一致。"""
     payload = decode_token(state, expected_type="access")
-    if payload and payload.get("oauth") == "bind":
-        return payload
-    return None
+    if not payload or payload.get("oauth") != "bind":
+        return None
+    nonce = payload.get("nonce")
+    cookie_nonce = request.cookies.get(_OAUTH_BIND_STATE_COOKIE_NAME)
+    if not nonce or not cookie_nonce:
+        return None
+    if not secrets.compare_digest(nonce, cookie_nonce):
+        return None
+    return payload
 
 
 def _get_oauth_bind_redirect_url(provider: str) -> str:
@@ -649,19 +827,35 @@ def _generate_username_from_email(email: str, db: Session) -> str:
     return username
 
 
-def _oauth_success_redirect(access_token: str, refresh_token: str) -> RedirectResponse:
-    """OAuth 成功后跳回前端并带上 token（使用 fragment 避免进入历史/Referer）"""
+def _sanitize_avatar_url(url: str | None) -> str | None:
+    """校验 OAuth 返回的头像 URL，仅允许 http(s) scheme，防止 XSS/注入。"""
+    if not url:
+        return None
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return None
+    if not parsed.netloc:
+        return None
+    return url
+
+
+def _oauth_success_redirect(
+    access_token: str,
+    refresh_token: str,
+    request: Request,
+) -> RedirectResponse:
+    """OAuth 成功后跳回前端，token 通过 HttpOnly Cookie 下发，URL 中不再包含任何凭证。"""
     settings = get_settings()
-    fragment = urlencode({
-        "oauth_success": "1",
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-    })
-    return RedirectResponse(url=f"{settings.frontend_url}#{fragment}")
+    redirect_response = RedirectResponse(url=f"{settings.frontend_url}?oauth_success=1")
+    _set_token_cookies(redirect_response, request, access_token, refresh_token)
+    return redirect_response
 
 
 @router.get("/oauth/google")
-def oauth_google_redirect():
+def oauth_google_redirect(
+    request: Request,
+):
     """跳转 Google OAuth 授权页"""
     settings = get_settings()
     if not settings.google_client_id:
@@ -670,7 +864,9 @@ def oauth_google_redirect():
             detail="Google OAuth 未配置"
         )
 
-    state = _create_oauth_state()
+    # 先创建 Response 对象，让 state cookie 能写入同一个响应
+    redirect_response = RedirectResponse(url="about:blank")
+    state = _create_oauth_state(redirect_response, request)
     params = urlencode({
         "client_id": settings.google_client_id,
         "redirect_uri": _get_oauth_redirect_url("google"),
@@ -679,20 +875,22 @@ def oauth_google_redirect():
         "state": state,
         "access_type": "online",
     })
-    return RedirectResponse(url=f"https://accounts.google.com/o/oauth2/v2/auth?{params}")
+    redirect_response.headers["location"] = f"https://accounts.google.com/o/oauth2/v2/auth?{params}"
+    return redirect_response
 
 
 @router.get("/oauth/google/callback")
 def oauth_google_callback(
     code: str,
     state: str,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """Google OAuth 回调"""
-    if not _verify_oauth_state(state):
+    if not _verify_oauth_state(state, request):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid OAuth state"
+            detail="Invalid or expired OAuth state"
         )
 
     settings = get_settings()
@@ -741,6 +939,13 @@ def oauth_google_callback(
             detail="Incomplete Google user info"
         )
 
+    # Google 邮箱验证状态（仅用于标记用户记录，不再强制拒绝未验证邮箱）
+    google_email_verified = bool(user_info.get("email_verified"))
+    if not google_email_verified:
+        logging.getLogger(__name__).warning(
+            f"Google OAuth login with unverified email: {email}"
+        )
+
     # 查找或创建用户
     user = db.query(User).filter(
         User.oauth_provider == "google",
@@ -749,7 +954,7 @@ def oauth_google_callback(
 
     if not user:
         # 检查邮箱是否已注册
-        existing = db.query(User).filter(User.email == email).first()
+        existing = db.query(User).filter(func.lower(User.email) == email.lower()).first()
         if existing:
             # 如果已有账号绑定了其他 OAuth 提供商，禁止自动覆盖
             if existing.oauth_provider and existing.oauth_provider != "google":
@@ -757,11 +962,11 @@ def oauth_google_callback(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="该邮箱已注册。请先登录现有账号，再在设置中绑定 Google。"
                 )
-            # 自动绑定到现有账号（无论是有密码还是完全空白）
+            # 自动绑定到现有账号，并根据 Google 的声明更新邮箱验证状态
             existing.oauth_provider = "google"
             existing.oauth_id = google_id
-            existing.avatar_url = picture or existing.avatar_url
-            if not existing.email_verified:
+            existing.avatar_url = _sanitize_avatar_url(picture) or existing.avatar_url
+            if google_email_verified and not existing.email_verified:
                 existing.email_verified = True
             db.commit()
             user = existing
@@ -770,10 +975,10 @@ def oauth_google_callback(
             user = User(
                 username=username,
                 email=email,
-                email_verified=True,
+                email_verified=google_email_verified,
                 oauth_provider="google",
                 oauth_id=google_id,
-                avatar_url=picture,
+                avatar_url=_sanitize_avatar_url(picture),
                 role=UserRole.USER,
                 require_password_change=False,
             )
@@ -785,11 +990,15 @@ def oauth_google_callback(
     token_data = {"sub": user.username, "role": user.role.value}
     access_token = create_access_token(data=token_data, token_version=user.token_version)
     refresh_token = create_refresh_token(data=token_data, token_version=user.token_version)
-    return _oauth_success_redirect(access_token, refresh_token)
+    redirect_response = _oauth_success_redirect(access_token, refresh_token, request)
+    _clear_oauth_state_cookie(redirect_response)
+    return redirect_response
 
 
 @router.get("/oauth/github")
-def oauth_github_redirect():
+def oauth_github_redirect(
+    request: Request,
+):
     """跳转 GitHub OAuth 授权页"""
     settings = get_settings()
     if not settings.github_client_id:
@@ -798,27 +1007,36 @@ def oauth_github_redirect():
             detail="GitHub OAuth 未配置"
         )
 
-    state = _create_oauth_state()
+    redirect_response = RedirectResponse(url="about:blank")
+    state = _create_oauth_state(redirect_response, request)
     params = urlencode({
         "client_id": settings.github_client_id,
         "redirect_uri": _get_oauth_redirect_url("github"),
         "scope": "user:email",
         "state": state,
     })
-    return RedirectResponse(url=f"https://github.com/login/oauth/authorize?{params}")
+    redirect_response.headers["location"] = f"https://github.com/login/oauth/authorize?{params}"
+    return redirect_response
 
 
 @router.get("/oauth/github/callback")
 def oauth_github_callback(
     code: str,
     state: str,
+    request: Request,
     db: Session = Depends(get_db),
 ):
-    """GitHub OAuth 回调"""
-    if not _verify_oauth_state(state):
+    """GitHub OAuth 回调（同时处理登录和仓库导入 connect）"""
+    # 先检测是否是仓库导入 connect 流程
+    connect_payload = _verify_connect_state(state)
+    if connect_payload:
+        return _handle_github_connect_callback(code, state, db)
+
+    # 普通登录流程
+    if not _verify_oauth_state(state, request):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid OAuth state"
+            detail="Invalid or expired OAuth state"
         )
 
     settings = get_settings()
@@ -869,7 +1087,7 @@ def oauth_github_callback(
     login = user_info.get("login")
     avatar_url = user_info.get("avatar_url")
 
-    # 获取主邮箱
+    # 获取主邮箱（必须为已验证）
     emails_resp = _get_http_client().get(
         "https://api.github.com/user/emails",
         headers={
@@ -878,18 +1096,31 @@ def oauth_github_callback(
         },
     )
     email = None
+    email_verified = False
     if emails_resp.status_code == 200:
         emails = emails_resp.json()
-        primary = next((e for e in emails if e.get("primary")), None)
+        # 优先使用主邮箱，且要求已验证
+        primary = next((e for e in emails if e.get("primary") and e.get("verified")), None)
         if primary:
             email = primary.get("email")
-        elif emails:
-            email = emails[0].get("email")
+            email_verified = True
+        else:
+            #  fallback 到任意已验证邮箱
+            verified = next((e for e in emails if e.get("verified")), None)
+            if verified:
+                email = verified.get("email")
+                email_verified = True
 
     if not github_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incomplete GitHub user info"
+        )
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GitHub 账号没有已验证的邮箱"
         )
 
     # 查找或创建用户
@@ -900,10 +1131,11 @@ def oauth_github_callback(
 
     if not user:
         if email:
-            existing = db.query(User).filter(User.email == email).first()
+            existing = db.query(User).filter(func.lower(User.email) == email.lower()).first()
             if existing:
-                # 如果已有账号绑定了其他 OAuth 提供商，禁止自动覆盖
-                if existing.oauth_provider and existing.oauth_provider != "github":
+                # 如果已有账号设置了密码且绑定了其他 OAuth 提供商，要求先登录再绑定，防止账号劫持。
+                # 若该账号没有密码（纯 OAuth 用户），则允许 GitHub 自动覆盖绑定，避免用户无法登录。
+                if existing.password_hash and existing.oauth_provider and existing.oauth_provider != "github":
                     raise HTTPException(
                         status_code=status.HTTP_409_CONFLICT,
                         detail="该邮箱已注册。请先登录现有账号，再在设置中绑定 GitHub。"
@@ -911,8 +1143,8 @@ def oauth_github_callback(
                 # 自动绑定到现有账号（无论是有密码还是完全空白）
                 existing.oauth_provider = "github"
                 existing.oauth_id = github_id
-                existing.avatar_url = avatar_url or existing.avatar_url
-                if not existing.email_verified:
+                existing.avatar_url = _sanitize_avatar_url(avatar_url) or existing.avatar_url
+                if email_verified and not existing.email_verified:
                     existing.email_verified = True
                 db.commit()
                 user = existing
@@ -924,10 +1156,10 @@ def oauth_github_callback(
                 user = User(
                     username=username,
                     email=email,
-                    email_verified=True,
+                    email_verified=email_verified,
                     oauth_provider="github",
                     oauth_id=github_id,
-                    avatar_url=avatar_url,
+                    avatar_url=_sanitize_avatar_url(avatar_url),
                     role=UserRole.USER,
                     require_password_change=False,
                 )
@@ -945,7 +1177,7 @@ def oauth_github_callback(
                 email_verified=False,
                 oauth_provider="github",
                 oauth_id=github_id,
-                avatar_url=avatar_url,
+                avatar_url=_sanitize_avatar_url(avatar_url),
                 role=UserRole.USER,
                 require_password_change=False,
             )
@@ -956,17 +1188,23 @@ def oauth_github_callback(
     token_data = {"sub": user.username, "role": user.role.value}
     access_token = create_access_token(data=token_data, token_version=user.token_version)
     refresh_token = create_refresh_token(data=token_data, token_version=user.token_version)
-    return _oauth_success_redirect(access_token, refresh_token)
+    redirect_response = _oauth_success_redirect(access_token, refresh_token, request)
+    _clear_oauth_state_cookie(redirect_response)
+    return redirect_response
 
 
 # ========== GitHub 增量授权（用于仓库导入）==========
 
 @router.get("/oauth/github/connect")
 def oauth_github_connect_redirect(
-    request: Request,
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    """跳转 GitHub OAuth 增量授权页（申请 public_repo 权限）"""
+    """获取 GitHub OAuth 增量授权 URL（通过 header 鉴权，避免 token 泄露到 URL）。
+
+    不再接受 URL query 中的 token，前端应使用 Authorization: Bearer header 调用本接口，
+    然后从返回的 JSON 中获取 `url` 再跳转。
+    """
     settings = get_settings()
     if not settings.github_client_id:
         raise HTTPException(
@@ -974,23 +1212,31 @@ def oauth_github_connect_redirect(
             detail="GitHub OAuth not configured"
         )
 
-    state = _create_connect_state(str(current_user.id))
+    # 在当前 DB session 中重新加载用户，确保能安全提交
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+
+    state_token_id = secrets.token_urlsafe(16)
+    user.oauth_connect_token_id = state_token_id
+    db.commit()
+    state = _create_connect_state(str(user.id), token_id=state_token_id)
+    # 使用和普通登录相同的回调地址，GitHub OAuth App 只需配置一个 callback URL
+    redirect_uri = _get_oauth_redirect_url("github")
     params = urlencode({
         "client_id": settings.github_client_id,
-        "redirect_uri": f"{settings.frontend_url}/auth/oauth/github/connect/callback",
+        "redirect_uri": redirect_uri,
         "scope": "user:email public_repo",
         "state": state,
     })
-    return RedirectResponse(url=f"https://github.com/login/oauth/authorize?{params}")
+    return {"url": f"https://github.com/login/oauth/authorize?{params}"}
 
 
-@router.get("/oauth/github/connect/callback")
-def oauth_github_connect_callback(
-    code: str,
-    state: str,
-    db: Session = Depends(get_db),
-):
-    """GitHub 增量授权回调——保存更高权限的 access token"""
+def _handle_github_connect_callback(code: str, state: str, db: Session):
+    """处理 GitHub 增量授权回调——保存更高权限的 access token"""
     payload = _verify_connect_state(state)
     if not payload:
         raise HTTPException(
@@ -999,6 +1245,7 @@ def oauth_github_connect_callback(
         )
 
     user_id = payload.get("user_id")
+    token_id = payload.get("jti")
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1022,16 +1269,23 @@ def oauth_github_connect_callback(
             detail="User not found"
         )
 
+    # 单次使用校验：防止 connect state 被重放
+    if not token_id or user.oauth_connect_token_id != token_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired connect state"
+        )
+
     settings = get_settings()
 
-    # 交换 code 获取 access_token
+    # 交换 code 获取 access_token（redirect_uri 必须与授权请求时完全一致）
     token_resp = _get_http_client().post(
         "https://github.com/login/oauth/access_token",
         data={
             "client_id": settings.github_client_id,
             "client_secret": settings.github_client_secret,
             "code": code,
-            "redirect_uri": f"{settings.frontend_url}/auth/oauth/github/connect/callback",
+            "redirect_uri": _get_oauth_redirect_url("github"),
         },
         headers={"Accept": "application/json"},
         timeout=10.0,
@@ -1057,16 +1311,29 @@ def oauth_github_connect_callback(
         encrypted_token = get_encryption_manager().encrypt(github_access_token)
         user.github_access_token_encrypted = encrypted_token
         user.github_token_scope = scope
-        user.github_token_updated_at = datetime.utcnow()
+        user.github_token_updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        # Connect state 已使用，立即失效
+        user.oauth_connect_token_id = None
         db.commit()
-    except Exception as e:
+    except Exception as exc:
+        logging.getLogger(__name__).exception("Failed to encrypt GitHub connect token")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save token: {str(e)}"
-        )
+            detail="GitHub token 加密保存失败，请稍后重试"
+        ) from exc
 
-    # 重定向回前端，标记成功
-    return RedirectResponse(url=f"{settings.frontend_url}/?github_connect=success")
+    # 重定向回前端，通过 URL hash 标记成功（前端从 fragment 读取）
+    return RedirectResponse(url=f"{settings.frontend_url}/#github_connect=success")
+
+
+@router.get("/oauth/github/connect/callback")
+def oauth_github_connect_callback(
+    code: str,
+    state: str,
+    db: Session = Depends(get_db),
+):
+    """GitHub 增量授权回调（兼容旧路由）"""
+    return _handle_github_connect_callback(code, state, db)
 
 
 # ========== OAuth 绑定 / 解绑（已登录用户）==========
@@ -1097,8 +1364,16 @@ def oauth_bind_redirect(
             detail="GitHub OAuth 未配置"
         )
 
-    state = _create_bind_state(str(current_user.id))
+    state_token_id = secrets.token_urlsafe(16)
+    current_user.oauth_bind_token_id = state_token_id
+    db.commit()
+
+    nonce = secrets.token_urlsafe(32)
+    state = _create_bind_state(str(current_user.id), nonce=nonce, token_id=state_token_id)
     redirect_uri = _get_oauth_bind_redirect_url(provider)
+
+    redirect_response = RedirectResponse(url="about:blank")
+    _set_oauth_bind_state_cookie(redirect_response, request, nonce)
 
     if provider == "google":
         params = urlencode({
@@ -1109,7 +1384,7 @@ def oauth_bind_redirect(
             "state": state,
             "access_type": "online",
         })
-        return RedirectResponse(url=f"https://accounts.google.com/o/oauth2/v2/auth?{params}")
+        redirect_response.headers["location"] = f"https://accounts.google.com/o/oauth2/v2/auth?{params}"
     else:  # github
         params = urlencode({
             "client_id": settings.github_client_id,
@@ -1117,7 +1392,8 @@ def oauth_bind_redirect(
             "scope": "user:email",
             "state": state,
         })
-        return RedirectResponse(url=f"https://github.com/login/oauth/authorize?{params}")
+        redirect_response.headers["location"] = f"https://github.com/login/oauth/authorize?{params}"
+    return redirect_response
 
 
 @router.get("/oauth/{provider}/bind/callback")
@@ -1125,10 +1401,11 @@ def oauth_bind_callback(
     provider: str,
     code: str,
     state: str,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """OAuth 绑定回调——将第三方账号绑定到当前登录用户"""
-    payload = _verify_bind_state(state)
+    payload = _verify_bind_state(state, request)
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1136,6 +1413,7 @@ def oauth_bind_callback(
         )
 
     user_id_str = payload.get("user_id")
+    token_id = payload.get("jti")
     if not user_id_str:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1157,8 +1435,19 @@ def oauth_bind_callback(
             detail="User not found"
         )
 
+    # 单次使用校验：防止 bind state 被重放
+    if not token_id or user.oauth_bind_token_id != token_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired bind state"
+        )
+
     settings = get_settings()
     redirect_uri = _get_oauth_bind_redirect_url(provider)
+
+    # 预创建最终跳转响应，用于在成功/失败时都能清除 bind state cookie
+    final_redirect = RedirectResponse(url=f"{settings.frontend_url}?oauth_bind_success=1")
+    _clear_oauth_bind_state_cookie(final_redirect)
 
     if provider == "google":
         # 交换 code 获取 access_token
@@ -1218,8 +1507,9 @@ def oauth_bind_callback(
 
         user.oauth_provider = "google"
         user.oauth_id = google_id
-        if picture:
-            user.avatar_url = picture
+        sanitized_picture = _sanitize_avatar_url(picture)
+        if sanitized_picture:
+            user.avatar_url = sanitized_picture
         if email and not user.email_verified:
             user.email_verified = True
         db.commit()
@@ -1307,8 +1597,9 @@ def oauth_bind_callback(
 
         user.oauth_provider = "github"
         user.oauth_id = github_id
-        if avatar_url:
-            user.avatar_url = avatar_url
+        sanitized_avatar_url = _sanitize_avatar_url(avatar_url)
+        if sanitized_avatar_url:
+            user.avatar_url = sanitized_avatar_url
         if email and not user.email_verified:
             user.email_verified = True
         db.commit()
@@ -1319,7 +1610,11 @@ def oauth_bind_callback(
             detail="不支持的 OAuth 提供商"
         )
 
-    return RedirectResponse(url=f"{settings.frontend_url}/?oauth_bind_success=1")
+    # Bind state 已使用，立即失效
+    user.oauth_bind_token_id = None
+    db.commit()
+
+    return final_redirect
 
 
 @router.post("/oauth/unbind", response_model=BaseResponse)

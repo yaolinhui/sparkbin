@@ -37,22 +37,22 @@ export async function generateMetadata({
         : 'AI-native project coach for indie hackers. Validate before you build.',
       type: 'website',
       locale: isZh ? 'zh_CN' : 'en_US',
-      url: `https://sparkbin.dev/${params.lang}`,
+      url: `https://sparkbin.wanchun.me/${params.lang}`,
       siteName: 'SparkBin',
-      images: [`https://sparkbin.dev/images/social/og-${params.lang}.png`],
+      images: [`https://sparkbin.wanchun.me/images/social/og-${params.lang}.png`],
     },
     twitter: {
       card: 'summary_large_image',
       title: 'SparkBin',
       description: 'Validate before you build.',
       creator: '@sparkbin',
-      images: [`https://sparkbin.dev/images/social/og-${params.lang}.png`],
+      images: [`https://sparkbin.wanchun.me/images/social/og-${params.lang}.png`],
     },
     alternates: {
-      canonical: `https://sparkbin.dev/${params.lang}`,
+      canonical: `https://sparkbin.wanchun.me/${params.lang}`,
       languages: {
-        'zh-CN': 'https://sparkbin.dev/zh',
-        'en-US': 'https://sparkbin.dev/en',
+        'zh-CN': 'https://sparkbin.wanchun.me/zh',
+        'en-US': 'https://sparkbin.wanchun.me/en',
       },
     },
     robots: {

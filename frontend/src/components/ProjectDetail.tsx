@@ -139,12 +139,12 @@ const markdownToPlainText = (content: string): string =>
     .replace(/`([^`]+)`/g, '$1')
     .trim();
 
-const getSyncTitle = (content: string): string => {
+const getSyncTitle = (content: string, t: (key: string) => string): string => {
   const lines = content
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);
-  if (lines.length === 0) return 'AI 同步建议';
+  if (lines.length === 0) return t('ai.sync_suggestion');
   const firstLine = lines[0].replace(/[：:]+$/, '');
   return firstLine.length > 24 ? `${firstLine.slice(0, 24)}...` : firstLine;
 };
@@ -165,13 +165,14 @@ const buildSyncedStageContent = (
   stage: StageKey,
   currentContent: string,
   aiReply: string,
-  mode: 'append' | 'replace'
+  mode: 'append' | 'replace',
+  t: (key: string) => string
 ): string => {
   const cleanText = markdownToPlainText(aiReply).trim();
-  const syncText = cleanText || 'AI 同步建议';
+  const syncText = cleanText || t('ai.sync_suggestion');
   const now = new Date().toISOString();
   const today = now.split('T')[0];
-  const syncTitle = getSyncTitle(syncText);
+  const syncTitle = getSyncTitle(syncText, t);
   const isReplace = mode === 'replace';
 
   if (stage === 'idea') {
@@ -179,7 +180,7 @@ const buildSyncedStageContent = (
     const safeExisting = Array.isArray(existing) ? existing : [];
     const note: IdeaSyncNote = {
       id: Date.now().toString(),
-      title: isReplace ? 'AI 同步摘要' : syncTitle,
+      title: isReplace ? t('ai.sync_summary') : syncTitle,
       content: syncText,
       color: 'accent',
     };
@@ -253,7 +254,7 @@ const buildSyncedStageContent = (
       id: Date.now().toString(),
       content: syncText,
       rating: 5,
-      source: 'AI同步',
+      source: t('ai.sync_source'),
       createdAt: now,
     };
     const baseShip = {
@@ -316,7 +317,7 @@ const buildSyncedStageContent = (
     const existingTiers = Array.isArray(existing.pricingTiers) ? (existing.pricingTiers as MonetizeSyncTier[]) : [];
     const tier: MonetizeSyncTier = {
       id: Date.now().toString(),
-      name: isReplace ? 'AI 建议方案' : syncTitle,
+      name: isReplace ? t('ai.suggested_plan') : syncTitle,
       price: 19,
       period: 'month',
       features: syncText.split('\n').map((line) => line.trim()).filter(Boolean).slice(0, 6),
@@ -351,7 +352,7 @@ const buildSyncedStageContent = (
   const currentRichText = currentContent.trim();
   const syncedBlock = formatRichTextBlock(syncText);
   if (isReplace || !currentRichText) {
-    return syncedBlock || '<p>AI 同步建议</p>';
+    return syncedBlock || `<p>${t('ai.sync_suggestion')}</p>`;
   }
   return `${currentRichText}${syncedBlock}`;
 };
@@ -398,6 +399,13 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveStatusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 移动端默认折叠 AI 聊天面板（仅在首次挂载时执行，避免 resize 导致重渲染）
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setIsAIChatCollapsed(true);
+    }
+  }, []);
 
   const hasUnsavedChanges = dirtyCount > 0 || isEditingTitle;
 
@@ -516,15 +524,15 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       .catch((err) => {
         if (cancelled) return;
         console.error('Failed to fetch project:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        const errorMessage = err instanceof Error ? err.message : t('error.unknown');
         if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
-          setFetchError('无法连接到服务器，请检查后端是否已启动');
+          setFetchError(t('error.connection_failed_detail'));
         } else if (errorMessage.includes('404')) {
-          setFetchError('项目不存在');
+          setFetchError(t('error.project_not_found'));
         } else if (errorMessage.includes('401')) {
-          setFetchError('登录已过期，请重新登录');
+          setFetchError(t('auth.session_expired'));
         } else {
-          setFetchError(`加载失败: ${errorMessage}`);
+          setFetchError(`${t('error.load_failed_prefix')}${errorMessage}`);
         }
         setIsLoading(false);
       });
@@ -542,7 +550,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const currentStageLabel = useStageLabel(validCurrentStage);
   // 注意：useStatusLabel 必须在所有条件分支之前调用
   const statusLabelValue = useStatusLabel(project?.status ?? 'active');
-  const statusLabel = project ? statusLabelValue : 'ACTIVE';
+  const statusLabel = project ? statusLabelValue : t('status.active');
 
   // 计算显示的阶段：如果用户点击了其他阶段查看，则显示该阶段，否则显示当前阶段
   const displayStage = viewingStage ?? validCurrentStage;
@@ -550,6 +558,8 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
   const isDisplayStageLocked = displayStageData?.isLocked ?? false;
 
   const handleContentChange = useCallback(async (content: string) => {
+    const projectId = project?.id;
+    if (!projectId) return;
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
@@ -561,7 +571,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       try {
         // 必须保存到用户正在查看的阶段，而不是项目的 currentStage
         const targetStage = displayStage || validCurrentStage;
-        await updateStageContent(project!.id, targetStage, content);
+        await updateStageContent(projectId, targetStage, content);
         setSaveStatus('saved');
         saveStatusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
       } catch {
@@ -576,7 +586,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       <div className="min-h-screen bg-brutal-bg flex items-center justify-center font-mono">
         <div className="text-center border border-brutal-border bg-brutal-surface p-8">
           <div className="w-8 h-8 border-2 border-brutal-accent border-t-transparent animate-spin mx-auto mb-4" />
-          <p className="text-brutal-muted text-sm">{'>'} LOADING_PROJECT_DATA...</p>
+          <p className="text-brutal-muted text-sm">{'>'} {t('status.loading_project_data')}</p>
         </div>
       </div>
     );
@@ -587,20 +597,20 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     return (
       <div className="min-h-screen bg-brutal-bg flex items-center justify-center font-mono">
         <div className="text-center border-2 border-brutal-warning bg-brutal-surface p-8 max-w-md">
-          <p className="text-brutal-warning font-mono text-sm mb-2">{'>'} ERROR</p>
+          <p className="text-brutal-warning font-mono text-sm mb-2">{'>'} {t('error_banner.error_prefix')}</p>
           <p className="text-brutal-text mb-6">{fetchError}</p>
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => window.location.reload()}
               className="btn-brutal h-9 focus-visible:ring-2 focus-visible:ring-brutal-accent focus-visible:outline-none"
             >
-              重试
+              {t('error_banner.retry')}
             </button>
             <button
               onClick={() => navigate('/')}
               className="btn-brutal-primary h-9 focus-visible:ring-2 focus-visible:ring-brutal-accent focus-visible:outline-none"
             >
-              返回首页
+              {t('action.back_to_home')}
             </button>
           </div>
         </div>
@@ -646,12 +656,12 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
         const notes = JSON.parse(trimmed) as Array<{ content?: string }>;
         if (!Array.isArray(notes) || notes.length === 0) return false;
         const placeholders = [
-          '描述你想解决的核心问题...',
-          '谁会使用这个产品？',
-          '用户在什么情况下会用？',
-          '简述核心功能...',
-          '与现有方案相比，你的优势是什么？',
-          '点击编辑...',
+          t('placeholder.describe_pain_point'),
+          t('idea.target_user_example'),
+          t('idea.scenario_example'),
+          t('idea.solution_example'),
+          t('idea.differentiation_example'),
+          t('idea.click_to_edit'),
         ];
         const painPointTrimmed = project.painPoint.trim();
         return notes.some((note) => {
@@ -692,11 +702,16 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
           features?: Array<{ id?: string; name?: string; notes?: string }>;
           selectedPlatform?: string;
         };
-        if (!!data.selectedPlatform) return true;
+        if (data.selectedPlatform) return true;
         const features = Array.isArray(data.features) ? data.features : [];
         // 默认 features 的 ID 是 '1','2','3'，notes 是固定的几个值
         const defaultFeatureIds = ['1', '2', '3'];
-        const defaultNotes = ['基础账户系统', '主要业务逻辑', '用户偏好设置', '继承自想法阶段的解决方案'];
+        const defaultNotes = [
+          t('prototype.default_note_account'),
+          t('prototype.default_note_business'),
+          t('prototype.default_note_preference'),
+          t('prototype.default_note_inherited'),
+        ];
         const hasCustomFeatures = features.some((f) => {
           if (!defaultFeatureIds.includes(f.id || '')) return true;
           if (!defaultNotes.includes(f.notes || '')) return true;
@@ -852,7 +867,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
   const handleDeleteProject = async () => {
     if (deleteConfirmInput.trim() !== project.title) {
-      setDeleteError('请输入与项目标题完全一致的文本后再删除。');
+      setDeleteError(t('error.delete_confirm_mismatch'));
       return;
     }
 
@@ -864,7 +879,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       setShowDeleteModal(false);
       navigate('/');
     } catch (error) {
-      const message = error instanceof Error ? error.message : '删除失败，请稍后重试。';
+      const message = error instanceof Error ? error.message : t('error.delete_failed');
       setDeleteError(message);
     } finally {
       setIsDeletingProject(false);
@@ -888,7 +903,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
   const handleConfirmSync = async () => {
     if (!syncCandidate.trim()) {
-      setSyncError('同步内容为空，无法写入左侧面板。');
+      setSyncError(t('error.sync_empty'));
       return;
     }
 
@@ -899,13 +914,13 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       const targetStage = displayStage || validCurrentStage;
       const stageData = project.stages?.[targetStage];
       const currentContent = stageData?.content || '';
-      const nextContent = buildSyncedStageContent(targetStage, currentContent, syncCandidate, syncMode);
+      const nextContent = buildSyncedStageContent(targetStage, currentContent, syncCandidate, syncMode, t);
       await updateStageContent(project.id, targetStage, nextContent);
       setShowSyncModal(false);
       setSyncCandidate('');
       setSyncMode('append');
     } catch (error) {
-      const message = error instanceof Error ? error.message : '同步失败，请稍后重试。';
+      const message = error instanceof Error ? error.message : t('error.sync_failed');
       setSyncError(message);
     } finally {
       setIsSyncing(false);
@@ -955,9 +970,9 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
     <div className="h-[100dvh] flex flex-col overflow-hidden bg-brutal-bg text-brutal-text font-mono">
       {/* Header - 固定显示核心项目信息 */}
       <div className="border-b border-brutal-border bg-brutal-surface">
-        <div className="px-6 py-4">
+        <div className="px-3 md:px-6 py-3 md:py-4">
           {/* Top row: Back button + Title + Actions */}
-          <div className="flex items-center justify-between gap-4 mb-2">
+          <div className="flex items-center justify-between gap-2 md:gap-4 mb-2">
             <div className="flex items-center gap-4 flex-1 min-w-0">
               <button
                 onClick={handleBackClick}
@@ -980,7 +995,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 <button
                   onClick={startEditTitle}
                   className="flex items-center gap-2 group flex-1 min-w-0 text-left"
-                  title="点击修改项目名称"
+                  title={t('project.edit_title_hint')}
                 >
                   <h1 className="text-xl font-mono font-bold truncate">
                     {project.title}
@@ -989,31 +1004,31 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <ThemeSwitcher />
+            <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
+              <div className="hidden sm:block"><ThemeSwitcher /></div>
               <LanguageSwitcher />
               <button
                 onClick={() => setShowBlueprint(true)}
-                className="btn-brutal h-9 flex items-center gap-2 text-brutal-accent border-brutal-accent"
-                title="项目蓝图"
+                className="btn-brutal h-8 md:h-9 flex items-center gap-1 md:gap-2 text-brutal-accent border-brutal-accent px-2 md:px-3"
+                title={t('project.blueprint')}
               >
                 <GitGraph className="w-4 h-4" />
-                <span className="hidden sm:inline text-xs">蓝图</span>
+                <span className="hidden sm:inline text-xs">{t('project.blueprint')}</span>
               </button>
               <button
                 onClick={() => setShowAgentCockpit(true)}
-                className="btn-brutal h-9 flex items-center gap-2 text-brutal-success border-brutal-success"
-                title="AI Agent 驾驶舱"
+                className="btn-brutal h-8 md:h-9 flex items-center gap-1 md:gap-2 text-brutal-success border-brutal-success px-2 md:px-3"
+                title={t('project.agent_cockpit')}
               >
                 <Cpu className="w-4 h-4" />
-                <span className="hidden sm:inline text-xs">Agent</span>
+                <span className="hidden sm:inline text-xs">{t('project.agent_cockpit')}</span>
               </button>
-              {renderStatusButton()}
+              <div className="hidden sm:block">{renderStatusButton()}</div>
               {project.status !== 'archived' && (
                 <button
                   onClick={() => handleStatusChange('archived')}
-                  className="btn-brutal h-9 focus-visible:ring-2 focus-visible:ring-brutal-accent focus-visible:outline-none"
-                  title="归档项目"
+                  className="hidden sm:flex btn-brutal h-8 md:h-9 focus-visible:ring-2 focus-visible:ring-brutal-accent focus-visible:outline-none px-2 md:px-3"
+                  title={t('action.archive')}
                 >
                   <Archive className="w-4 h-4" />
                 </button>
@@ -1022,7 +1037,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 <button
                   onClick={() => setShowMoreMenu((v) => !v)}
                   className="btn-brutal h-9 p-2"
-                  title="更多选项"
+                  title={t('action.more_options')}
                   aria-expanded={showMoreMenu}
                   aria-haspopup="menu"
                 >
@@ -1044,12 +1059,12 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                       {isLight ? (
                         <>
                           <Moon className="w-4 h-4" />
-                          <span>切换深色</span>
+                          <span>{t('theme.switch_to_dark')}</span>
                         </>
                       ) : (
                         <>
                           <Sun className="w-4 h-4" />
-                          <span>切换浅色</span>
+                          <span>{t('theme.switch_to_light')}</span>
                         </>
                       )}
                     </button>
@@ -1062,8 +1077,21 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                       role="menuitem"
                     >
                       <LogOut className="w-4 h-4" />
-                      <span>退出登录</span>
+                      <span>{t('nav.logout')}</span>
                     </button>
+                    {project.status !== 'archived' && (
+                      <button
+                        onClick={() => {
+                          handleStatusChange('archived');
+                          setShowMoreMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm font-mono text-brutal-muted hover:bg-brutal-surface-hover transition-colors"
+                        role="menuitem"
+                      >
+                        <Archive className="w-4 h-4" />
+                        <span>{t('action.archive')}</span>
+                      </button>
+                    )}
                     <div className="border-t border-brutal-border my-1" />
                     <button
                       onClick={() => {
@@ -1074,7 +1102,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                       role="menuitem"
                     >
                       <Trash2 className="w-4 h-4" />
-                      <span>删除项目</span>
+                      <span>{t('action.delete_project')}</span>
                     </button>
                   </div>
                 )}
@@ -1083,8 +1111,8 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
           </div>
 
           {/* Second row: Project ID + Status + Pain Point */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs text-brutal-muted">// {t('project.id')}</span>
+          <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+            <span className="text-xs text-brutal-muted hidden sm:inline">// {t('project.id')}</span>
             <span className="text-xs text-brutal-accent font-mono">{project.id.slice(0, 8).toUpperCase()}</span>
             <span className={`text-xs px-2 py-0.5 border ${
               project.status === 'active' ? 'border-brutal-success text-brutal-success' :
@@ -1110,9 +1138,11 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       />
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden min-h-0" >
+      <div className="flex flex-1 overflow-hidden min-h-0 flex-col md:flex-row">
         {/* Left: Editor - 根据 AI 聊天状态自适应宽度 */}
-        <div className="flex-1 flex flex-col min-w-0 border-r border-brutal-border bg-brutal-surface transition-all duration-300">
+        <div className={`flex-1 flex flex-col min-w-0 border-r border-brutal-border bg-brutal-surface md:transition-transform md:duration-300 ${
+          !isAIChatCollapsed ? 'hidden md:flex' : 'flex'
+        }`}>
           <div className="flex-1 flex flex-col overflow-hidden min-h-0">
             {/* 自动保存状态指示器 */}
             <div className="px-4 py-1.5 border-b border-brutal-border flex items-center justify-between flex-shrink-0">
@@ -1125,9 +1155,9 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                   saveStatus === 'saved' ? 'text-brutal-success' :
                   'text-brutal-error'
                 }`}>
-                  {saveStatus === 'saving' && '保存中...'}
-                  {saveStatus === 'saved' && '已保存'}
-                  {saveStatus === 'error' && '保存失败'}
+                  {saveStatus === 'saving' && t('action.saving')}
+                  {saveStatus === 'saved' && t('action.saved')}
+                  {saveStatus === 'error' && t('action.save_failed')}
                 </span>
               )}
             </div>
@@ -1180,7 +1210,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                 onDirtyChange={(d) => markDirty('monetize', d)}
               />
             ) : currentStageData ? (
-              <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+              <div className="flex-1 min-h-0 p-4 md:p-6 overflow-y-auto">
                 <RichTextEditor
                   content={currentStageData.content || ''}
                   onChange={handleContentChange}
@@ -1198,9 +1228,9 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
           </div>
         </div>
 
-        {/* Right: AI Chat - 根据折叠状态动态调整宽度 */}
+        {/* Right: AI Chat - Desktop: sidebar, Mobile: overlay */}
         <div
-          className={`bg-brutal-bg transition-all duration-300 ease-in-out flex-shrink-0 self-stretch flex flex-col ${
+          className={`bg-brutal-bg transition-[width] duration-300 ease-in-out flex-shrink-0 self-stretch flex-col hidden md:flex ${
             isAIChatCollapsed ? 'w-12' : 'w-full sm:w-[320px] md:w-[380px] lg:w-[420px] max-w-[420px]'
           }`}
         >
@@ -1214,6 +1244,49 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
             onCollapsedChange={setIsAIChatCollapsed}
           />
         </div>
+
+        {/* Mobile AI Chat Overlay */}
+        <div className={`md:hidden fixed inset-0 z-40 bg-brutal-bg transition-transform duration-300 ${
+          !isAIChatCollapsed ? 'translate-y-0' : 'translate-y-full'
+        }`}>
+          <div className="h-full flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-brutal-border bg-brutal-surface flex-shrink-0">
+              <span className="text-sm font-mono font-bold">{t('ai.assistant')}</span>
+              <button
+                onClick={() => setIsAIChatCollapsed(true)}
+                className="w-8 h-8 border border-brutal-border flex items-center justify-center hover:bg-brutal-text hover:text-brutal-bg transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 min-h-0">
+              <AIChat
+                stage={validCurrentStage}
+                projectId={project.id}
+                projectTitle={project.title}
+                onGenerateContent={handleGenerateContent}
+                onSyncRequest={openSyncModal}
+                isCollapsed={false}
+                onCollapsedChange={() => setIsAIChatCollapsed(true)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile AI Chat Float Button */}
+        <button
+          onClick={() => setIsAIChatCollapsed(false)}
+          className={`md:hidden fixed bottom-6 right-6 z-30 w-12 h-12 border-2 border-brutal-accent bg-brutal-accent text-brutal-bg flex items-center justify-center shadow-lg transition-transform duration-300 ${
+            isAIChatCollapsed ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'
+          }`}
+          title={t('ai.open_assistant')}
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+          </svg>
+        </button>
       </div>
 
       {/* Confirmation Modal */}
@@ -1224,7 +1297,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
             <div className="flex items-center justify-between p-4 border-b border-brutal-border bg-brutal-bg">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-brutal-muted font-mono">//</span>
-                <span className="text-sm font-mono font-bold">CONFIRM</span>
+                <span className="text-sm font-mono font-bold">{t('action.confirm')}</span>
               </div>
               <button
                 onClick={handleCancelProceed}
@@ -1238,16 +1311,16 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
             <div className="p-6">
               <div className="text-sm font-mono mb-4">
                 <p className="text-brutal-text mb-2">
-                  {'>'} WARNING: EMPTY_STAGE_CONTENT
+                  {'>'} {t('stage.warning_empty')}
                 </p>
                 <p className="text-brutal-muted">
-                  当前阶段尚未记录内容，确定要完成并进入下一阶段吗？
+                  {t('stage.empty_confirm')}
                 </p>
               </div>
 
               <div className="text-xs font-mono text-brutal-muted border-l-2 border-brutal-accent pl-3 py-2 mb-6">
-                Stage: {currentStageLabel}<br />
-                Status: NO_CONTENT_DETECTED
+                {t('stage.stage_label')}: {currentStageLabel}<br />
+                {t('stage.status_label')}: {t('stage.no_content_status')}
               </div>
 
               {/* Actions */}
@@ -1256,13 +1329,13 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                   onClick={handleCancelProceed}
                   className="flex-1 btn-brutal h-9 py-3"
                 >
-                  {'<'} RETURN_TO_EDIT
+                  {'<'} {t('action.return_to_edit')}
                 </button>
                 <button
                   onClick={handleConfirmProceed}
                   className="flex-1 btn-brutal-primary h-9 py-3"
                 >
-                  PROCEED {'>'}
+                  {t('action.proceed')} {'>'}
                 </button>
               </div>
             </div>
@@ -1270,7 +1343,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
             {/* Footer */}
             <div className="px-4 py-2 border-t border-brutal-border bg-brutal-bg">
               <div className="text-xs font-mono text-brutal-muted">
-                {'>'} AWAITING_USER_INPUT...
+                {'>'} {t('empty_state.awaiting_input')}
                 <span className="animate-blink">_</span>
               </div>
             </div>
@@ -1284,8 +1357,8 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
           <div className="border-2 border-brutal-accent bg-brutal-surface w-full max-w-2xl">
             <div className="flex items-center justify-between p-4 border-b border-brutal-accent bg-brutal-bg">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-mono font-bold text-brutal-accent">SYNC TO LEFT PANEL</span>
-                <span className="text-xs font-mono text-brutal-muted">阶段: {currentStageLabel}</span>
+                <span className="text-sm font-mono font-bold text-brutal-accent">{t('ai.sync_to_left')}</span>
+                <span className="text-xs font-mono text-brutal-muted">{t('project.stage_label')}: {currentStageLabel}</span>
               </div>
               <button
                 onClick={closeSyncModal}
@@ -1298,7 +1371,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
             <div className="p-6 space-y-4">
               <p className="text-sm font-mono text-brutal-text">
-                {'>'} 将右侧 AI 回复同步到左侧当前阶段面板。
+                {'>'} {t('ai.sync_description')}
               </p>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1310,7 +1383,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                       : 'border-brutal-border'
                   }`}
                 >
-                  追加写入（推荐）
+                  {t('action.append_recommended')}
                 </button>
                 <button
                   onClick={() => setSyncMode('replace')}
@@ -1320,12 +1393,12 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                       : 'border-brutal-border'
                   }`}
                 >
-                  覆盖当前阶段
+                  {t('action.overwrite_current_stage')}
                 </button>
               </div>
 
               <div className="border border-brutal-border bg-brutal-bg p-3 max-h-64 overflow-y-auto">
-                <div className="text-xs text-brutal-muted font-mono mb-2">SYNC_PREVIEW</div>
+                <div className="text-xs text-brutal-muted font-mono mb-2">{t('ai.sync_preview')}</div>
                 <pre className="text-sm font-mono whitespace-pre-wrap break-words text-brutal-text">{syncCandidate}</pre>
               </div>
 
@@ -1341,14 +1414,14 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                   disabled={isSyncing}
                   className="flex-1 btn-brutal h-10 disabled:opacity-50"
                 >
-                  取消
+                  {t('action.cancel')}
                 </button>
                 <button
                   onClick={handleConfirmSync}
                   disabled={isSyncing}
                   className="flex-1 btn-brutal-primary h-10 disabled:opacity-50"
                 >
-                  {isSyncing ? '同步中...' : '确认同步'}
+                  {isSyncing ? t('action.syncing') : t('action.confirm_sync')}
                 </button>
               </div>
             </div>
@@ -1363,7 +1436,7 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
             <div className="flex items-center justify-between p-4 border-b border-brutal-warning bg-brutal-bg">
               <div className="flex items-center gap-2">
                 <Trash2 className="w-4 h-4 text-brutal-warning" />
-                <span className="text-sm font-mono font-bold text-brutal-warning">DELETE PROJECT</span>
+                <span className="text-sm font-mono font-bold text-brutal-warning">{t('action.delete_project')}</span>
               </div>
               <button
                 onClick={closeDeleteModal}
@@ -1376,14 +1449,14 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
 
             <div className="p-6">
               <div className="text-sm font-mono mb-4 text-brutal-text">
-                {'>'} 此操作会将项目从你的列表中删除（后端执行软删除）。
+                {'>'} {t('project.delete_warning')}
               </div>
               <div className="text-sm font-mono mb-4 text-brutal-warning">
-                {'>'} 请确认你要删除项目：<span className="font-bold">{project.title}</span>
+                {'>'} {t('project.confirm_delete_prompt')}<span className="font-bold">{project.title}</span>
               </div>
 
               <label className="block text-xs font-mono text-brutal-muted mb-2">
-                输入项目标题以确认删除
+                {t('project.confirm_delete_label')}
               </label>
               <input
                 type="text"
@@ -1406,14 +1479,14 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
                   disabled={isDeletingProject}
                   className="flex-1 btn-brutal h-10 disabled:opacity-50"
                 >
-                  取消
+                  {t('action.cancel')}
                 </button>
                 <button
                   onClick={handleDeleteProject}
                   disabled={isDeletingProject || deleteConfirmInput.trim() !== project.title}
                   className="flex-1 btn-brutal h-10 border-brutal-warning text-brutal-warning disabled:opacity-50"
                 >
-                  {isDeletingProject ? '删除中...' : '确认删除'}
+                  {isDeletingProject ? t('action.deleting') : t('action.confirm_delete')}
                 </button>
               </div>
             </div>
@@ -1446,11 +1519,11 @@ export function ProjectDetail({ onLogout }: ProjectDetailProps) {
       {showLeaveConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
           <div className="border-2 border-brutal-warning bg-brutal-surface p-6 max-w-md w-full mx-4">
-            <p className="text-brutal-warning font-mono text-sm mb-2">{'>'} WARNING</p>
-            <p className="text-brutal-text font-mono mb-6">当前有未保存的内容，确定要离开吗？</p>
+            <p className="text-brutal-warning font-mono text-sm mb-2">{'>'} {t('dialog.warning')}</p>
+            <p className="text-brutal-text font-mono mb-6">{t('dialog.unsaved_leave')}</p>
             <div className="flex gap-3">
-              <button onClick={cancelLeave} className="flex-1 btn-brutal h-9">继续编辑</button>
-              <button onClick={confirmLeave} className="flex-1 btn-brutal-primary h-9">确定离开</button>
+              <button onClick={cancelLeave} className="flex-1 btn-brutal h-9">{t('dialog.continue_editing')}</button>
+              <button onClick={confirmLeave} className="flex-1 btn-brutal-primary h-9">{t('dialog.confirm_leave')}</button>
             </div>
           </div>
         </div>

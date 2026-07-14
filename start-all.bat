@@ -47,7 +47,7 @@ echo 后端: http://localhost:8000
 echo API文档: http://localhost:8000/docs
 echo 前端: http://localhost:5181 (自动分配)
 echo.
-echo 默认账号: admin / admin
+echo 首次使用请通过注册页面创建账号，或在 .env 中配置管理员凭据
 echo.
 echo 按任意键关闭此窗口（不会关闭服务）
 pause >nul

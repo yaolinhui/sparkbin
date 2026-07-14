@@ -24,7 +24,7 @@ async function generateAssets() {
   // 3. OG images (1200x630)
   // Use only ASCII to avoid font rendering issues in headless environments
   function createOgSvg() {
-    return `\n<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">\n  <rect width="1200" height="630" fill="#0a0a0a"/>\n  <rect x="24" y="24" width="1152" height="582" fill="none" stroke="#00d4ff" stroke-width="8"/>\n  <text x="600" y="300" font-family="monospace" font-size="140" font-weight="bold" fill="#ffffff" text-anchor="middle">SPARKBIN</text>\n  <text x="600" y="400" font-family="monospace" font-size="36" fill="#a0a0a0" text-anchor="middle">AI-native project coach for indie hackers</text>\n  <text x="600" y="500" font-family="monospace" font-size="24" fill="#666666" text-anchor="middle">sparkbin.dev</text>\n</svg>\n`;
+    return `\n<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">\n  <rect width="1200" height="630" fill="#0a0a0a"/>\n  <rect x="24" y="24" width="1152" height="582" fill="none" stroke="#00d4ff" stroke-width="8"/>\n  <text x="600" y="300" font-family="monospace" font-size="140" font-weight="bold" fill="#ffffff" text-anchor="middle">SPARKBIN</text>\n  <text x="600" y="400" font-family="monospace" font-size="36" fill="#a0a0a0" text-anchor="middle">AI-native project coach for indie hackers</text>\n  <text x="600" y="500" font-family="monospace" font-size="24" fill="#666666" text-anchor="middle">sparkbin.wanchun.me</text>\n</svg>\n`;
   }
 
   const ogSvg = createOgSvg();

@@ -1,0 +1,71 @@
+# SparkBin 生产环境 Nginx 配置示例
+# 用法：
+#   1. 将本文件复制为 nginx.deploy.conf（不要直接改本示例文件）。
+#   2. 替换 server_name 为你的 API 域名，例如 api.example.com。
+#   3. 运行 certbot / fix-ssl.sh 获取证书后，将证书路径填入 443 server 块。
+#   4. docker compose -f docker-compose.deploy.yml up -d
+#
+# 安全设计：
+# - 80 端口只负责 HTTP -> HTTPS 跳转。
+# - 443 端口强制 TLS，并添加 HSTS / CSP / X-Frame-Options 等安全头。
+# - 后端不再映射宿主机 8000 端口，所有流量必须经 nginx 代理。
+
+server {
+    listen 80;
+    server_name _;  # 替换为你的 API 域名，如 api.example.com
+
+    # 健康检查保留在 80 仅用于部署脚本，且只返回 301；
+    # 生产流量应全部走 443。
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name _;  # 替换为你的 API 域名，如 api.example.com
+
+    # TLS 证书（由 certbot / fix-ssl.sh 生成）
+    ssl_certificate /etc/letsencrypt/live/api.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
+
+    # TLS 强化
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # 安全响应头
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-XSS-Protection "0" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+
+    # 健康检查
+    location /health {
+        proxy_pass http://backend:8000/health;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # API 代理
+    location / {
+        proxy_pass http://backend:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+
+        # 限制请求体大小，防止 chunked 绕过直接打到后端
+        client_max_body_size 10M;
+    }
+}

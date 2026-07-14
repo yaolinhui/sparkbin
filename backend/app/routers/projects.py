@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..auth import get_current_user
-from ..models import User, Project, Stage, StageKey, ProjectStatus, PromoteTask
+from ..models import User, Project, Stage, StageKey, ProjectStatus, ProjectType, PromoteTask
 from ..schemas import (
     ProjectCreate, ProjectUpdate, ProjectInfo, ProjectDetail,
     PromoteTaskCreate, PromoteTaskUpdate, PromoteTaskInfo,
@@ -14,6 +14,7 @@ from ..schemas import (
 )
 from ..services.logger import OperationLogger
 from ..config import get_settings
+from datetime import datetime, timezone
 from sqlalchemy import func
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -33,6 +34,7 @@ def _project_to_detail(project: Project) -> ProjectDetail:
         original_idea=project.original_idea,
         status=project.status,
         current_stage=project.current_stage,
+        project_type=project.project_type,
         created_at=project.created_at,
         updated_at=project.updated_at,
         stages=[
@@ -106,7 +108,8 @@ def create_project(
         user_id=current_user.id,
         title=request.title,
         pain_point=request.pain_point,
-        original_idea=request.original_idea
+        original_idea=request.original_idea,
+        project_type=request.project_type
     )
     db.add(project)
     db.flush()  # 获取 project.id
@@ -193,6 +196,8 @@ def update_project(
         project.status = request.status
     if request.current_stage is not None:
         project.current_stage = request.current_stage
+    if request.project_type is not None:
+        project.project_type = request.project_type
 
     db.commit()
     db.refresh(project)
@@ -233,7 +238,7 @@ def delete_project(
         raise HTTPException(status_code=404, detail="Project not found")
 
     from datetime import datetime
-    project.deleted_at = datetime.utcnow()
+    project.deleted_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.commit()
 
     # 记录日志
@@ -335,6 +340,17 @@ def reopen_stage(
 
     stage.is_locked = False
     stage.completed_at = None
+
+    # 同步更新 project.current_stage：如果 reopened 阶段在当前阶段之前，回退 current_stage
+    stage_order = ["idea", "validate", "prototype", "ship", "grow", "monetize"]
+    try:
+        reopened_index = stage_order.index(stage_key.value)
+        current_index = stage_order.index(project.current_stage.value)
+        if reopened_index < current_index:
+            project.current_stage = stage_key
+    except ValueError:
+        pass
+
     db.commit()
     db.refresh(project)
 
@@ -382,7 +398,7 @@ def complete_stage(
 
     # 完成当前阶段
     stage.is_locked = True
-    stage.completed_at = datetime.utcnow()
+    stage.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
     # 解锁下一个阶段
     stage_order = ["idea", "validate", "prototype", "ship", "grow", "monetize"]
@@ -404,8 +420,10 @@ def complete_stage(
     try:
         current_index = stage_order.index(current_stage_in_order)
     except ValueError:
-        # 如果阶段不在列表中，默认为第一个
-        current_index = 0
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid stage key: {stage_key.value}"
+        )
 
     if current_index < len(stage_order) - 1:
         next_stage_key = StageKey(stage_order[current_index + 1])

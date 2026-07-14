@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Project, ProjectStatus, StageKey, Stage, PromoteStage } from '../types';
+import type { Project, ProjectStatus, StageKey, Stage, Stages } from '../types';
 import { projectsApi, type ProjectDetail } from '../services/api';
 
 interface ProjectState {
@@ -11,7 +11,7 @@ interface ProjectState {
 
 interface ProjectActions {
   fetchProjects: () => Promise<void>;
-  createProject: (title: string, painPoint: string, originalIdea?: string) => Promise<Project | null>;
+  createProject: (title: string, painPoint: string, originalIdea?: string, projectType?: string) => Promise<Project | null>;
   updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   updateProjectStatus: (id: string, status: ProjectStatus) => Promise<void>;
@@ -26,17 +26,25 @@ interface ProjectActions {
 
 // 转换后端项目数据为前端格式
 export function convertProjectDetailToProject(detail: ProjectDetail): Project {
-  const stages: Record<string, Stage | PromoteStage> = {};
+  // 先填充所有阶段的默认值，确保类型与 Stages 完全一致
+  const stages: Stages = {
+    idea: { content: '', completedAt: null, isLocked: false },
+    validate: { content: '', completedAt: null, isLocked: false },
+    prototype: { content: '', completedAt: null, isLocked: false },
+    ship: { content: '', completedAt: null, isLocked: false },
+    grow: { content: '', completedAt: null, isLocked: false },
+    monetize: { content: '', completedAt: null, isLocked: false, tasks: [], aiSuggestions: { channels: [], templates: [] } },
+  };
 
   detail.stages.forEach((stage) => {
-    const baseStage = {
+    const baseStage: Stage = {
       content: stage.content,
       completedAt: stage.completed_at,
       isLocked: stage.is_locked,
     };
 
     if (stage.stage_key === 'monetize') {
-      stages[stage.stage_key] = {
+      stages.monetize = {
         ...baseStage,
         tasks: detail.promote_tasks.map((t) => ({
           id: t.id,
@@ -58,7 +66,8 @@ export function convertProjectDetailToProject(detail: ProjectDetail): Project {
     originalIdea: detail.original_idea || '',
     status: detail.status,
     currentStage: detail.current_stage,
-    stages: stages as unknown as Project['stages'],
+    projectType: (detail.project_type || 'other') as Project['projectType'],
+    stages,
     createdAt: detail.created_at,
     updatedAt: detail.updated_at,
   };
@@ -77,7 +86,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
       const currentProjects = get().projects;
       // 将后端返回的数据转换为前端 Project 类型
       // 保留本地已有的 stages 数据，避免列表接口返回空 stages 覆盖详情页已加载的数据
-      const convertedProjects = projects.map((p: { id: string; title: string; pain_point: string; original_idea: string; status: string; current_stage: string; created_at: string; updated_at: string }) => {
+      const convertedProjects = projects.map((p: { id: string; title: string; pain_point: string; original_idea: string; status: string; current_stage: string; project_type?: string; created_at: string; updated_at: string }) => {
         const existing = currentProjects.find((cp) => cp.id === p.id);
         return {
           id: p.id,
@@ -86,6 +95,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
           originalIdea: p.original_idea || '',
           status: p.status,
           currentStage: p.current_stage,
+          projectType: (p.project_type || 'other') as Project['projectType'],
           stages: (existing?.stages ?? {}) as Project['stages'],
           createdAt: p.created_at,
           updatedAt: p.updated_at,
@@ -100,10 +110,10 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
     }
   },
 
-  createProject: async (title: string, painPoint: string, originalIdea?: string) => {
+  createProject: async (title: string, painPoint: string, originalIdea?: string, projectType?: string) => {
     set({ isLoading: true, error: null });
     try {
-      const newProject = await projectsApi.create({ title, pain_point: painPoint, original_idea: originalIdea });
+      const newProject = await projectsApi.create({ title, pain_point: painPoint, original_idea: originalIdea, project_type: projectType });
       const project = convertProjectDetailToProject(newProject);
       set((state) => ({
         projects: [project, ...state.projects],
@@ -125,8 +135,10 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
       const backendUpdates: Record<string, string | number | boolean | object> = {};
       if (updates.title !== undefined) backendUpdates.title = updates.title;
       if (updates.painPoint !== undefined) backendUpdates.pain_point = updates.painPoint;
+      if (updates.originalIdea !== undefined) backendUpdates.original_idea = updates.originalIdea;
       if (updates.status !== undefined) backendUpdates.status = updates.status;
       if (updates.currentStage !== undefined) backendUpdates.current_stage = updates.currentStage;
+      if (updates.projectType !== undefined) backendUpdates.project_type = updates.projectType;
 
       await projectsApi.update(id, backendUpdates);
 

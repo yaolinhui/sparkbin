@@ -10,42 +10,42 @@
   },
   "hero": {
     "badge": "AI-NATIVE PROJECT COACH",
-    "title1": "VALIDATE",
-    "title2": "BEFORE YOU BUILD",
-    "subtitle": "为独立开发者打造的六阶段项目工作流工具。从想法到变现，用 AI 辅助每一步决策。",
-    "ctaPrimary": "免费开始",
-    "ctaSecondary": "Star on GitHub",
+    "title1": "先验证，再开发",
+    "title2": "别做没人要的产品",
+    "subtitle": "大多数项目死于\"没人需要\"。SparkBin 用六阶段工作流 + AI 教练，强迫你在写代码之前验证想法。从灵感记录到定价变现，每一步都有明确的 GO/NO-GO 决策。",
+    "ctaPrimary": "免费试用",
+    "ctaSecondary": "查看源码",
     "trust": {
       "opensource": "开源 ELv2",
       "selfhost": "自托管免费",
-      "aiproxy": "AI 后端代理"
+      "aiproxy": "支持本地 AI"
     }
   },
   "stages": {
     "label": "WORKFLOW",
-    "title": "六阶段：从想法到变现",
-    "subtitle": "不是待办清单，是一套经过验证的独立开发者工作流。每个阶段有明确的进入标准和退出条件。",
+    "title": "六阶段工作流：从想法到变现",
+    "subtitle": "不是待办清单。每个阶段都有明确的进入标准和退出条件，AI 教练会逼你做完该做的事，才能进入下一阶段。",
     "items": [
-      { "num": "01", "label": "IDEA", "labelZh": "想法", "desc": "记录灵感，评估可行性，用 AI 快速生成竞品分析报告。" },
-      { "num": "02", "label": "VALIDATE", "labelZh": "验证", "desc": "GO/NO-GO 决策机制，用数据验证需求，避免构建没人要的产品。" },
-      { "num": "03", "label": "PROTOTYPE", "labelZh": "原型", "desc": "AI 辅助生成 MVP 方案、技术选型建议和多平台推广文案。" },
-      { "num": "04", "label": "SHIP", "labelZh": "发布", "desc": "项目管理看板，追踪发布 checklist，确保不遗漏关键步骤。" },
-      { "num": "05", "label": "GROW", "labelZh": "增长", "desc": "多平台内容矩阵管理，追踪增长实验，用 AI 优化文案。" },
-      { "num": "06", "label": "MONETIZE", "labelZh": "变现", "desc": "定价策略模拟器，收入预测，找到最适合的商业模式。" }
+      { "num": "01", "label": "IDEA", "labelZh": "想法", "desc": "记录灵感，5 分钟内用 AI 生成竞品分析和可行性报告。" },
+      { "num": "02", "label": "VALIDATE", "labelZh": "验证", "desc": "GO/NO-GO 决策门。没有验证数据？AI 不让你过。" },
+      { "num": "03", "label": "PROTOTYPE", "labelZh": "原型", "desc": "AI 生成 MVP 方案、技术选型对比，还有 Twitter/小红书首发文案。" },
+      { "num": "04", "label": "SHIP", "labelZh": "发布", "desc": "发布 checklist 管理，关键步骤打勾才能算完成。" },
+      { "num": "05", "label": "GROW", "labelZh": "增长", "desc": "多平台内容矩阵追踪，A/B 测试文案，看哪个渠道真正带来用户。" },
+      { "num": "06", "label": "MONETIZE", "labelZh": "变现", "desc": "定价模拟器 + 收入预测。输入预期用户数，AI 告诉你多久回本。" }
     ]
   },
   "features": {
     "label": "FEATURES",
-    "title": "不止是一个看板",
-    "subtitle": "AI 不是附加功能，而是贯穿每个阶段的基础设施。",
-    "screenshotLabel": "产品截图待补充",
+    "title": "AI 不是聊天框，是基础设施",
+    "subtitle": "不是\"加了个 AI 按钮\"的那种产品。AI 深度嵌入每个阶段，知道你该做什么、做到哪一步了、下一步该验证什么。",
+    "screenshotLabel": "",
     "items": [
-      { "title": "AI 宠物教练", "desc": "每个项目配备专属 AI 教练，根据当前阶段提供针对性建议。" },
-      { "title": "GO/NO-GO 决策", "desc": "结构化验证框架，用数据驱动决策，避免情绪化投入。" },
-      { "title": "多平台文案生成", "desc": "一键生成 Twitter、小红书、即刻、ProductHunt 的推广文案。" },
-      { "title": "变现模拟器", "desc": "输入预期用户数和定价，AI 预测收入曲线和回本周期。" },
-      { "title": "项目蓝图", "desc": "自动生成项目结构文档、技术栈推荐和开发里程碑。" },
-      { "title": "GitHub 备份", "desc": "项目数据自动同步到 GitHub Discussions，确保数据自主可控。" }
+      { "title": "像素宠物教练", "desc": "每个项目配一只像素风 AI 宠物。它知道你卡在哪个阶段，会催你、会鼓励你、会吐槽你。" },
+      { "title": "GO/NO-GO 决策门", "desc": "没有完成验证就想过关？门都没有。AI 会检查你的阶段产出，不达标就退回重写。" },
+      { "title": "一键多平台发布", "desc": "ProductHunt、V2EX、Twitter、小红书、即刻——选平台，AI 自动生成不同风格的发布文案。" },
+      { "title": "变现模拟器", "desc": "输入定价、预期用户数、获客成本，AI 算出收入曲线和回本周期。先算清楚再动手。" },
+      { "title": "GitHub 一键导入", "desc": "粘贴 GitHub Repo 链接，AI 自动分析 README，推荐适合的阶段并预填项目信息。" },
+      { "title": "本地 AI 离线运行", "desc": "通过 Ollama 接入本地模型。零 API 费用，零网络依赖，数据不出本机。" }
     ]
   },
   "deployment": {
@@ -67,32 +67,32 @@
   },
   "pricing": {
     "label": "PRICING",
-    "title": "简单透明的定价",
-    "subtitle": "自托管用户完全免费。Cloud 版按 AI 使用量付费，额度永久有效。",
+    "title": "自托管免费，Cloud 按量付费",
+    "subtitle": "有服务器？Docker 一键部署，功能全开放，零费用。不想折腾？Cloud 版按 AI 对话次数付费，额度永久有效。",
     "ctaPayg": "购买额度",
     "ctaFree": "免费开始",
     "tiers": [
       {
         "name": "Free",
         "price": "$0",
-        "period": "/永久",
-        "desc": "适合个人开发者和小型项目",
-        "features": ["无限项目", "注册赠送 20 次 AI 对话", "完整六阶段工作流", "GO/NO-GO 决策", "社区支持"]
+        "period": "永久免费",
+        "desc": "个人开发者、学生、小团队",
+        "features": ["无限项目数量", "注册送 20 次 AI 对话", "完整六阶段工作流", "GO/NO-GO 决策门", "社区支持"]
       },
       {
         "name": "按需付费",
         "price": "$5 起",
-        "period": "/一次性",
-        "desc": "AI 额度用完即买，永不过期",
-        "features": ["无限项目", "$5 / 100 次 AI 对话", "$10 / 250 次 AI 对话", "$20 / 600 次 AI 对话", "额度永久有效，永不过期", "邮件支持"]
+        "period": "一次性",
+        "desc": "用多少买多少，额度永不过期",
+        "features": ["无限项目数量", "$5 = 100 次 AI 对话", "$10 = 250 次 AI 对话", "$20 = 600 次 AI 对话", "额度永久有效", "邮件支持"]
       }
     ]
   },
   "cta": {
-    "title": "你的下一个 Side Project，值得被认真对待",
-    "subtitle": "大多数项目死于\"没人需要\"。SparkBin 用结构化的六阶段流程和 AI 教练，帮你验证想法、降低试错成本。",
-    "primary": "免费开始",
-    "secondary": "在 GitHub 上查看"
+    "title": "停止做没人要的产品",
+    "subtitle": "你花了 3 个月做的东西，上线后发现零用户。这种情况 SparkBin 不会让它发生。用六阶段工作流 + AI 教练，在写第一行代码之前就知道这个想法值不值得做。",
+    "primary": "免费试用",
+    "secondary": "查看源码"
   },
   "footer": {
     "brand": "AI-native project coach for indie hackers.",
@@ -110,7 +110,7 @@
     "security": "安全政策",
     "privacy": "隐私政策",
     "copyright": "SPARKBIN © 2026 — Elastic License 2.0",
-    "builtWith": "Built with React + FastAPI + Brutalist design"
+    "builtWith": "React + FastAPI + Brutalist Design"
   },
   "notFound": {
     "title": "404 NOT FOUND",

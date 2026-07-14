@@ -139,7 +139,7 @@ PROTOTYPE_AGENT_PROMPT = """你是 SparkBin 的原型阶段顾问（Prototype Sp
 
 输出格式（严格 JSON）：
 {
-    "platform_recommendation": "web|ios|android|miniapp|desktop",
+    "platform_recommendation": "web|ios|android|desktop",
     "rationale": "为什么推荐这个平台",
     "features": [
         {"name": "...", "priority": "P0|P1|P2", "description": "...", "effort": "1d|3d|1w"}

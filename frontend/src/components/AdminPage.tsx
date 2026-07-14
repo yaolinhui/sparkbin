@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Server, Key, FileText, Shield, Check, AlertCircle, Cpu, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Server, Key, FileText, Shield, Check, AlertCircle, Cpu, Eye, EyeOff, LogOut } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { aiApi, adminApi, type AIProvider, type AIConfig } from '../services/api';
@@ -200,36 +200,64 @@ export function AdminPage({ onLogout }: AdminPageProps) {
     <div className="min-h-[100dvh] bg-brutal-bg text-brutal-text font-mono">
       {/* Header */}
       <header className="border-b border-brutal-border bg-brutal-surface">
-        <div className="px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 md:gap-4">
             <button
               onClick={() => navigate('/')}
-              className="flex items-center gap-2 text-brutal-muted hover:text-brutal-text transition-colors"
+              className="flex items-center gap-1 md:gap-2 text-brutal-muted hover:text-brutal-text transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm">返回</span>
+              <span className="text-sm hidden sm:inline">返回</span>
             </button>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               <Shield className="w-5 h-5 text-brutal-accent" />
-              <h1 className="text-lg font-bold">系统管理</h1>
+              <h1 className="text-base md:text-lg font-bold">系统管理</h1>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <LanguageSwitcher />
             <ThemeSwitcher />
             <button
               onClick={onLogout}
-              className="btn-brutal h-9 flex items-center gap-2 border-brutal-warning text-brutal-warning"
+              className="btn-brutal h-9 flex items-center gap-1 md:gap-2 border-brutal-warning text-brutal-warning px-2 md:px-3"
+              title="退出登录"
             >
-              退出登录
+              <span className="hidden sm:inline">退出登录</span>
+              <LogOut className="w-4 h-4 sm:hidden" />
             </button>
           </div>
         </div>
       </header>
 
-      <div className="flex h-[calc(100dvh-73px)]">
-        {/* Sidebar */}
-        <aside className="w-64 border-r border-brutal-border bg-brutal-surface">
+      {/* Mobile Tab Navigation */}
+      <div className="md:hidden flex border-b border-brutal-border bg-brutal-surface">
+        <button
+          onClick={() => setActiveTab('ai')}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-mono transition-colors ${
+            activeTab === 'ai'
+              ? 'bg-brutal-accent text-brutal-bg'
+              : 'hover:bg-brutal-surface-hover'
+          }`}
+        >
+          <Cpu className="w-4 h-4" />
+          <span>AI 配置</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('logs')}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-mono transition-colors ${
+            activeTab === 'logs'
+              ? 'bg-brutal-accent text-brutal-bg'
+              : 'hover:bg-brutal-surface-hover'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>日志</span>
+        </button>
+      </div>
+
+      <div className="flex h-[calc(100dvh-73px)] md:h-[calc(100dvh-73px)]">
+        {/* Sidebar - Desktop Only */}
+        <aside className="hidden md:block w-64 border-r border-brutal-border bg-brutal-surface flex-shrink-0">
           <nav className="p-4 space-y-2">
             <button
               onClick={() => setActiveTab('ai')}
@@ -257,7 +285,7 @@ export function AdminPage({ onLogout }: AdminPageProps) {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-6 overflow-y-auto">
+        <main className="flex-1 p-4 md:p-6 overflow-y-auto">
           {activeTab === 'ai' && (
             <div>
               {/* Header */}
@@ -498,22 +526,22 @@ export function AdminPage({ onLogout }: AdminPageProps) {
                 <h2 className="text-xl font-bold">操作日志</h2>
               </div>
 
-              <div className="border border-brutal-border bg-brutal-surface">
-                <table className="w-full text-sm">
+              <div className="border border-brutal-border bg-brutal-surface overflow-x-auto">
+                <table className="w-full text-sm min-w-[320px]">
                   <thead className="border-b border-brutal-border bg-brutal-bg">
                     <tr>
-                      <th className="text-left p-3 text-xs uppercase text-brutal-muted">时间</th>
-                      <th className="text-left p-3 text-xs uppercase text-brutal-muted">操作</th>
-                      <th className="text-left p-3 text-xs uppercase text-brutal-muted">对象</th>
+                      <th className="text-left p-3 text-xs uppercase text-brutal-muted whitespace-nowrap">时间</th>
+                      <th className="text-left p-3 text-xs uppercase text-brutal-muted whitespace-nowrap">操作</th>
+                      <th className="text-left p-3 text-xs uppercase text-brutal-muted whitespace-nowrap">对象</th>
                     </tr>
                   </thead>
                   <tbody>
                     {logs.map((log) => (
                       <tr key={log.id} className="border-b border-brutal-border last:border-0">
-                        <td className="p-3 text-xs text-brutal-muted">
+                        <td className="p-3 text-xs text-brutal-muted whitespace-nowrap">
                           {new Date(log.created_at).toLocaleString()}
                         </td>
-                        <td className="p-3">
+                        <td className="p-3 whitespace-nowrap">
                           <span
                             className={`px-2 py-1 text-xs border ${
                               log.action === 'create'
@@ -526,7 +554,7 @@ export function AdminPage({ onLogout }: AdminPageProps) {
                             {log.action.toUpperCase()}
                           </span>
                         </td>
-                        <td className="p-3 text-xs">
+                        <td className="p-3 text-xs whitespace-nowrap">
                           {log.entity_type} {log.entity_id?.slice(0, 8)}
                         </td>
                       </tr>

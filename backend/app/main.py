@@ -4,6 +4,7 @@ import json
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -18,29 +19,18 @@ logging.basicConfig(
 )
 from .database import engine, SessionLocal
 from .models import Base
-from .auth import init_default_user
+from .auth import init_default_user, _is_trusted_proxy
 from .services.ai_proxy import init_default_ai_configs
 import importlib.util
 
 # 禁用 .pyc 字节码缓存，防止 uvicorn reload 时加载过时的编译缓存
 sys.dont_write_bytecode = True
 
-# 启动时记录 auth 模块加载信息，便于诊断版本问题
-_auth_module_spec = importlib.util.find_spec("app.auth")
-if _auth_module_spec and _auth_module_spec.origin:
-    import os as _os
-
-    _auth_mtime = _os.path.getmtime(_auth_module_spec.origin)
-    logging.getLogger(__name__).info(
-        f"Loaded auth module from {_auth_module_spec.origin} "
-        f"(mtime: {_auth_mtime})"
-    )
-
 from .routers import auth, projects, ai, admin, payments, github
 
 
 class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
-    """限制请求体大小（默认 10MB）"""
+    """限制请求体大小（默认 10MB），同时防护 chunked encoding 绕过"""
 
     def __init__(self, app, max_size: int = 10 * 1024 * 1024):
         super().__init__(app)
@@ -48,13 +38,36 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         if request.method in ("POST", "PUT", "PATCH"):
-            body = await request.body()
-            if len(body) > self.max_size:
-                return Response(
-                    content=json.dumps({"detail": "请求体超过最大限制（10MB）"}),
-                    status_code=413,
-                    media_type="application/json"
-                )
+            content_length = request.headers.get("content-length")
+            transfer_encoding = request.headers.get("transfer-encoding", "").lower()
+            is_chunked = "chunked" in transfer_encoding
+
+            if is_chunked:
+                # Chunked 请求无法预先知道总大小。若后端被直连（无可信反向代理），
+                # 则拒绝处理，防止巨型 body 耗尽内存；若经过 nginx 等可信代理，
+                # 则放行并由代理的 client_max_body_size 限制。
+                client_ip = request.client.host if request.client else None
+                if not client_ip or not _is_trusted_proxy(client_ip):
+                    return Response(
+                        content=json.dumps({"detail": "Chunked requests must be sent through a trusted reverse proxy"}),
+                        status_code=413,
+                        media_type="application/json"
+                    )
+            elif content_length:
+                try:
+                    length = int(content_length)
+                except ValueError:
+                    return Response(
+                        content=json.dumps({"detail": "无效的 Content-Length 头"}),
+                        status_code=400,
+                        media_type="application/json"
+                    )
+                if length > self.max_size:
+                    return Response(
+                        content=json.dumps({"detail": "请求体超过最大限制（10MB）"}),
+                        status_code=413,
+                        media_type="application/json"
+                    )
         return await call_next(request)
 
 
@@ -70,8 +83,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # 防止点击劫持
         response.headers["X-Frame-Options"] = "DENY"
 
-        # XSS 保护（现代浏览器主要依赖 CSP，此头部为向后兼容）
-        response.headers["X-XSS-Protection"] = "1; mode=block"
+        # XSS 保护（现代浏览器主要依赖 CSP，X-XSS-Protection 已弃用且存在绕过漏洞）
+        response.headers["X-XSS-Protection"] = "0"
 
         #  referrer 策略
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
@@ -97,13 +110,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             f"connect-src {_connect_src}{' https://api.stripe.com' if settings.enable_payments else ''}; "
             f"frame-src {'https://js.stripe.com https://hooks.stripe.com' if settings.enable_payments else ''}; "
             "object-src 'none'; "
-            "base-uri 'self';"
+            "base-uri 'self'; "
+            "upgrade-insecure-requests;"
         )
         response.headers["Content-Security-Policy"] = csp
 
-        # HSTS（通过环境变量控制，生产环境启用）
+        # HSTS（生产环境启用；DEBUG 模式不发送，避免本地 HTTP 开发被强制 HTTPS）
         hsts_max_age = getattr(settings, 'hsts_max_age', 0)
-        if hsts_max_age and hsts_max_age > 0:
+        if not settings.debug and hsts_max_age and hsts_max_age > 0:
             response.headers["Strict-Transport-Security"] = f"max-age={hsts_max_age}; includeSubDomains; preload"
 
         return response
@@ -119,7 +133,7 @@ def _ensure_sqlite_columns():
 
     # users 表
     user_columns = {col["name"] for col in inspector.get_columns("users")}
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if "subscription_status" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN subscription_status VARCHAR(20) DEFAULT 'inactive' NOT NULL"))
         if "stripe_customer_id" not in user_columns:
@@ -144,21 +158,28 @@ def _ensure_sqlite_columns():
         if "token_version" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0 NOT NULL"))
             conn.execute(text("UPDATE users SET token_version = 0"))
-        conn.commit()
+        if "password_reset_token_id" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN password_reset_token_id VARCHAR(64)"))
+        if "email_verification_token_id" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN email_verification_token_id VARCHAR(64)"))
+        if "oauth_bind_token_id" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN oauth_bind_token_id VARCHAR(64)"))
+        if "oauth_connect_token_id" not in user_columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN oauth_connect_token_id VARCHAR(64)"))
 
     # projects 表
     project_columns = {col["name"] for col in inspector.get_columns("projects")}
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if "original_idea" not in project_columns:
             conn.execute(text("ALTER TABLE projects ADD COLUMN original_idea TEXT DEFAULT ''"))
-        conn.commit()
+        if "project_type" not in project_columns:
+            conn.execute(text("ALTER TABLE projects ADD COLUMN project_type VARCHAR(20) DEFAULT 'other' NOT NULL"))
 
     # ai_call_logs 表
     ai_log_columns = {col["name"] for col in inspector.get_columns("ai_call_logs")}
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if "user_id" not in ai_log_columns:
             conn.execute(text("ALTER TABLE ai_call_logs ADD COLUMN user_id VARCHAR(36)"))
-        conn.commit()
 
 
 def init_database():
@@ -185,17 +206,23 @@ def init_database():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
-    # 启动时
-    init_database()
+    import asyncio
+    # 启动时：在线程池中执行同步的数据库初始化，避免阻塞事件循环
+    await asyncio.to_thread(init_database)
     yield
-    # 关闭时（如果有需要清理的资源）
+    # 关闭时：清理 HTTP Client 连接池
+    from .routers.auth import _close_http_client
+    _close_http_client()
 
 
 app = FastAPI(
     title="SparkBin API",
     description="SparkBin 后端 API",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 
 # CORS 配置
@@ -241,12 +268,23 @@ app.include_router(payments.router)
 app.include_router(github.router)
 
 
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    """全局未捕获异常处理器：避免在生产环境泄露堆栈或内部错误细节。"""
+    logger = logging.getLogger(__name__)
+    logger.exception("Unhandled exception: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
+
 @app.get("/")
 def root():
     return {
         "name": "SparkBin API",
         "version": "1.0.0",
-        "docs": "/docs"
+        "health": "/health",
     }
 
 
@@ -261,6 +299,6 @@ if __name__ == "__main__":
         "app.main:app",
         host="0.0.0.0",
         port=settings.api_port,
-        reload=True,
+        reload=settings.debug,
         h11_max_request_size=10 * 1024 * 1024,  # 10MB
     )

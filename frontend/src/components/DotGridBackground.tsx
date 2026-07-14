@@ -72,28 +72,33 @@ export const DotGridBackground = forwardRef<DotGridBackgroundRef, DotGridBackgro
           : 'rgba(26,26,26,0.18)';
       };
 
+      let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
       const resize = () => {
-        const rect = canvas.parentElement?.getBoundingClientRect();
-        const w = rect ? rect.width : window.innerWidth;
-        const h = rect ? rect.height : window.innerHeight;
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = Math.max(1, w * dpr);
-        canvas.height = Math.max(1, h * dpr);
-        canvas.style.width = `${w}px`;
-        canvas.style.height = `${h}px`;
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        // 防抖：避免移动端地址栏变化时频繁重初始化
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          const rect = canvas.parentElement?.getBoundingClientRect();
+          const w = rect ? rect.width : window.innerWidth;
+          const h = rect ? rect.height : window.innerHeight;
+          const dpr = window.devicePixelRatio || 1;
+          canvas.width = Math.max(1, w * dpr);
+          canvas.height = Math.max(1, h * dpr);
+          canvas.style.width = `${w}px`;
+          canvas.style.height = `${h}px`;
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        const cols = Math.ceil(w / SPACING) + 1;
-        const rows = Math.ceil(h / SPACING) + 1;
-        const dots: Dot[] = [];
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            const x = c * SPACING;
-            const y = r * SPACING;
-            dots.push({ baseX: x, baseY: y, x, y, vx: 0, vy: 0 });
+          const cols = Math.ceil(w / SPACING) + 1;
+          const rows = Math.ceil(h / SPACING) + 1;
+          const dots: Dot[] = [];
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const x = c * SPACING;
+              const y = r * SPACING;
+              dots.push({ baseX: x, baseY: y, x, y, vx: 0, vy: 0 });
+            }
           }
-        }
-        dotsRef.current = dots;
+          dotsRef.current = dots;
+        }, 150);
       };
 
       const handleMouseMove = (e: MouseEvent) => {
@@ -198,6 +203,7 @@ export const DotGridBackground = forwardRef<DotGridBackgroundRef, DotGridBackgro
       return () => {
         cancelAnimationFrame(rafRef.current);
         window.removeEventListener('resize', resize);
+        if (resizeTimeout) clearTimeout(resizeTimeout);
         if (parent) {
           parent.removeEventListener('mousemove', handleMouseMove);
           parent.removeEventListener('mouseleave', handleMouseLeave);

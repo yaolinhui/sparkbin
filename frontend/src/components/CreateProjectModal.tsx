@@ -3,6 +3,7 @@ import { X, ArrowRight, Check, Edit2, ChevronDown, ChevronUp, Github } from 'luc
 import { useProjectStore } from '../stores/projectStore';
 import { useAIStore } from '../stores/aiStore';
 import { useI18n } from '../i18n/hooks';
+import { type ProjectType } from '../types';
 import { aiService } from '../services/ai';
 import { SnakeLoader } from './SnakeLoader';
 
@@ -12,6 +13,8 @@ interface UnderstandingDimension {
   content: string;
   isCorrect: boolean;
 }
+
+const PROJECT_TYPES: ProjectType[] = ['web', 'app', 'plugin', 'api', 'desktop', 'ai_agent', 'game', 'script', 'other'];
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -33,6 +36,7 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
   const [painPoint, setPainPoint] = useState('');
   const [originalIdea, setOriginalIdea] = useState('');
   const [title, setTitle] = useState('');
+  const [projectType, setProjectType] = useState<ProjectType>('other');
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +79,7 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
     if (!painPoint.trim()) return;
 
     if (!isAIConfigured) {
-      setError('Please configure AI API first (Settings → AI Config)');
+      setError(t('ai.config_required'));
       return;
     }
 
@@ -159,17 +163,18 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
   const handleCreate = async () => {
     if (!title.trim()) return;
 
-    const project = await createProject(title, painPoint, originalIdea);
+    const project = await createProject(title, painPoint, originalIdea, projectType);
     if (project) {
       setPainPoint('');
       setOriginalIdea('');
       setTitle('');
+      setProjectType('other');
       setDimensions([]);
       setStep(1);
       setError(null);
       onClose();
     } else {
-      setError('Failed to create project');
+      setError(t('error.create_failed'));
     }
   };
 
@@ -177,6 +182,7 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
     setPainPoint('');
     setOriginalIdea('');
     setTitle('');
+    setProjectType('other');
     setDimensions([]);
     setStep(1);
     setError(null);
@@ -191,7 +197,7 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
   const getStepTitle = () => {
     switch (step) {
       case 1: return t('modal.init_project');
-      case 2: return '// AI 导师理解确认';
+      case 2: return `// ${t('modal.ai_confirm')}`;
       case 3: return t('modal.confirm_params');
     }
   };
@@ -261,7 +267,7 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
 
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-px bg-brutal-border" />
-                  <span className="text-xs font-mono text-brutal-muted">或</span>
+                  <span className="text-xs font-mono text-brutal-muted">{t('common.or')}</span>
                   <div className="flex-1 h-px bg-brutal-border" />
                 </div>
 
@@ -272,14 +278,14 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
                   }}
                   className="btn-brutal h-9 w-full py-3 text-brutal-muted hover:text-brutal-text"
                 >
-                  跳过 — 手动输入
+                  {t('create.skip_manual')}
                 </button>
 
                 {onImportFromGitHub && (
                   <>
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-px bg-brutal-border" />
-                      <span className="text-xs font-mono text-brutal-muted">或</span>
+                      <span className="text-xs font-mono text-brutal-muted">{t('common.or')}</span>
                       <div className="flex-1 h-px bg-brutal-border" />
                     </div>
 
@@ -291,7 +297,7 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
                       className="btn-brutal h-9 w-full py-3 flex items-center justify-center gap-2 text-brutal-muted hover:text-brutal-text hover:border-brutal-accent"
                     >
                       <Github className="w-4 h-4" />
-                      <span className="text-xs font-mono">{t('github.import_from_github') || '从 GitHub 导入'}</span>
+                      <span className="text-xs font-mono">{t('github.import_from_github')}</span>
                     </button>
                   </>
                 )}
@@ -309,10 +315,10 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
                 </pre>
                 <div>
                   <p className="text-sm font-mono text-brutal-text">
-                    "让我理解一下你的想法..."
+                    {t('ai.understanding_idea')}
                   </p>
                   <p className="text-xs text-brutal-muted mt-1">
-                    我分析了你的描述，生成了 {dimensions.length} 个理解维度
+                    {t('create.analyzed_dimensions', { count: dimensions.length })}
                   </p>
                 </div>
               </div>
@@ -321,7 +327,7 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-mono text-brutal-muted">
-                    你描述的是：
+                    {t('create.your_description')}
                   </label>
                   {originalIdea.length > 200 && (
                     <button
@@ -329,9 +335,9 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
                       className="text-[10px] font-mono text-brutal-accent hover:text-brutal-text flex items-center gap-1"
                     >
                       {isOriginalExpanded ? (
-                        <><ChevronUp className="w-3 h-3" /> 收起</>
+                        <><ChevronUp className="w-3 h-3" /> {t('action.collapse')}</>
                       ) : (
-                        <><ChevronDown className="w-3 h-3" /> 展开</>
+                        <><ChevronDown className="w-3 h-3" /> {t('action.expand')}</>
                       )}
                     </button>
                   )}
@@ -348,7 +354,7 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
               {/* 理解维度 */}
               <div>
                 <label className="block text-xs font-mono text-brutal-muted mb-2">
-                  我理解的核心问题（{dimensions.length} 个维度）：
+                  {t('create.understanding_dimensions', { count: dimensions.length })}
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   {dimensions.map((dim) => (
@@ -365,7 +371,7 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
                             <button
                               onClick={() => startEditDimension(dim.id)}
                               className="p-1 text-brutal-muted hover:text-brutal-text"
-                              title="编辑"
+                              title={t('action.edit')}
                             >
                               <Edit2 className="w-3 h-3" />
                             </button>
@@ -373,7 +379,7 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
                             <button
                               onClick={() => markDimensionCorrect(dim.id)}
                               className="p-1 text-brutal-success"
-                              title="标记正确"
+                              title={t('action.mark_correct')}
                             >
                               <Check className="w-3 h-3" />
                             </button>
@@ -395,13 +401,13 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
                               onClick={saveEditDimension}
                               className="text-xs px-2 py-1 bg-brutal-accent text-brutal-bg font-mono"
                             >
-                              保存
+                              {t('action.save')}
                             </button>
                             <button
                               onClick={() => setEditingDimension(null)}
                               className="text-xs px-2 py-1 border border-brutal-border font-mono"
                             >
-                              取消
+                              {t('action.cancel')}
                             </button>
                           </div>
                         </div>
@@ -413,7 +419,7 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
 
                       {!dim.isCorrect && !editingDimension && (
                         <p className="text-xs text-brutal-warning mt-2">
-                          点击 ✓ 标记为正确，或点击 ✎ 编辑
+                          {t('create.dimension_hint')}
                         </p>
                       )}
                     </div>
@@ -427,7 +433,7 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
                   onClick={() => setStep(1)}
                   className="btn-brutal h-9 flex-1"
                 >
-                  &lt; 返回修改描述
+                  &lt; {t('create.back_to_edit')}
                 </button>
                 <button
                   onClick={handleConfirmUnderstanding}
@@ -437,12 +443,12 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
                   {isOptimizing ? (
                     <>
                       <div className="w-4 h-4 border border-brutal-bg border-t-transparent animate-spin inline mr-2" />
-                      生成中...
+                      {t('ai.generating')}
                     </>
                   ) : (
                     <>
                       <Check className="w-4 h-4 inline mr-2" />
-                      理解正确，生成标题
+                      {t('create.confirm_understanding')}
                     </>
                   )}
                 </button>
@@ -468,6 +474,25 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
 
               <div>
                 <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
+                  {t('project.type')}
+                </label>
+                <select
+                  value={projectType}
+                  onChange={(e) => setProjectType(e.target.value as ProjectType)}
+                  className="w-full p-3 border border-brutal-border bg-brutal-bg
+                             focus:border-brutal-accent transition-colors font-mono text-sm
+                             appearance-none cursor-pointer"
+                >
+                  {PROJECT_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {t(`project.type_${type}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-brutal-muted mb-2 uppercase">
                   {t('project.description')}
                 </label>
                 <textarea
@@ -482,7 +507,7 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
               {originalIdea && (
                 <div className="flex items-center gap-2 text-[10px] font-mono text-brutal-success border border-brutal-success/30 px-2 py-1">
                   <Check className="w-3 h-3" />
-                  原始想法已保存到数据库
+                  {t('create.original_idea_saved')}
                 </div>
               )}
 
@@ -512,14 +537,14 @@ export function CreateProjectModal({ isOpen, onClose, onImportFromGitHub }: Crea
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 border-2 border-brutal-accent border-t-transparent animate-spin flex-shrink-0" />
               <div className="text-xs font-mono text-brutal-accent truncate flex-1">
-                {'>'} {streamOutput || 'AI 正在分析...'}
+                {'>'} {streamOutput || t('ai.analyzing')}
                 <span className="animate-blink">_</span>
               </div>
             </div>
           ) : (
             <div className="text-xs font-mono text-brutal-muted">
               {step === 1 && `> ${t('project.awaiting_input')}`}
-              {step === 2 && '> 确认 AI 理解是否正确...'}
+              {step === 2 && `> ${t('create.confirm_ai_understanding')}`}
               {step === 3 && `> ${t('project.ready_to_commit')}`}
               <span className="animate-blink">_</span>
             </div>

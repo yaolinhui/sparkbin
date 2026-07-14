@@ -1,0 +1,60 @@
+name: Deploy Backend to Alibaba Cloud
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || '22' }}
+          command_timeout: 30m
+          script_stop: true
+          script: |
+            set -e
+            echo "=========================================="
+            echo "Step 1: Sync code from GitHub"
+            echo "=========================================="
+            cd /opt/sparkbin
+            # Stash any local uncommitted changes before syncing
+            if ! git diff --quiet || ! git diff --cached --quiet; then
+              echo "WARNING: server has uncommitted changes. Stashing..."
+              git stash push -m "auto-stash-before-deploy-$(date +%s)"
+            fi
+            # Use GITHUB_TOKEN to fetch private repo, then hard reset to match exactly
+            git fetch https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/yaolinhui/sparkbin.git master
+            git reset --hard FETCH_HEAD
+
+            echo ""
+            echo "=========================================="
+            echo "Step 2: Build and restart containers"
+            echo "=========================================="
+            docker compose -f docker-compose.deploy.yml up -d --build
+
+            echo ""
+            echo "=========================================="
+            echo "Step 3: Cleanup unused images"
+            echo "=========================================="
+            docker image prune -f
+
+            echo ""
+            echo "=========================================="
+            echo "Step 4: Health check"
+            echo "=========================================="
+            sleep 5
+            curl -sf http://localhost/health && echo "" && echo "Backend is healthy!" || echo "WARNING: Health check failed"
+
+            echo ""
+            echo "=========================================="
+            echo "Deployment completed!"
+            echo "=========================================="

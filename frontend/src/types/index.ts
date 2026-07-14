@@ -105,7 +105,7 @@ export interface SmokeTest {
 }
 
 // 原型阶段专用类型
-export type PlatformType = 'web' | 'ios' | 'android' | 'miniapp' | 'desktop';
+export type PlatformType = 'web' | 'ios' | 'android' | 'desktop';
 
 export interface DesignTemplate {
   id: string;
@@ -262,6 +262,41 @@ export interface Stages {
   monetize: PromoteStage; // 变现
 }
 
+export type ProjectType =
+  | 'web'
+  | 'app'
+  | 'plugin'
+  | 'api'
+  | 'desktop'
+  | 'ai_agent'
+  | 'game'
+  | 'script'
+  | 'other';
+
+export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
+  web: 'Web 应用',
+  app: '移动 App',
+  plugin: '浏览器插件',
+  api: 'API 服务',
+  desktop: '桌面应用',
+  ai_agent: 'AI Agent',
+  game: '游戏',
+  script: '工具脚本',
+  other: '其他',
+};
+
+export const PROJECT_TYPE_ICONS: Record<ProjectType, string> = {
+  web: '🌐',
+  app: '📱',
+  plugin: '🔌',
+  api: '⚡',
+  desktop: '💻',
+  ai_agent: '🤖',
+  game: '🎮',
+  script: '🔧',
+  other: '📋',
+};
+
 export interface Project {
   id: string;
   title: string;
@@ -269,6 +304,7 @@ export interface Project {
   originalIdea: string;
   status: ProjectStatus;
   currentStage: StageKey;
+  projectType: ProjectType;
   stages: Stages;
   createdAt: string;
   updatedAt: string;

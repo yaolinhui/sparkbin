@@ -24,12 +24,14 @@ if __name__ == "__main__":
     if settings.https_proxy:
         os.environ.setdefault("HTTPS_PROXY", settings.https_proxy)
 
+    # reload 仅在 DEBUG=true 时开启，避免生产环境误用开发模式
+    debug = os.environ.get("DEBUG", "false").lower() == "true"
+
     print(f"Starting SparkBin API on port {settings.api_port}")
-    print(f"API Docs: http://localhost:{settings.api_port}/docs")
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
         port=settings.api_port,
-        reload=True,
+        reload=debug,
         log_level="info",
     )

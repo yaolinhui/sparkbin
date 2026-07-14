@@ -41,7 +41,7 @@ test.describe('阶段提交内容验证', () => {
     await page.locator('.animate-spin').first().waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
 
     // 辅助函数：点击提交阶段并验证确认对话框出现
-    const assertEmptyContentWarning = async (stageName: string) => {
+    const assertEmptyContentWarning = async () => {
       const completeBtn = page.getByRole('button', { name: /提交阶段/i });
       await expect(completeBtn).toBeVisible({ timeout: 5000 });
       await completeBtn.click();

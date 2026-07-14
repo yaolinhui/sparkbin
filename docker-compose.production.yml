@@ -11,7 +11,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-sparkbin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-sparkbin}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -24,13 +24,13 @@ services:
       - sparkbin-net
 
   backend:
-    image: ghcr.io/yourname/sparkbin-backend:latest
+    image: ghcr.io/${GHCR_NAMESPACE:-yourname}/sparkbin-backend:${SPARKBIN_VERSION:-latest}
     container_name: sparkbin-backend
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-sparkbin}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-sparkbin}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sparkbin}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-sparkbin}
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,7 +38,7 @@ services:
       - sparkbin-net
 
   frontend:
-    image: ghcr.io/yourname/sparkbin-frontend:latest
+    image: ghcr.io/${GHCR_NAMESPACE:-yourname}/sparkbin-frontend:${SPARKBIN_VERSION:-latest}
     container_name: sparkbin-frontend
     restart: unless-stopped
     networks:

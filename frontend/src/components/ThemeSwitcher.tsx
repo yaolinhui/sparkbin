@@ -11,7 +11,7 @@ export function ThemeSwitcher() {
       onClick={toggleTheme}
       className="flex items-center gap-2 px-3 py-2 border border-brutal-border bg-brutal-surface text-brutal-text
                  hover:border-brutal-accent hover:bg-brutal-surface-hover transition-colors"
-      aria-label="Toggle theme"
+      aria-label={t('theme.toggle_theme')}
       title={isLight ? t('theme.switch_to_dark') : t('theme.switch_to_light')}
     >
       {isLight ? (

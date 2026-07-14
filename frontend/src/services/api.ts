@@ -2,33 +2,29 @@
 // Cache-bust: 2026-05-05
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// Token 和角色管理
-// 注意：userRole / userId 不再持久化到 localStorage（防止客户端篡改导致 UI 欺骗）
-let authToken: string | null = localStorage.getItem('sparkbin_token');
-let refreshToken: string | null = localStorage.getItem('sparkbin_refresh_token');
+// 认证状态（内存标记，不保存真实 token）
+// 真实 access/refresh token 现在由后端通过 HttpOnly Cookie 管理
+let authToken: string | null = null;
 let userRole: string | null = null;
 let userId: string | null = null;
 let onUnauthorizedCallback: (() => void) | null = null;
 let refreshTimerId: ReturnType<typeof setInterval> | null = null;
 
 // 清理旧版本残留的 localStorage 缓存（一次性迁移）
+localStorage.removeItem('sparkbin_token');
+localStorage.removeItem('sparkbin_refresh_token');
 localStorage.removeItem('sparkbin_role');
 localStorage.removeItem('sparkbin_user_id');
 
 export function setAuthToken(token: string) {
-  authToken = token;
-  localStorage.setItem('sparkbin_token', token);
-  // 不再从 JWT 中客户端解析角色（防止客户端篡改）
-  // 角色统一由 /auth/me 接口返回并写入 userRole
+  // token 参数仅用于保持向后兼容的调用签名；真实 token 不会进入 JS。
+  authToken = token || '1';
 }
 
 export function clearAuthToken() {
   authToken = null;
-  refreshToken = null;
   userRole = null;
   userId = null;
-  localStorage.removeItem('sparkbin_token');
-  localStorage.removeItem('sparkbin_refresh_token');
 }
 
 /** 设置用户角色（仅应由 /auth/me 调用后写入，不持久化到 localStorage） */
@@ -41,13 +37,12 @@ export function setCachedUserId(id: string | null) {
   userId = id;
 }
 
-export function setRefreshToken(token: string) {
-  refreshToken = token;
-  localStorage.setItem('sparkbin_refresh_token', token);
+export function setRefreshToken(_token: string) {
+  // refresh token 不再由 JS 持有，由后端 HttpOnly Cookie 管理
 }
 
 export function getRefreshToken(): string | null {
-  return refreshToken;
+  return null;
 }
 
 export function clearRememberedUsername() {
@@ -70,30 +65,22 @@ export function stopTokenRefreshTimer() {
 }
 
 async function refreshAccessToken(): Promise<boolean> {
-  const token = getRefreshToken();
-  if (!token) return false;
-
   const tryRefresh = async (): Promise<boolean> => {
     try {
+      // refresh_token 由后端 HttpOnly Cookie 自动携带
       const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: token }),
+        credentials: 'include',
       });
 
       if (!response.ok) {
         return false;
       }
 
-      const data = await response.json() as LoginResponse;
-      if (data.access_token) {
-        setAuthToken(data.access_token);
-        if (data.refresh_token) {
-          setRefreshToken(data.refresh_token);
-        }
-        return true;
-      }
-      return false;
+      // 后端刷新成功后会通过 Set-Cookie 写入新的 access_token
+      setAuthToken('refreshed');
+      return true;
     } catch {
       return false;
     }
@@ -216,7 +203,7 @@ async function request<T>(
   const isRetry = options.__retry ?? false;
   const skipCache = options.__skipCache ?? false;
   const isGet = !options.method || options.method === 'GET';
-  const cacheKey = `${url}:${authToken || ''}`;
+  const cacheKey = `${url}`;
 
   // GET 请求优先读缓存
   if (isGet && !skipCache) {
@@ -231,13 +218,11 @@ async function request<T>(
     ...((options.headers as Record<string, string>) || {}),
   };
 
-  if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
-  }
-
+  // 认证由后端 HttpOnly Cookie 自动携带，前端不再手动注入 Authorization
   const response = await fetch(url, {
     ...options,
     headers,
+    credentials: 'include',
   });
 
   if (response.status === 401) {
@@ -302,16 +287,31 @@ async function request<T>(
 }
 
 // ===== 认证 API =====
+export interface CaptchaResponse {
+  token: string;
+  background: string;
+  slider: string;
+  slider_width: number;
+  slider_height: number;
+  slider_y: number;
+}
+
 export interface LoginRequest {
   username: string;
   password: string;
-  captcha_answer?: string;
+  captcha_token?: string;
+  captcha_x?: number;
 }
 
 export interface LoginResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
 }
 
 export interface RegisterRequest {
@@ -343,13 +343,13 @@ export interface VerifyEmailResponse {
 
 export const authApi = {
   login: (data: LoginRequest) =>
-    request<LoginResponse>('/auth/login', {
+    request<BaseResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   register: (data: RegisterRequest) =>
-    request<LoginResponse>('/auth/register', {
+    request<RegisterResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -399,17 +399,27 @@ export const authApi = {
       body: JSON.stringify(data),
     }),
 
-  verifyEmail: (token: string) =>
+  verifyEmailStatus: (token: string) =>
     request<VerifyEmailResponse>(`/auth/verify-email?token=${encodeURIComponent(token)}`),
+
+  verifyEmail: (token: string) =>
+    request<VerifyEmailResponse>('/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    }),
 
   getOAuthUrl: (provider: 'google' | 'github') =>
     `${API_BASE_URL}/auth/oauth/${provider}`,
 
   getCaptcha: () =>
-    request<{ question: string; answer_hash: string }>('/auth/captcha'),
+    request<CaptchaResponse>('/auth/captcha'),
 
-  getGitHubConnectUrl: () =>
-    `${API_BASE_URL}/auth/oauth/github/connect`,
+  getGitHubConnectUrl: async () => {
+    const data = await request<{ url: string }>('/auth/oauth/github/connect', {
+      __skipCache: true,
+    });
+    return data.url;
+  },
 
   // 获取首选 AI 模型
   getPreferredModel: () =>
@@ -475,6 +485,7 @@ export interface Project {
   original_idea: string;
   status: 'active' | 'paused' | 'archived';
   current_stage: Stage['stage_key'];
+  project_type?: string;
   created_at: string;
   updated_at: string;
 }
@@ -498,7 +509,7 @@ export const projectsApi = {
   get: (id: string) =>
     request<ProjectDetail>(`/projects/${id}`),
 
-  create: (data: { title: string; pain_point: string; original_idea?: string }) =>
+  create: (data: { title: string; pain_point: string; original_idea?: string; project_type?: string }) =>
     request<ProjectDetail>('/projects', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -623,15 +634,15 @@ export const aiApi = {
       body: JSON.stringify(config || {}),
     }),
 
-  // 流式聊天 - 返回 EventSource
+  // 流式聊天 - 返回 fetch Promise<Response>（前端通过 body.getReader 解析 SSE）
   chatStream: (provider: AIProvider, messages: ChatMessage[]) => {
     const url = `${API_BASE_URL}/ai/chat`;
     const response = fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken || ''}`,
       },
+      credentials: 'include',
       body: JSON.stringify({ provider, messages, stream: true }),
     });
     return response;
@@ -745,7 +756,11 @@ export const aiApi = {
     }>(`/ai/agent/run/${runId}`),
 
   listAgentRuns: (projectId?: string, limit = 20) => {
-    const qs = projectId ? `?project_id=${projectId}&limit=${limit}` : `?limit=${limit}`;
+    const params = new URLSearchParams();
+    if (projectId) {
+      params.set('project_id', projectId);
+    }
+    params.set('limit', String(limit));
     return request<{
       run_id: string;
       status: string;
@@ -753,7 +768,7 @@ export const aiApi = {
       summary: string;
       created_at: string;
       completed_at: string | null;
-    }[]>(`/ai/agent/runs${qs}`);
+    }[]>(`/ai/agent/runs?${params.toString()}`);
   },
 };
 

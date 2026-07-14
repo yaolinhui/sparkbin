@@ -1,10 +1,12 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+import base64
+import re
 
 
 class Settings(BaseSettings):
     # 数据库
-    database_url: str = "postgresql://postgres:password@localhost:5432/sparkbin"
+    database_url: str = "sqlite:///./sparkbin.db"
 
     # 安全密钥
     secret_key: str = "your-secret-key-change-this"
@@ -17,7 +19,11 @@ class Settings(BaseSettings):
     # API 配置
     api_port: int = 8000
     debug: bool = False
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174"
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080"
+
+    # Token 过期时间（分钟/天）
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 7
 
     # GitHub 备份（可选）
     github_token: str = ""
@@ -39,7 +45,7 @@ class Settings(BaseSettings):
 
     # 邮件服务（Resend）
     resend_api_key: str = ""
-    resend_from_email: str = "SparkBin <noreply@sparkbin.dev>"
+    resend_from_email: str = "SparkBin <noreply@sparkbin.wanchun.me>"
 
     # OAuth 配置
     google_client_id: str = ""
@@ -48,18 +54,65 @@ class Settings(BaseSettings):
     github_client_secret: str = ""
     frontend_url: str = "http://localhost:5173"  # OAuth 回调和邮件链接基础地址
 
+    # HSTS 配置（生产环境默认启用 1 年）
+    hsts_max_age: int = 31536000
+
     # HTTP 代理配置（用于后端访问外部 API，如 Google/GitHub）
     http_proxy: str = ""
     https_proxy: str = ""
 
-    class Config:
-        # 自动加载 .env 文件中的配置
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    # 后端 API 公开地址（用于 CSP connect-src 等）
+    api_url: str = "http://localhost:8000"
+
+    # 可信 Host 列表（生产环境逗号分隔，如 localhost,api.example.com）
+    allowed_hosts: str = "localhost"
+
+model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
 
 _DEFAULT_SECRET_KEY = "your-secret-key-change-this"
 _DEFAULT_ENCRYPTION_KEY = "your-32-byte-encryption-key-here!"
+
+
+def _is_hex(key: str) -> bool:
+    """判断字符串是否全为十六进制字符。"""
+    if not key:
+        return False
+    return all(c in "0123456789abcdefABCDEF" for c in key)
+
+
+_FERNET_KEY_PATTERN = re.compile(r"^[A-Za-z0-9_-]{43}(=?)$")
+
+
+def _decode_fernet_key(key: str) -> bytes:
+    """验证并解码 Fernet 密钥。
+
+    要求：
+    - 仅包含 urlsafe base64 字符（A-Z, a-z, 0-9, -, _）和末尾可选的 = 填充。
+    - 长度为 43（无填充）或 44（有填充）。
+    - 解码后恰好 32 字节。
+    """
+    if not _FERNET_KEY_PATTERN.match(key):
+        raise ValueError(
+            "Fernet key must be 43 (unpadded) or 44 (padded) URL-safe base64 characters."
+        )
+    padded = key + "=" * (-len(key) % 4)
+    decoded = base64.urlsafe_b64decode(padded)
+    if len(decoded) != 32:
+        raise ValueError(f"Fernet key must decode to 32 bytes, got {len(decoded)}")
+    return decoded
+
+
+def _is_valid_fernet_key(key: str) -> bool:
+    """判断字符串是否为合法的 Fernet 密钥格式。"""
+    try:
+        _decode_fernet_key(key)
+        return True
+    except Exception:
+        return False
 
 
 @lru_cache()
@@ -71,9 +124,20 @@ def get_settings() -> Settings:
             "SECURITY ERROR: SECRET_KEY is not set or is using the default value. "
             "Please set a strong SECRET_KEY in your .env file before starting the application."
         )
-    if len(settings.secret_key) < 32:
+    # HS256 需要至少 256 位（32 字节）熵。若用户使用十六进制，需至少 64 字符；
+    # 若使用随机 ASCII 字符串，需至少 32 字符。
+    if _is_hex(settings.secret_key):
+        if len(settings.secret_key) < 64:
+            raise ValueError(
+                "SECURITY ERROR: SECRET_KEY appears to be hexadecimal but is less than 64 characters "
+                "(32 bytes). Please generate a 64-character hex string with: "
+                "python -c \"import secrets; print(secrets.token_hex(32))\""
+            )
+    elif len(settings.secret_key) < 32:
         raise ValueError(
-            "SECURITY ERROR: SECRET_KEY must be at least 32 characters long."
+            "SECURITY ERROR: SECRET_KEY must be at least 32 characters long "
+            "or 64 hexadecimal characters. "
+            "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
         )
 
     if not settings.encryption_key or settings.encryption_key == _DEFAULT_ENCRYPTION_KEY:
@@ -81,10 +145,51 @@ def get_settings() -> Settings:
             "SECURITY ERROR: ENCRYPTION_KEY is not set or is using the default value. "
             "Please set a strong ENCRYPTION_KEY in your .env file before starting the application."
         )
-    if len(settings.encryption_key) < 32:
+    # ENCRYPTION_KEY 必须是标准 Fernet 密钥：32 字节 urlsafe base64。
+    # 兼容 43 字符无填充（secrets.token_urlsafe(32)）和 44 字符有填充（Fernet.generate_key()）。
+    if not _is_valid_fernet_key(settings.encryption_key):
         raise ValueError(
-            "SECURITY ERROR: ENCRYPTION_KEY must be at least 32 characters long."
+            "SECURITY ERROR: ENCRYPTION_KEY must be a valid 32-byte URL-safe base64 Fernet key. "
+            "Generate one with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
         )
+
+    # 拒绝已知弱口令默认值，强制用户设置强密码
+    _default_weak_passwords = {
+        "admin", "password", "123456", "admin123", "changeme",
+        "changeme-strong-password", "password123", "qwerty", "12345678",
+    }
+    if settings.default_password and settings.default_password.lower() in _default_weak_passwords:
+        raise ValueError(
+            "SECURITY ERROR: DEFAULT_PASSWORD is using a known weak value. "
+            "Please generate a strong DEFAULT_PASSWORD in your .env file before starting the application."
+        )
+
+    # 拒绝使用常见/可预测的管理员用户名
+    if settings.default_username.lower() == "admin":
+        raise ValueError(
+            "SECURITY ERROR: DEFAULT_USERNAME cannot be 'admin'. "
+            "Please change DEFAULT_USERNAME in your .env file before starting the application."
+        )
+
+    # 校验 CREDITS_PACKS 格式，避免运行时解析异常
+    if settings.credits_packs:
+        for pack_str in settings.credits_packs.split(","):
+            pack_str = pack_str.strip()
+            if not pack_str:
+                continue
+            try:
+                price_str, credits_str = pack_str.split(":")
+                price = float(price_str.strip())
+                credits = int(credits_str.strip())
+            except ValueError:
+                raise ValueError(
+                    "SECURITY ERROR: CREDITS_PACKS format is invalid. "
+                    "Expected 'price:credits,price:credits,...' with positive numbers."
+                )
+            if price < 0 or credits <= 0:
+                raise ValueError(
+                    "SECURITY ERROR: CREDITS_PACKS must contain positive price and credits."
+                )
 
     return settings
 

@@ -165,21 +165,34 @@ Respond ONLY in the following format:
 置信度：x
 """
 
-    async def analyze_repo(self, repo_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def analyze_repo(self, repo_data: Dict[str, Any], db=None) -> Dict[str, Any]:
         """调用 AI 解析仓库内容"""
         prompt = self._build_ai_prompt(repo_data)
 
         # 使用默认 AI 提供商进行解析
-        ai_service = AIProxyService()
-        active_config = ai_service.get_active_config()
+        from ..database import SessionLocal
+        from ..models import AIProvider
+        _db = db or SessionLocal()
+        try:
+            ai_service = AIProxyService(_db)
+            active_config = ai_service.get_active_config(AIProvider.DEEPSEEK)
+        finally:
+            if db is None:
+                _db.close()
         if not active_config:
             raise ValueError("No active AI provider configured")
 
         # 非流式调用，获取完整响应
         messages = [{"role": "user", "content": prompt}]
         response_text = ""
-        async for chunk in ai_service.chat_completion(messages, provider=active_config.provider):
-            response_text += chunk
+        _db2 = db or SessionLocal()
+        try:
+            ai_service = AIProxyService(_db2)
+            async for chunk in ai_service.chat_completion(messages, provider=active_config.provider):
+                response_text += chunk
+        finally:
+            if db is None:
+                _db2.close()
 
         # 解析 AI 响应
         result = self._parse_ai_response(response_text)
