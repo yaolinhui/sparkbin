@@ -161,7 +161,11 @@ class AIService {
             const chunk = JSON.parse(data);
             // 检查是否是错误消息
             if (chunk.error) {
-              throw new Error(chunk.error);
+              const errorMsg =
+                typeof chunk.error === 'string'
+                  ? chunk.error
+                  : chunk.error.message || chunk.error.detail || JSON.stringify(chunk.error);
+              throw new Error(errorMsg);
             }
 
             if (!chunk.meta) {
@@ -203,7 +207,11 @@ class AIService {
             try {
               const chunk = JSON.parse(data);
               if (chunk.error) {
-                throw new Error(chunk.error);
+                const errorMsg =
+                  typeof chunk.error === 'string'
+                    ? chunk.error
+                    : chunk.error.message || chunk.error.detail || JSON.stringify(chunk.error);
+                throw new Error(errorMsg);
               }
               if (chunk.meta) {
                 handlers?.onMeta?.(chunk.meta as StageStreamMeta);
