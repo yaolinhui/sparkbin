@@ -71,3 +71,4 @@ venv/
 
 # Audit/run logs (may contain environment details)
 docs/runs/
+.vercel

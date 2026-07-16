@@ -65,22 +65,6 @@ body {
   position: relative;
 }
 
-/* Fixed dot grid background using pseudo-element to avoid
-   background-attachment: fixed performance issues (GPU compositing lag,
-   black screen on some browsers/GPUs) */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: -1;
-  pointer-events: none;
-  background-image: radial-gradient(circle at center, var(--bg-grid-color) 1.5px, transparent 1.5px);
-  background-size: 24px 24px;
-}
-
 /* ============================================
    SCROLLBAR
    ============================================ */
